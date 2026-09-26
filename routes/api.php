@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Agenda\AgendaController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\ProfilController;
 use App\Http\Controllers\Api\V1\Auth\RegistrasiGuruController;
@@ -81,6 +82,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::delete('/jenis-tagihan/{id}', [JenisTagihanController::class, 'destroy']);
         Route::post('/tagihan/generate', [TagihanController::class, 'generate']);
         Route::patch('/tagihan/{id}/batalkan', [TagihanController::class, 'batalkan']);
+
+        Route::post('/agenda', [AgendaController::class, 'store']);
+        Route::put('/agenda/{id}', [AgendaController::class, 'update']);
+        Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
     });
 
     Route::middleware('can:kelola-keuangan')->group(function () {
@@ -117,6 +122,8 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
     Route::get('/pembayaran/{id}', [PembayaranController::class, 'show']);
     Route::get('/pembayaran/{id}/bukti', [PembayaranController::class, 'bukti']);
     Route::get('/pembayaran/{id}/kwitansi', [PembayaranController::class, 'kwitansi']);
+
+    Route::get('/agenda', [AgendaController::class, 'index']);
 
     Route::get('/notifikasi', [NotifikasiController::class, 'index']);
     Route::get('/notifikasi/belum-dibaca', [NotifikasiController::class, 'belumDibaca']);
