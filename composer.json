@@ -55,6 +55,9 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "check:slop": [
+            "bash scripts/check-slop.sh"
+        ],
         "pre-autoload-dump": [
             "Google\\Task\\Composer::cleanup"
         ],
