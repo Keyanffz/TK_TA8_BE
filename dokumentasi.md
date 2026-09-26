@@ -11,7 +11,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 2. Database | Selesai |
 | 3. Auth & akun | Selesai |
 | 4. Master akademik | Selesai (di laptop) |
-| 5. Keuangan | Sedang dikerjakan |
+| 5. Keuangan | Selesai (di laptop) |
 | 6. Akademik & komunikasi | Belum |
 | 7. PPDB, CMS, dashboard | Belum |
 | 8. Hardening | Belum |
@@ -29,7 +29,15 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
 | Kelas | `GET /kelas`, `GET /kelas/{id}` (SA, G terbatas), `POST /kelas`, `PUT/DELETE /kelas/{id}`, `POST /kelas/{id}/murid`, `DELETE /kelas/{id}/murid/{murid_id}`, `POST /kelas/kenaikan` (SA) |
 | Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `POST /murid/{id}/kode-tautan`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
-| Tagihan (baca) | `GET /tagihan`, `GET /tagihan/{id}` (petugas keuangan semua, G murid kelasnya, W anak sendiri) |
+| Jenis tagihan | `GET /jenis-tagihan` (K), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
+| Keringanan (K) | `GET/POST /keringanan`, `PUT/DELETE /keringanan/{id}` |
+| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan` (SA) |
+| Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
+| Laporan (K) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
+
+K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga middleware `can:kelola-keuangan`.
+
+Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `kode-tautan:bersihkan` (harian 01:00). Jam dalam WIB.
 
 ## Keputusan menunggu review
 
@@ -51,6 +59,24 @@ Fase 4:
 12. `bukti_url` pembayaran hanya diisi untuk petugas keuangan dan wali murid; guru tanpa izin keuangan melihat riwayat pembayaran murid kelasnya dengan `bukti_url: null`.
 13. Parameter daftar di luar yang disebut A7: `GET /murid` `sort=nama|nis|created_at`; `GET /kelas` `sort=nama|created_at`; `GET /tahun-ajaran` `sort=nama|tanggal_mulai`; `GET /tagihan` `search` (kode tagihan, nama murid) dan `sort=jatuh_tempo|periode|created_at`. Semua daftar berpaginasi (bawaan 15, maksimal 100).
 14. Di OpenAPI, `GET /murid/{id}` dan `GET /tagihan/{id}` masih mencantumkan 403 `FORBIDDEN` karena Scramble membaca pemanggilan `Gate::authorize`. Pada kenyataannya Policy membalas 404 `NOT_FOUND` untuk data di luar jangkauan.
+
+Fase 5:
+
+15. Generate bulanan (manual maupun scheduler) hanya untuk bulan di dalam rentang tahun ajaran aktif; bulan pertama dan terakhir ikut walau tahun ajaran tidak mulai tanggal 1 (TA 13 Juli 2026 – 25 Juni 2027 → Juli 2026 s.d. Juni 2027). Di luar itu ditolak `BUSINESS_RULE`, dan command keluar dengan kode gagal. Akibatnya, kalau tahun ajaran baru belum diaktifkan saat 1 Juli, tagihan Juli harus dibuat manual setelah diaktifkan.
+16. Keringanan untuk tagihan bulanan dipakai kalau masa berlakunya menyentuh bulan periode (bukan hanya tanggal 1); untuk tagihan sekali, yang berlaku pada tanggal pembuatan. Kalau ada lebih dari satu (satu berakhir dan satu mulai di bulan yang sama), yang mulai paling akhir dipakai. Menambah, mengubah, atau menghapus keringanan, dan mengubah nominal jenis tagihan, tidak menghitung ulang tagihan yang sudah ada.
+17. `dibuat_oleh` tagihan bulanan: id Kepala Sekolah kalau lewat `POST /tagihan/generate`, `null` (sistem) kalau dari scheduler. Tagihan dengan total 0 (keringanan penuh) langsung `lunas` dan tidak dikirimi notifikasi `tagihan_baru`.
+18. `POST /tagihan`: `murid_ids` dan `kelas_id` tidak boleh dikirim bersamaan; `kelas_id` berarti murid dengan penempatan aktif di kelas itu. Selain murid yang sudah punya tagihan jenis itu, murid tidak aktif dan murid yang tingkat kelasnya tidak sesuai `jenis_tagihan.tingkat` juga dihitung sebagai `dilewati`. `jatuh_tempo` minimal hari ini. Jenis tagihan harus berperiode `sekali` dan aktif.
+19. Jenis tagihan: tahun ajaran dan periode tidak bisa diganti setelah dipakai di tagihan; hapus ditolak kalau sudah dipakai di tagihan atau keringanan (disarankan menonaktifkan). Nominal maksimal Rp 100.000.000 untuk mencegah salah ketik.
+20. `POST /tagihan/{id}/pembayaran`: wali selalu transfer (unggah bukti gambar), petugas keuangan hanya `metode: tunai`; petugas tidak bisa mengunggah bukti transfer atas nama wali. `tanggal_bayar` tidak boleh di masa depan. Pembayaran tunai `dibayar_oleh = null`. Kode `PAY-YYYYMMDD` memakai tanggal pembayaran dicatat, bukan `tanggal_bayar`.
+21. Akses guru tanpa izin keuangan: `GET /pembayaran` 403; `GET /pembayaran/{id}` (dan bukti, kwitansi) 403 untuk pembayaran murid kelasnya, 404 untuk lainnya; `POST /tagihan/{id}/pembayaran` sama. Urutannya: data di luar jangkauan selalu 404 dulu.
+22. `url` notifikasi: ke wali `/dashboard/tagihan/{id}` (tagihan baru, pengingat, terlambat, pembayaran diterima/ditolak); ke petugas keuangan `/dashboard/pembayaran/{id}` (pembayaran masuk). Mohon dicocokkan dengan peta route FE. `pembayaran_masuk` dikirim ke Kepala Sekolah dan guru berizin keuangan yang akunnya aktif; notifikasi tagihan dikirim ke semua wali yang tertaut.
+23. Pengingat hanya untuk tagihan `belum_bayar` yang jatuh tempo tepat H-`keuangan.hari_pengingat`; penandaan terlambat hanya untuk `belum_bayar` (tagihan `menunggu_verifikasi` dilewati). Menjalankan `tagihan:pengingat` dua kali di hari yang sama mengirim dua kali.
+24. Laporan keuangan: tagihan dikelompokkan menurut bulan `jatuh_tempo`, tagihan dibatalkan tidak dihitung, `terbayar` = total tagihan `lunas`, `pemasukan` = pembayaran `diterima` menurut `tanggal_bayar`, `persen_lunas` satu desimal. Bentuk respons: `{ dari, sampai, ringkasan, per_jenis[], per_bulan[] }` (field per bagian di OpenAPI). Rentang maksimal dua tahun. Ekspor `.xlsx` berisi sheet "Tagihan" dan "Pembayaran Diterima" dan tidak memakai `kelas_id` (A7 hanya menyebut `dari` dan `sampai`).
+25. Tunggakan = tagihan berstatus `terlambat`, dikelompokkan per murid (urut total terbesar) dengan `kontak_wali` (kontak utama) untuk ditindaklanjuti; tidak berpaginasi.
+26. `GET /pembayaran`: `filter[tanggal]` = tanggal bayar persis (YYYY-MM-DD), `search` mencari kode pembayaran dan nama murid.
+27. Kwitansi: A5 mendatar, kop dari `profil.nama_sekolah`, `profil.alamat`, `profil.telepon`, `profil.email`, dan `profil.logo` (jika ada filenya), tanpa terbilang, dengan waktu cetak.
+28. `phpunit.xml` memasang `memory_limit=512M` untuk test. PHP CLI di Arch bawaannya 128 MB (di container Ubuntu tanpa batas), dan seluruh suite (termasuk pembuatan dokumentasi OpenAPI) melewati 128 MB.
+29. Di OpenAPI, respons file (`bukti`, `kwitansi`, `export`) sudah bertipe media yang benar, tetapi Scramble masih menambahkan entri `application/json` kosong; `bukti` dan `kwitansi` belum mencantumkan 403. Dirapikan di Fase 8.
 
 ## Stack terpasang
 
@@ -147,7 +173,8 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
 - Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
 - Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
-- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan").
+- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `kode-tautan:bersihkan` 01:00, `tagihan:pengingat` 07:00 (WIB). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
+- Notifikasi tagihan dan pembayaran juga lewat queue: tanpa worker, notifikasi hasil generate masih di tabel `jobs`.
 
 ### Yang khusus container dan tidak berlaku di laptop
 
@@ -279,7 +306,7 @@ Middleware:
 - Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya password). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
 - Password baru (registrasi, ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
-- Gate `kelola-keuangan` memakai `User::bisaKelolaKeuangan()`; dipakai endpoint keuangan mulai Fase 5. Pembatasan per role lewat middleware `role:`.
+- Gate `kelola-keuangan` memakai `User::bisaKelolaKeuangan()`; endpoint khusus petugas keuangan memakai middleware `can:kelola-keuangan` (403 `FORBIDDEN`, terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`). Pembatasan per role lewat middleware `role:`.
 
 ## File dan media
 
@@ -380,6 +407,19 @@ Diambil selama Fase 2:
 - `DemoSeeder` dipecah per domain di `database/seeders/Demo/`. Email akun demo memakai domain `.test` (tidak bisa menerima email sungguhan). Alamat, telepon, email sekolah, dan rekening di `WebsiteDemoSeeder` fiktif.
 - Tanggal data demo mengikuti waktu penulisan (September 2026): SPP Juli–September, rapor semester 1 sudah ada yang terbit, PPDB 2027/2028 sedang dibuka. Jumlah murid 61: 60 murid di kelas ditambah satu murid dari pendaftaran PPDB yang diterima (belum punya kelas karena kelas 2027/2028 belum dibuat).
 
+Diambil selama Fase 5 (lihat juga "Keputusan menunggu review"):
+
+- `App\Support\NomorUrut` membuat nomor berurutan berawalan (NIS, `INV-`, `PAY-`, nanti `PPDB-`) dari nilai terbesar dengan `lockForUpdate` di dalam transaksi; unique index tetap penjaga terakhir. Generate tagihan mengunci nomor dulu, baru membaca tagihan yang sudah ada, supaya dua generate bersamaan tidak membuat tagihan ganda.
+- Layanan dipisah per tanggung jawab: `TagihanService` (generate bulanan, tagihan sekali, pembatalan, `potongan()`), `JatuhTempoTagihanService` (terlambat dan pengingat), `PembayaranService` (unggah, tunai, terima, tolak), `KwitansiService`, `LaporanKeuanganService`, `JenisTagihanService`, `KeringananService`.
+- Pembayaran dan pembatalan mengunci baris tagihan (`lockForUpdate`) supaya aturan "maksimal satu `menunggu` dan satu `diterima`" terjaga. File bukti dihapus lagi kalau transaksi gagal.
+- Laporan dihitung di PHP dari baris tagihan/pembayaran (bukan `GROUP BY` fungsi tanggal), supaya hasilnya sama di MySQL, MariaDB, dan SQLite. Datanya kecil (puluhan murid).
+- Kwitansi dirender dompdf dengan font subsetting (`isFontSubsettingEnabled`; bawaan config laravel-dompdf mematikannya), ukuran sekitar 24 KB, bukan 880 KB.
+- `Tagihan::label()` menghasilkan "SPP Oktober 2026" (bulanan) atau nama jenis (sekali) untuk notifikasi, kwitansi, laporan, dan ekspor. Rupiah ditulis lewat `App\Support\Rupiah::format()`.
+- Notifikasi tagihan memakai kelas dasar `NotifikasiTagihan` (menyalin label, nama anak, total, jatuh tempo saat dibuat).
+- `AlasanRequest` menggantikan `TolakGuruRequest`, dipakai tolak guru, batalkan tagihan, dan tolak pembayaran.
+- `TagihanController` pindah ke `Api\V1\Keuangan` bersama controller keuangan lain.
+- Respons laporan diberi anotasi `@response` di controller dan respons file diberi atribut `#[Response]` Scramble, karena Scramble tidak bisa menyimpulkan bentuknya dari service.
+
 Diambil selama Fase 4 (lihat juga "Keputusan menunggu review"):
 
 - Scope dipakai di dua tempat yang sama: query daftar (`visibleTo` / `diampuOleh`) dan Policy `view` untuk detail, supaya daftar dan detail tidak pernah berbeda. Pembatasan per role tetap di middleware `role:` (B4).
@@ -408,7 +448,9 @@ Diambil selama Fase 3:
 
 ## Rencana yang sudah disepakati untuk fase berikutnya
 
-- Fase 5: `DemoSeeder` memakai `TagihanService`/`PembayaranService` untuk nomor INV/PAY dan perhitungan potongan. Kode tautan demo sudah dibuat lewat `KodeTautanService::buat()` sejak Fase 4.
+- Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan.
+- Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
+- Fase 8: rapikan dokumentasi respons file di OpenAPI (keputusan nomor 29).
 
 ## Akun seed
 
@@ -429,6 +471,39 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Fase 5
+
+File baru:
+
+- `app/Http/Controllers/Api/V1/Keuangan/{JenisTagihanController, KeringananController, PembayaranController, LaporanController}.php`.
+- `app/Http/Requests/AlasanRequest.php`, `JenisTagihan/{DaftarJenisTagihanRequest, SimpanJenisTagihanRequest}.php`, `Keringanan/{DaftarKeringananRequest, SimpanKeringananRequest}.php`, `Tagihan/{BuatTagihanSekaliRequest, GenerateTagihanRequest}.php`, `Pembayaran/{BayarTagihanRequest, DaftarPembayaranRequest}.php`, `Laporan/{LaporanKeuanganRequest, LaporanTunggakanRequest}.php`.
+- `app/Http/Resources/{JenisTagihanResource, KeringananResource}.php`.
+- `app/Services/{TagihanService, JatuhTempoTagihanService, PembayaranService, KwitansiService, LaporanKeuanganService, JenisTagihanService, KeringananService}.php`.
+- `app/Policies/PembayaranPolicy.php`.
+- `app/Notifications/{NotifikasiTagihan, TagihanBaruNotification, PengingatTagihanNotification, TagihanTerlambatNotification, PembayaranMasukNotification, PembayaranDiterimaNotification, PembayaranDitolakNotification}.php`.
+- `app/Console/Commands/{GenerateTagihanCommand, TandaiTagihanTerlambatCommand, PengingatTagihanCommand}.php`.
+- `app/Exports/{LaporanKeuanganExport, TagihanSheet, PembayaranSheet}.php`.
+- `app/Support/{NomorUrut, Rupiah}.php`.
+- `resources/views/pdf/kwitansi.blade.php`.
+- Test: `tests/Feature/Keuangan/{GenerateTagihanTest, TagihanSekaliDanPembatalanTest, PembayaranTest, JatuhTempoTagihanTest, JenisTagihanDanKeringananTest, LaporanKeuanganTest}.php`.
+
+File yang diubah:
+
+- `routes/api.php`: 20 operasi Fase 5; grup `can:kelola-keuangan`.
+- `routes/console.php`: jadwal tiga command tagihan.
+- `app/Http/Controllers/Api/V1/Tagihan/TagihanController.php` → `Keuangan/TagihanController.php`: ditambah `store`, `generate`, `batalkan`.
+- `app/Http/Controllers/Api/V1/Guru/GuruController.php`: memakai `AlasanRequest`; `app/Http/Requests/Guru/TolakGuruRequest.php` dihapus.
+- `app/Policies/TagihanPolicy.php`: `bayar()`.
+- `app/Models/Tagihan.php` (`label()`), `User.php` (`scopePetugasKeuanganAktif`).
+- `app/Services/MediaService.php` (`responsPrivat()`), `MuridService.php` (NIS lewat `NomorUrut`).
+- `app/Support/Scramble/ResponsErrorRouteExtension.php`: middleware `can:` didokumentasikan sebagai 403 `FORBIDDEN`.
+- `database/seeders/Demo/KeuanganDemoSeeder.php`: nomor INV/PAY dan potongan lewat service.
+- `lang/id/validation.php`: nama atribut field Fase 5.
+- `phpunit.xml`: `memory_limit=512M`.
+- `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 395 test lulus di SQLite dan di MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan. Dicoba juga lewat `php artisan serve` dengan data demo: wali mengunggah bukti (JPEG asli), bendahara `siti.rahmawati` menerima, kwitansi PDF terunduh (satu halaman A5, sekitar 24 KB, dicek visual), bukti tersaji `image/jpeg`, laporan dan tunggakan sesuai data demo, ekspor `.xlsx` berisi dua sheet. `schedule:list` menampilkan empat jadwal, dan ketiga command tagihan jalan dengan `--dry-run` di data demo.
 
 ### Fase 4
 
