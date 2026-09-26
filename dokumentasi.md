@@ -333,6 +333,7 @@ File yang diubah:
 - `app/Support/Scramble/ApiErrorResponseExtension.php`: satu exception bisa dipetakan ke beberapa kode (`AksesAkunDitolakException` → `ACCOUNT_*`); skema dari `SkemaErrorA7`.
 - `config/app.php` (`frontend_url`), `config/services.php` (`google.client_id`), `config/scramble.php` (extension baru), `.env.example` (`GOOGLE_CLIENT_ID`).
 - `database/seeders/SuperAdminSeeder.php`: profil guru Kepala Sekolah dengan `bisa_kelola_keuangan = true`.
+- `database/factories/TahunAjaranFactory.php`: tahun acak diambil dari 1990–2020. Sebelumnya 2015–2045, sehingga test yang menulis nama `2025/2026` langsung sesekali gagal karena nama tahun ajaran bentrok (unique).
 - `lang/id/validation.php`: nama atribut field Fase 3.
 - `phpunit.xml`: `MAIL_FROM_ADDRESS` dan `FRONTEND_URL` untuk test.
 - `tests/Pest.php` (helper `buatKepalaSekolah()`, `buatGuru()`), `tests/Feature/DokumentasiApiTest.php` (memeriksa kode error 401/403/404/429 per operasi). Total test sekarang 189.
