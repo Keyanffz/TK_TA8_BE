@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\ProfilController;
 use App\Http\Controllers\Api\V1\Auth\RegistrasiGuruController;
 use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
+use App\Http\Controllers\Api\V1\Galeri\GaleriController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Kegiatan\KegiatanKelasController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
 use App\Http\Controllers\Api\V1\Pengaturan\PengaturanController;
 use App\Http\Controllers\Api\V1\Pengumuman\PengumumanController;
+use App\Http\Controllers\Api\V1\Publik\PublikController;
 use App\Http\Controllers\Api\V1\Rapor\ElemenPenilaianController;
 use App\Http\Controllers\Api\V1\Rapor\RaporController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
@@ -35,6 +37,16 @@ Route::pattern('detail_id', '[0-9]+');
 
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
+
+Route::prefix('public')->group(function () {
+    Route::get('/profil', [PublikController::class, 'profil']);
+    Route::get('/pengumuman', [PublikController::class, 'pengumuman']);
+    Route::get('/pengumuman/{slug}', [PublikController::class, 'detailPengumuman']);
+    Route::get('/agenda', [PublikController::class, 'agenda']);
+    Route::get('/galeri', [PublikController::class, 'galeri']);
+    Route::get('/galeri/{slug}', [PublikController::class, 'detailGaleri']);
+    Route::get('/guru', [PublikController::class, 'guru']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -98,6 +110,14 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
 
         Route::put('/pengaturan', [PengaturanController::class, 'update']);
         Route::post('/pengaturan/upload', [PengaturanController::class, 'upload']);
+
+        Route::get('/galeri-album', [GaleriController::class, 'index']);
+        Route::post('/galeri-album', [GaleriController::class, 'store']);
+        Route::put('/galeri-album/{id}', [GaleriController::class, 'update']);
+        Route::delete('/galeri-album/{id}', [GaleriController::class, 'destroy']);
+        Route::post('/galeri-album/{id}/foto', [GaleriController::class, 'tambahFoto']);
+        Route::put('/galeri-foto/{id}', [GaleriController::class, 'perbaruiFoto']);
+        Route::delete('/galeri-foto/{id}', [GaleriController::class, 'hapusFoto']);
 
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
