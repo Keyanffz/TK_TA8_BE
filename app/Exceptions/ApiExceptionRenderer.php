@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Illuminate\Validation\ValidationException;
+use Spatie\QueryBuilder\Exceptions\InvalidQuery;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -30,6 +31,8 @@ final class ApiExceptionRenderer
 
     public const PESAN_TAUTAN_FILE_TIDAK_BERLAKU = 'Tautan file sudah kedaluwarsa atau tidak valid. Muat ulang halaman untuk mendapatkan tautan baru.';
 
+    public const PESAN_PARAMETER_DAFTAR_TIDAK_DIKENAL = 'Parameter filter atau urutan tidak dikenal. Periksa kembali parameter filter dan sort.';
+
     public const PESAN_UNGGAHAN_TERLALU_BESAR = 'Ukuran file terlalu besar. Maksimal 5 MB per file.';
 
     public const PESAN_SERVER = 'Server sedang mengalami gangguan. Coba lagi beberapa saat lagi; jika masih gagal, hubungi pihak sekolah.';
@@ -46,6 +49,7 @@ final class ApiExceptionRenderer
             $e instanceof BusinessRuleException => ApiResponse::error($e->getMessage(), KodeError::BusinessRule),
             $e instanceof AksesAkunDitolakException => ApiResponse::error($e->getMessage(), $e->kode),
             $e instanceof InvalidSignatureException => ApiResponse::error(self::PESAN_TAUTAN_FILE_TIDAK_BERLAKU, KodeError::Forbidden),
+            $e instanceof InvalidQuery => ApiResponse::error(self::PESAN_PARAMETER_DAFTAR_TIDAK_DIKENAL, KodeError::ValidationError),
             $e instanceof HttpExceptionInterface => $this->dariHttpException($e, $request),
             default => ApiResponse::error(self::PESAN_SERVER, KodeError::ServerError),
         };

@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\JenisKelamin;
+use App\Enums\Role;
 use Database\Factories\GuruFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +38,40 @@ class Guru extends Model
             'tampil_di_landing' => 'boolean',
             'disetujui_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Profil guru milik Kepala Sekolah (A2.1): tidak tampil di `GET /guru`, tidak bisa dinonaktifkan,
+     * dan izin keuangannya tidak bisa diubah.
+     */
+    public function milikKepalaSekolah(): bool
+    {
+        return $this->user->role === Role::SuperAdmin;
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeBukanKepalaSekolah(Builder $query): void
+    {
+        $query->whereHas('user', fn (Builder $user) => $user->where('role', Role::Guru));
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeCari(Builder $query, ?string $kata): void
+    {
+        if ($kata === null) {
+            return;
+        }
+
+        $query->where(fn (Builder $guru) => $guru
+            ->where('nip', 'like', "%{$kata}%")
+            ->orWhere('nuptk', 'like', "%{$kata}%")
+            ->orWhereHas('user', fn (Builder $user) => $user
+                ->where('name', 'like', "%{$kata}%")
+                ->orWhere('email', 'like', "%{$kata}%")));
     }
 
     /**

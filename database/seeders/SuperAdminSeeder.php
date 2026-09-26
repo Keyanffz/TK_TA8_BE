@@ -63,6 +63,7 @@ class SuperAdminSeeder extends Seeder
 
             Guru::query()->firstOrCreate(['user_id' => $user->id], [
                 'jabatan' => Guru::JABATAN_KEPALA_SEKOLAH,
+                'bisa_kelola_keuangan' => true,
             ]);
         });
     }
