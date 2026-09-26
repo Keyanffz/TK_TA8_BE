@@ -10,8 +10,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 1. Fondasi | Selesai |
 | 2. Database | Selesai |
 | 3. Auth & akun | Selesai |
-| 4. Master akademik | Selesai (di laptop) |
-| 5. Keuangan | Selesai (di laptop) |
+| 4. Master akademik | Selesai, disetujui (dengan revisi) |
+| 5. Keuangan | Selesai, disetujui (dengan revisi) |
 | 6. Akademik & komunikasi | Belum |
 | 7. PPDB, CMS, dashboard | Belum |
 | 8. Hardening | Belum |
@@ -43,13 +43,19 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
 
+(Diisi selama Fase 6–8.)
+
+## Keputusan Fase 4–5 (sudah direview)
+
+Disetujui pemilik repo setelah Fase 5, kecuali empat hal yang diubah (lihat "Revisi setelah review Fase 4–5" di Changelog). Nomor 5, 15, 20, dan 22 di bawah sudah memuat keputusan setelah revisi.
+
 Fase 4:
 
 1. `GET /tagihan` dan `GET /tagihan/{id}` (baca saja, dengan scope B4 dan Policy) dibuat di Fase 4, bukan Fase 5, karena Policy dan scope diminta berlaku untuk semua endpoint murid, kelas, dan tagihan di Fase 4. Detail tagihan sudah berisi riwayat pembayaran dan `rekening` sekolah dari `keuangan.rekening`.
 2. Tahun ajaran pertama yang dibuat langsung aktif; tahun ajaran berikutnya dibuat tidak aktif. `is_aktif` tidak diterima di `POST`/`PUT /tahun-ajaran`; satu-satunya jalan mengubahnya `POST /tahun-ajaran/{id}/aktifkan`. `semester_aktif` opsional (bawaan 1).
 3. `DELETE /tahun-ajaran/{id}` ditolak `BUSINESS_RULE` kalau tahun ajaran sedang aktif, sudah punya kelas, tagihan, jenis tagihan, atau pendaftar PPDB, atau dipakai di `ppdb.tahun_ajaran_id`.
 4. Kapasitas kelas dan `jumlah_murid` hanya menghitung penempatan berstatus `aktif`. `PUT /kelas/{id}` menolak kapasitas di bawah jumlah itu, dan menolak mengganti tahun ajaran kalau kelas sudah berisi murid. `DELETE /kelas/{id}` ditolak kalau kelas sudah punya murid, kegiatan, atau rapor. Wali kelas dan guru pendamping harus guru berakun aktif (profil guru Kepala Sekolah boleh) dan tidak boleh orang yang sama.
-5. `DELETE /kelas/{id}/murid/{murid_id}` menghapus baris penempatan (untuk memperbaiki salah penempatan), bukan memberi status `keluar`. Murid yang keluar sekolah diubah lewat `PUT /murid/{id}`.
+5. `DELETE /kelas/{id}/murid/{murid_id}` menghapus baris penempatan (untuk memperbaiki salah penempatan), bukan memberi status `keluar`. Murid yang keluar sekolah diubah lewat `PUT /murid/{id}`. **Revisi:** ditolak `BUSINESS_RULE` kalau murid sudah punya rapor di kelas itu (rapor di kelas lain tidak menghalangi).
 6. Kenaikan kelas: tahun ajaran asal = tahun ajaran aktif, tujuan harus berbeda. Setiap murid harus aktif dan punya penempatan `aktif` di tahun ajaran asal, dan belum punya kelas di tahun ajaran tujuan. Tingkat kelas tujuan tidak dicek (naik dari A ke B tidak dipaksa). Murid `lulus` mendapat `status = lulus` dan `tanggal_keluar` = `tanggal_selesai` tahun ajaran asal. Respons `{ naik, tinggal, lulus }` (jumlah per status). Tidak dicatat di activity log karena tidak ada di daftar B7.
 7. `POST /murid` tidak menerima `status` (selalu `aktif`). `PUT /murid/{id}` mewajibkan `status`; `tanggal_keluar` wajib untuk `lulus`/`pindah`/`keluar` dan dikosongkan untuk `aktif`. Perubahan status ikut mengubah penempatan di tahun ajaran aktif: `lulus` → `lulus`, `pindah`/`keluar` → `keluar`, kembali `aktif` → penempatan dibuka lagi (dengan cek kapasitas). NIS tidak bisa diubah.
 8. `DELETE /murid/{id}` hanya untuk data salah input: ditolak kalau murid sudah punya tagihan, rapor, atau data PPDB. Murid di-soft delete, penempatannya dihapus, dan kode tautannya dikosongkan.
@@ -62,14 +68,14 @@ Fase 4:
 
 Fase 5:
 
-15. Generate bulanan (manual maupun scheduler) hanya untuk bulan di dalam rentang tahun ajaran aktif; bulan pertama dan terakhir ikut walau tahun ajaran tidak mulai tanggal 1 (TA 13 Juli 2026 – 25 Juni 2027 → Juli 2026 s.d. Juni 2027). Di luar itu ditolak `BUSINESS_RULE`, dan command keluar dengan kode gagal. Akibatnya, kalau tahun ajaran baru belum diaktifkan saat 1 Juli, tagihan Juli harus dibuat manual setelah diaktifkan.
+15. Generate bulanan (manual maupun scheduler) hanya untuk bulan di dalam rentang tahun ajaran aktif; bulan pertama dan terakhir ikut walau tahun ajaran tidak mulai tanggal 1 (TA 13 Juli 2026 – 25 Juni 2027 → Juli 2026 s.d. Juni 2027). Di luar itu ditolak `BUSINESS_RULE`, dan command keluar dengan kode gagal. Akibatnya, kalau tahun ajaran baru belum diaktifkan saat 1 Juli, tagihan Juli harus dibuat manual setelah diaktifkan. **Revisi:** saat itu terjadi pada jadwal (`tagihan:generate` tanpa `--periode` dan tanpa `--dry-run`), Kepala Sekolah aktif mendapat notifikasi `tagihan_tertunda` (url `/dashboard/tahun-ajaran`), termasuk saat belum ada tahun ajaran aktif sama sekali. `--periode`, `--dry-run`, dan `POST /tagihan/generate` tidak mengirim notifikasi karena pesannya sudah terlihat oleh yang menjalankan.
 16. Keringanan untuk tagihan bulanan dipakai kalau masa berlakunya menyentuh bulan periode (bukan hanya tanggal 1); untuk tagihan sekali, yang berlaku pada tanggal pembuatan. Kalau ada lebih dari satu (satu berakhir dan satu mulai di bulan yang sama), yang mulai paling akhir dipakai. Menambah, mengubah, atau menghapus keringanan, dan mengubah nominal jenis tagihan, tidak menghitung ulang tagihan yang sudah ada.
 17. `dibuat_oleh` tagihan bulanan: id Kepala Sekolah kalau lewat `POST /tagihan/generate`, `null` (sistem) kalau dari scheduler. Tagihan dengan total 0 (keringanan penuh) langsung `lunas` dan tidak dikirimi notifikasi `tagihan_baru`.
 18. `POST /tagihan`: `murid_ids` dan `kelas_id` tidak boleh dikirim bersamaan; `kelas_id` berarti murid dengan penempatan aktif di kelas itu. Selain murid yang sudah punya tagihan jenis itu, murid tidak aktif dan murid yang tingkat kelasnya tidak sesuai `jenis_tagihan.tingkat` juga dihitung sebagai `dilewati`. `jatuh_tempo` minimal hari ini. Jenis tagihan harus berperiode `sekali` dan aktif.
 19. Jenis tagihan: tahun ajaran dan periode tidak bisa diganti setelah dipakai di tagihan; hapus ditolak kalau sudah dipakai di tagihan atau keringanan (disarankan menonaktifkan). Nominal maksimal Rp 100.000.000 untuk mencegah salah ketik.
-20. `POST /tagihan/{id}/pembayaran`: wali selalu transfer (unggah bukti gambar), petugas keuangan hanya `metode: tunai`; petugas tidak bisa mengunggah bukti transfer atas nama wali. `tanggal_bayar` tidak boleh di masa depan. Pembayaran tunai `dibayar_oleh = null`. Kode `PAY-YYYYMMDD` memakai tanggal pembayaran dicatat, bukan `tanggal_bayar`.
+20. `POST /tagihan/{id}/pembayaran`: wali selalu transfer dengan bukti gambar wajib (status `menunggu`). **Revisi:** petugas keuangan mengirim `metode: tunai` atau `metode: transfer`; keduanya langsung `diterima` dan tagihan lunas. Untuk transfer, `bukti`, `bank_pengirim`, dan `nama_pengirim` opsional; untuk tunai ketiganya ditolak validasi. Activity log `tunai_dicatat` / `transfer_dicatat`. `tanggal_bayar` tidak boleh di masa depan. Pembayaran yang dicatat petugas `dibayar_oleh = null`. Kode `PAY-YYYYMMDD` memakai tanggal pembayaran dicatat, bukan `tanggal_bayar`.
 21. Akses guru tanpa izin keuangan: `GET /pembayaran` 403; `GET /pembayaran/{id}` (dan bukti, kwitansi) 403 untuk pembayaran murid kelasnya, 404 untuk lainnya; `POST /tagihan/{id}/pembayaran` sama. Urutannya: data di luar jangkauan selalu 404 dulu.
-22. `url` notifikasi: ke wali `/dashboard/tagihan/{id}` (tagihan baru, pengingat, terlambat, pembayaran diterima/ditolak); ke petugas keuangan `/dashboard/pembayaran/{id}` (pembayaran masuk). Mohon dicocokkan dengan peta route FE. `pembayaran_masuk` dikirim ke Kepala Sekolah dan guru berizin keuangan yang akunnya aktif; notifikasi tagihan dikirim ke semua wali yang tertaut.
+22. **Revisi:** `url` semua notifikasi tagihan dan pembayaran, untuk semua role, adalah `/dashboard/tagihan/{tagihan_id}` (peta route FE B4 tidak punya halaman detail pembayaran), termasuk `pembayaran_masuk` untuk petugas keuangan. `pembayaran_masuk` dikirim ke Kepala Sekolah dan guru berizin keuangan yang akunnya aktif; notifikasi tagihan dikirim ke semua wali yang tertaut.
 23. Pengingat hanya untuk tagihan `belum_bayar` yang jatuh tempo tepat H-`keuangan.hari_pengingat`; penandaan terlambat hanya untuk `belum_bayar` (tagihan `menunggu_verifikasi` dilewati). Menjalankan `tagihan:pengingat` dua kali di hari yang sama mengirim dua kali.
 24. Laporan keuangan: tagihan dikelompokkan menurut bulan `jatuh_tempo`, tagihan dibatalkan tidak dihitung, `terbayar` = total tagihan `lunas`, `pemasukan` = pembayaran `diterima` menurut `tanggal_bayar`, `persen_lunas` satu desimal. Bentuk respons: `{ dari, sampai, ringkasan, per_jenis[], per_bulan[] }` (field per bagian di OpenAPI). Rentang maksimal dua tahun. Ekspor `.xlsx` berisi sheet "Tagihan" dan "Pembayaran Diterima" dan tidak memakai `kelas_id` (A7 hanya menyebut `dari` dan `sampai`).
 25. Tunggakan = tagihan berstatus `terlambat`, dikelompokkan per murid (urut total terbesar) dengan `kontak_wali` (kontak utama) untuk ditindaklanjuti; tidak berpaginasi.
@@ -356,6 +362,12 @@ Semua sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B) dan Bagian A `PROMPT_F
 13. Profil guru milik Kepala Sekolah tetap bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`. `PATCH /guru/{id}/status` dan perubahan `bisa_kelola_keuangan` untuk profil itu ditolak dengan 422 `BUSINESS_RULE`.
 14. Pemetaan status HTTP di luar daftar A7: 405 → 404 `NOT_FOUND`; 413 → 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file."; 4xx lain → 422 `VALIDATION_ERROR`; 503 → 503 `SERVER_ERROR`.
 
+Setelah review Fase 4–5 (commit `a460da8` di BE, `1562d42` di FE, Bagian A kedua file tetap identik):
+
+15. Petugas keuangan bisa mencatat pembayaran transfer (bukti opsional, langsung diterima), selain tunai (A2.5, A3, A6, A7 `POST /tagihan/{id}/pembayaran`, B6.3).
+16. Jenis notifikasi baru `tagihan_tertunda` untuk Kepala Sekolah saat generate terjadwal dilewati karena bulan di luar tahun ajaran aktif (A6, daftar jenis A7, B6.2).
+17. Mengeluarkan murid dari kelas ditolak kalau murid sudah punya rapor di kelas itu (B6.5).
+
 ## Keputusan teknis
 
 Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
@@ -471,6 +483,18 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Revisi setelah review Fase 4–5
+
+Dikerjakan di branch `be/fase-6-8`. Branch ini dibuat dari `main` (Fase 3), jadi lebih dulu di-fast-forward ke `be/fase-4-5` supaya pekerjaan Fase 4–5 ikut.
+
+- `app/Services/KelasService.php`, `Kelas/PenempatanMuridController.php`: `keluarkanMurid()` menolak murid yang sudah punya rapor di kelas itu.
+- `app/Exceptions/PeriodeDiLuarTahunAjaranException.php` (baru, turunan `BusinessRuleException`): dilempar `TagihanService::generateBulanan()` untuk bulan di luar tahun ajaran aktif atau saat belum ada tahun ajaran aktif; membawa periode dan nama tahun ajaran.
+- `app/Notifications/TagihanTertundaNotification.php` (baru), `app/Console/Commands/GenerateTagihanCommand.php`: notifikasi `tagihan_tertunda` ke Kepala Sekolah aktif.
+- `app/Http/Requests/Pembayaran/BayarTagihanRequest.php`, `app/Services/PembayaranService.php` (`catatTunai()` diganti `catatOlehPetugas()`, penyimpanan bukti bersama di `simpanDenganBukti()`), `Keuangan/PembayaranController.php`, `app/Policies/TagihanPolicy.php`: petugas keuangan mencatat transfer.
+- `app/Notifications/PembayaranMasukNotification.php`: url ke `/dashboard/tagihan/{tagihan_id}`.
+- `PROMPT_BE_TK.md` (Bagian A dan B6), `../TK_TA8_FE/PROMPT_FE_TK.md` (Bagian A; commit lokal di `main` repo FE, belum di-push). Bagian B FE (tabel route `/dashboard/pembayaran` masih menulis "catat tunai") tidak diubah.
+- Test: `Kelas/PenempatanMuridTest` (2), `Keuangan/GenerateTagihanTest` (3), `Keuangan/PembayaranTest` (5 baru, 1 diganti, 1 untuk url). Total 405 test.
 
 ### Fase 5
 
