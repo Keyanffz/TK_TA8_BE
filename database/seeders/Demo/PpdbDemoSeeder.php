@@ -1,0 +1,116 @@
+<?php
+
+namespace Database\Seeders\Demo;
+
+use App\Enums\Hubungan;
+use App\Enums\JenisDokumen;
+use App\Enums\Role;
+use App\Enums\StatusMurid;
+use App\Enums\StatusPendaftaran;
+use App\Enums\Tingkat;
+use App\Models\Murid;
+use App\Models\Pendaftaran;
+use App\Models\Pengaturan;
+use App\Models\TahunAjaran;
+use App\Models\User;
+use App\Models\WaliMurid;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
+
+/**
+ * PPDB tahun ajaran 2027/2028 yang sedang dibuka dengan 5 pendaftar: dua kakak-adik dari wali yang
+ * sudah ada, tiga dari wali baru. Status: diajukan, diajukan, diverifikasi, ditolak, diterima.
+ */
+class PpdbDemoSeeder extends Seeder
+{
+    private const KUOTA = 40;
+
+    public function run(): void
+    {
+        $tahunAjaranTujuan = TahunAjaran::query()->create([
+            'nama' => '2027/2028',
+            'tanggal_mulai' => '2027-07-12',
+            'tanggal_selesai' => '2028-06-23',
+            'semester_aktif' => 1,
+            'is_aktif' => false,
+        ]);
+
+        $this->bukaPpdb($tahunAjaranTujuan);
+
+        $kepalaSekolah = User::query()->where('role', Role::SuperAdmin)->firstOrFail();
+        $waliLama = WaliMurid::query()->has('murid')->where('profil_lengkap', true)->orderBy('id')->limit(2)->get();
+        $pendaftar = [
+            ...$waliLama->all(),
+            ...WaliMurid::factory()->count(3)->create()->all(),
+        ];
+        $status = [StatusPendaftaran::Diajukan, StatusPendaftaran::Diajukan, StatusPendaftaran::Diverifikasi, StatusPendaftaran::Ditolak, StatusPendaftaran::Diterima];
+
+        foreach ($pendaftar as $urutan => $wali) {
+            $pendaftaran = Pendaftaran::factory()->for($wali)->for($tahunAjaranTujuan)->create([
+                'kode' => sprintf('PPDB-2027-%04d', $urutan + 1),
+                'hubungan' => $urutan % 3 === 0 ? Hubungan::Ayah : Hubungan::Ibu,
+                'tingkat_tujuan' => $urutan === 2 ? Tingkat::B : Tingkat::A,
+                'tanggal_lahir' => $urutan === 3 ? '2023-09-14' : fake()->dateTimeBetween('2022-07-01', '2023-06-30')->format('Y-m-d'),
+                'status' => $status[$urutan],
+                'catatan' => $status[$urutan] === StatusPendaftaran::Ditolak
+                    ? 'Usia anak belum 4 tahun pada 1 Juli 2027. Silakan mendaftar kembali pada PPDB tahun depan.'
+                    : null,
+                'diproses_oleh' => $status[$urutan] === StatusPendaftaran::Diajukan ? null : $kepalaSekolah->id,
+                'diproses_at' => $status[$urutan] === StatusPendaftaran::Diajukan ? null : '2026-09-21 10:00:00',
+            ]);
+
+            foreach ([JenisDokumen::AktaKelahiran, JenisDokumen::KartuKeluarga, JenisDokumen::PasFoto] as $jenis) {
+                $pendaftaran->dokumen()->create([
+                    'jenis' => $jenis,
+                    'path' => GambarContoh::simpan('local', 'ppdb', 800, 1100),
+                ]);
+            }
+
+            if ($pendaftaran->status === StatusPendaftaran::Diterima) {
+                $this->jadikanMurid($pendaftaran);
+            }
+        }
+    }
+
+    private function bukaPpdb(TahunAjaran $tahunAjaranTujuan): void
+    {
+        $nilai = [
+            'ppdb.dibuka' => true,
+            'ppdb.tanggal_buka' => '2026-09-01',
+            'ppdb.tanggal_tutup' => '2027-03-31',
+            'ppdb.tahun_ajaran_id' => $tahunAjaranTujuan->id,
+            'ppdb.kuota' => self::KUOTA,
+            'ppdb.info' => '<p><strong>Syarat:</strong> usia minimal 4 tahun (Kelompok A) atau 5 tahun (Kelompok B) pada 1 Juli 2027, fotokopi akta kelahiran, fotokopi Kartu Keluarga, dan pas foto 3x4.</p>'
+                .'<p><strong>Alur:</strong> isi formulir di menu PPDB, unggah dokumen, tunggu verifikasi dari sekolah, lalu hasil diumumkan lewat notifikasi.</p>',
+        ];
+
+        foreach ($nilai as $kunci => $isi) {
+            Pengaturan::query()->where('kunci', $kunci)->firstOrFail()->update(['nilai' => $isi]);
+        }
+    }
+
+    private function jadikanMurid(Pendaftaran $pendaftaran): void
+    {
+        $pasFoto = $pendaftaran->dokumen()->where('jenis', JenisDokumen::PasFoto)->firstOrFail();
+        $fotoMurid = 'murid/'.basename($pasFoto->path);
+        Storage::disk('local')->copy($pasFoto->path, $fotoMurid);
+
+        $murid = Murid::query()->create([
+            'nis' => 'TA20270001',
+            'nik' => $pendaftaran->nik,
+            'nama_lengkap' => $pendaftaran->nama_lengkap,
+            'nama_panggilan' => $pendaftaran->nama_panggilan,
+            'jenis_kelamin' => $pendaftaran->jenis_kelamin,
+            'tempat_lahir' => $pendaftaran->tempat_lahir,
+            'tanggal_lahir' => $pendaftaran->tanggal_lahir,
+            'agama' => $pendaftaran->agama,
+            'alamat' => $pendaftaran->alamat,
+            'foto_path' => $fotoMurid,
+            'status' => StatusMurid::Aktif,
+            'tanggal_masuk' => '2027-07-12',
+        ]);
+
+        $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
+        $pendaftaran->update(['murid_id' => $murid->id]);
+    }
+}
