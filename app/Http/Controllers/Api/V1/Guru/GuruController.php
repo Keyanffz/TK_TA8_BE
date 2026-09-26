@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1\Guru;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AlasanRequest;
 use App\Http\Requests\Guru\DaftarGuruRequest;
 use App\Http\Requests\Guru\SimpanGuruRequest;
-use App\Http\Requests\Guru\TolakGuruRequest;
 use App\Http\Requests\UbahStatusAkunRequest;
 use App\Http\Resources\GuruResource;
 use App\Models\Guru;
@@ -94,9 +94,9 @@ class GuruController extends Controller
     /**
      * Menolak pendaftaran guru beserta alasannya. Guru mendapat email berisi alasan.
      */
-    public function tolak(TolakGuruRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function tolak(AlasanRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
-        $guru = $this->guruService->tolak($this->cariGuru($id), $request->string('alasan')->toString(), $kepalaSekolah);
+        $guru = $this->guruService->tolak($this->cariGuru($id), $request->alasan(), $kepalaSekolah);
 
         return ApiResponse::success(new GuruResource($guru), "Pendaftaran {$guru->user->name} ditolak.");
     }

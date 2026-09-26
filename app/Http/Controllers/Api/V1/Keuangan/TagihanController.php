@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Tagihan;
+namespace App\Http\Controllers\Api\V1\Keuangan;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tagihan\DaftarTagihanRequest;

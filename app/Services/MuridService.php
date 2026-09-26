@@ -9,6 +9,7 @@ use App\Models\KelasMurid;
 use App\Models\Murid;
 use App\Models\MuridWali;
 use App\Models\User;
+use App\Support\NomorUrut;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -18,7 +19,7 @@ class MuridService
 {
     private const FOLDER_FOTO = 'murid';
 
-    private const URUT_NIS_MAKSIMAL = 9999;
+    private const DIGIT_URUT_NIS = 4;
 
     public function __construct(
         private readonly MediaService $media,
@@ -125,19 +126,15 @@ class MuridService
     }
 
     /**
+     * Murid yang di-soft delete ikut dihitung karena kolom `nis` unik.
+     *
      * @throws BusinessRuleException
      */
     private function nisBaru(Carbon $tanggalMasuk): string
     {
         $awalan = 'TA'.$tanggalMasuk->year;
-        $terakhir = Murid::withTrashed()->where('nis', 'like', $awalan.'%')->lockForUpdate()->max('nis');
-        $urut = $terakhir === null ? 1 : (int) substr((string) $terakhir, strlen($awalan)) + 1;
 
-        if ($urut > self::URUT_NIS_MAKSIMAL) {
-            throw new BusinessRuleException("Nomor urut NIS untuk tahun masuk {$tanggalMasuk->year} sudah habis.");
-        }
-
-        return $awalan.str_pad((string) $urut, 4, '0', STR_PAD_LEFT);
+        return NomorUrut::format($awalan, NomorUrut::berikutnya(Murid::withTrashed(), 'nis', $awalan, self::DIGIT_URUT_NIS), self::DIGIT_URUT_NIS);
     }
 
     /**
