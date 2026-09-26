@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -32,5 +33,33 @@ class User extends Authenticatable
             'role' => Role::class,
             'status' => StatusAkun::class,
         ];
+    }
+
+    /**
+     * @return HasOne<Guru, $this>
+     */
+    public function guru(): HasOne
+    {
+        return $this->hasOne(Guru::class);
+    }
+
+    /**
+     * @return HasOne<WaliMurid, $this>
+     */
+    public function waliMurid(): HasOne
+    {
+        return $this->hasOne(WaliMurid::class);
+    }
+
+    /**
+     * Petugas keuangan: Kepala Sekolah, atau guru yang diberi izin `bisa_kelola_keuangan`.
+     */
+    public function bisaKelolaKeuangan(): bool
+    {
+        return match ($this->role) {
+            Role::SuperAdmin => true,
+            Role::Guru => $this->guru?->bisa_kelola_keuangan === true,
+            Role::WaliMurid => false,
+        };
     }
 }
