@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MediaController;
+use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
 use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
 use App\Http\Controllers\Api\V1\WaliMurid\WaliMuridController;
@@ -45,6 +46,15 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::get('/wali-murid', [WaliMuridController::class, 'index']);
         Route::get('/wali-murid/{id}', [WaliMuridController::class, 'show']);
         Route::patch('/wali-murid/{id}/status', [WaliMuridController::class, 'ubahStatus']);
+
+        Route::post('/tahun-ajaran', [TahunAjaranController::class, 'store']);
+        Route::put('/tahun-ajaran/{id}', [TahunAjaranController::class, 'update']);
+        Route::delete('/tahun-ajaran/{id}', [TahunAjaranController::class, 'destroy']);
+        Route::post('/tahun-ajaran/{id}/aktifkan', [TahunAjaranController::class, 'aktifkan']);
+    });
+
+    Route::middleware('role:super_admin,guru')->group(function () {
+        Route::get('/tahun-ajaran', [TahunAjaranController::class, 'index']);
     });
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
