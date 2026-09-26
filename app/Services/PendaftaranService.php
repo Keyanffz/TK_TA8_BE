@@ -6,6 +6,7 @@ use App\Enums\JenisDokumen;
 use App\Enums\StatusPendaftaran;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Kelas;
+use App\Models\Murid;
 use App\Models\Pendaftaran;
 use App\Models\TahunAjaran;
 use App\Models\User;
@@ -209,10 +210,13 @@ class PendaftaranService
             throw new BusinessRuleException("Kuota PPDB tahun ajaran {$tahunAjaran->nama} sudah penuh.");
         }
 
-        $sudahTerdaftar = Pendaftaran::query()->where('tahun_ajaran_id', $tahunAjaran->id)->where('nik', $nik)
-            ->where('status', '!=', StatusPendaftaran::Ditolak)->exists();
-        if ($sudahTerdaftar) {
-            throw new BusinessRuleException("Anak dengan NIK ini sudah didaftarkan untuk tahun ajaran {$tahunAjaran->nama}.");
+        // Pendaftar yang pernah ditolak boleh mendaftar ulang; pendaftaran lain dengan NIK yang sama (sedang
+        // diproses atau sudah diterima) dan murid ber-NIK sama menandakan anak ini sudah tercatat.
+        if (Murid::query()->where('nik', $nik)->exists()) {
+            throw new BusinessRuleException('Anak dengan NIK ini sudah terdaftar sebagai murid. Hubungi sekolah untuk mendapatkan kode tautan.');
+        }
+        if (Pendaftaran::query()->where('nik', $nik)->where('status', '!=', StatusPendaftaran::Ditolak)->exists()) {
+            throw new BusinessRuleException('Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
         }
 
         return $tahunAjaran;

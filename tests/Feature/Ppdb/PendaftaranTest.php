@@ -138,13 +138,26 @@ it('menolak pendaftaran saat kuota penuh, tanpa menghitung pendaftaran yang dito
     $this->getJson('/api/v1/public/ppdb')->assertJsonPath('data.sisa_kuota', 0);
 });
 
-it('menolak anak dengan NIK yang sudah terdaftar di tahun ajaran yang sama', function () {
-    daftarPpdb($this, $this->ibuSari);
-    $ayah = WaliMurid::factory()->create();
+it('menolak anak dengan NIK yang punya pendaftaran selain ditolak, di tahun ajaran mana pun', function (StatusPendaftaran $status) {
+    Pendaftaran::factory()->create(['nik' => '3374015402230001', 'status' => $status]);
 
-    $this->actingAs($ayah->user)->post('/api/v1/pendaftaran', dataPendaftaran(['hubungan' => 'ayah']))
+    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
         ->assertStatus(422)
-        ->assertJsonPath('message', 'Anak dengan NIK ini sudah didaftarkan untuk tahun ajaran 2027/2028.');
+        ->assertJsonPath('message', 'Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
+})->with([StatusPendaftaran::Diajukan, StatusPendaftaran::Diverifikasi, StatusPendaftaran::Diterima]);
+
+it('menolak anak yang NIK-nya sudah terdaftar sebagai murid', function () {
+    Murid::factory()->create(['nik' => '3374015402230001']);
+
+    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Anak dengan NIK ini sudah terdaftar sebagai murid. Hubungi sekolah untuk mendapatkan kode tautan.');
+});
+
+it('membolehkan pendaftar yang pernah ditolak mendaftar ulang', function () {
+    Pendaftaran::factory()->for($this->tujuan)->create(['nik' => '3374015402230001', 'status' => StatusPendaftaran::Ditolak]);
+
+    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())->assertCreated();
 });
 
 it('memvalidasi data dan dokumen pendaftaran', function (array $timpa, string $field) {
