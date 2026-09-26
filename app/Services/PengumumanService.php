@@ -11,9 +11,9 @@ use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pengumuman;
 use App\Models\User;
+use App\Support\SlugUnik;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Stevebauman\Purify\Facades\Purify;
 
 /**
@@ -33,7 +33,7 @@ class PengumumanService
             $pengumuman = Pengumuman::query()->create([
                 ...$data,
                 'isi' => Purify::clean((string) $data['isi']),
-                'slug' => $this->slugUnik((string) $data['judul']),
+                'slug' => SlugUnik::dari(Pengumuman::withTrashed(), (string) $data['judul'], 'pengumuman'),
                 'penulis_id' => $penulis->id,
                 'published_at' => $terbitkan ? now() : null,
             ]);
@@ -123,20 +123,5 @@ class PengumumanService
             ->orWhereHas('guru', fn (Builder $guru) => $guru
                 ->whereIn('id', Kelas::query()->whereKey($kelasIds)->select('wali_kelas_id'))
                 ->orWhereIn('id', Kelas::query()->whereKey($kelasIds)->select('guru_pendamping_id'))));
-    }
-
-    /**
-     * Slug dicek termasuk pengumuman yang sudah dihapus, karena kolom `slug` unik.
-     */
-    private function slugUnik(string $judul): string
-    {
-        $dasar = Str::slug($judul) ?: 'pengumuman';
-        $slug = $dasar;
-
-        for ($urut = 2; Pengumuman::withTrashed()->where('slug', $slug)->exists(); $urut++) {
-            $slug = "{$dasar}-{$urut}";
-        }
-
-        return $slug;
     }
 }
