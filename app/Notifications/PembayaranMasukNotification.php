@@ -6,11 +6,12 @@ use App\Models\Pembayaran;
 use App\Support\Rupiah;
 
 /**
- * Dikirim ke petugas keuangan saat wali mengunggah bukti transfer.
+ * Dikirim ke petugas keuangan saat wali mengunggah bukti transfer. Tautannya ke detail tagihan, tempat
+ * bukti diverifikasi, karena FE tidak punya halaman detail pembayaran.
  */
 class PembayaranMasukNotification extends NotifikasiDatabase
 {
-    private readonly int $pembayaranId;
+    private readonly int $tagihanId;
 
     private readonly string $labelTagihan;
 
@@ -23,7 +24,7 @@ class PembayaranMasukNotification extends NotifikasiDatabase
      */
     public function __construct(Pembayaran $pembayaran)
     {
-        $this->pembayaranId = $pembayaran->id;
+        $this->tagihanId = $pembayaran->tagihan_id;
         $this->labelTagihan = $pembayaran->tagihan->label();
         $this->namaAnak = $pembayaran->tagihan->murid->nama_lengkap;
         $this->jumlah = Rupiah::format($pembayaran->jumlah);
@@ -46,6 +47,6 @@ class PembayaranMasukNotification extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return "/dashboard/pembayaran/{$this->pembayaranId}";
+        return "/dashboard/tagihan/{$this->tagihanId}";
     }
 }
