@@ -53,3 +53,13 @@ it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/tagihan/{id}']['get'], 404))->toBe(['NOT_FOUND'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/murid']['get'], 403))->not->toContain('FORBIDDEN');
 });
+
+it('mendokumentasikan jenis notifikasi sebagai enum dan rapor PDF sebagai file', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+
+    expect($dokumen['components']['schemas']['NotifikasiResource']['properties']['jenis'])->toBe(['$ref' => '#/components/schemas/JenisNotifikasi'])
+        ->and($dokumen['components']['schemas']['JenisNotifikasi']['enum'])->toContain('tagihan_tertunda', 'rapor_terbit', 'pengumuman_baru')
+        ->and($dokumen['paths']['/rapor/{id}/pdf']['get']['responses'][200]['content'])->toHaveKey('application/pdf')
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/rapor/{id}']['get'], 404))->toBe(['NOT_FOUND'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/notifikasi/{id}/baca']['post'], 404))->toBe(['NOT_FOUND']);
+});
