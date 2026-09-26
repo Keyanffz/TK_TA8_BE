@@ -85,6 +85,16 @@ class Murid extends Model
     }
 
     /**
+     * Kelas murid di tahun ajaran aktif (paling banyak satu, dijaga service penempatan).
+     *
+     * @return BelongsToMany<Kelas, $this, KelasMurid>
+     */
+    public function kelasAktif(): BelongsToMany
+    {
+        return $this->kelas()->whereHas('tahunAjaran', fn (Builder $tahunAjaran) => $tahunAjaran->where('is_aktif', true));
+    }
+
+    /**
      * @return HasMany<KelasMurid, $this>
      */
     public function kelasMurid(): HasMany

@@ -8,15 +8,24 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 |---|---|
 | 0. Analisis | Selesai, rencana disetujui |
 | 1. Fondasi | Selesai |
-| 2. Database | Selesai, menunggu konfirmasi |
-| 3. Auth & akun | Belum |
-| 4. Master akademik | Belum |
+| 2. Database | Selesai |
+| 3. Auth & akun | Selesai |
+| 4. Master akademik | Belum; dilanjutkan di laptop (lihat "Serah terima ke lingkungan lokal") |
 | 5. Keuangan | Belum |
 | 6. Akademik & komunikasi | Belum |
 | 7. PPDB, CMS, dashboard | Belum |
 | 8. Hardening | Belum |
 
-Endpoint yang sudah ada: `GET /api/v1/health`.
+Endpoint yang sudah ada (prefix `/api/v1`):
+
+| Kelompok | Endpoint |
+|---|---|
+| Umum | `GET /health`, `GET /media/{token}` (signed URL file private) |
+| Auth publik | `POST /auth/login`, `POST /auth/google`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
+| Auth (login) | `GET /auth/me`, `POST /auth/logout`, `PUT /auth/profil`, `PUT /auth/password` (SA, G) |
+| Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, `PATCH /guru/{id}/status` |
+| Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PATCH /wali-murid/{id}/status` |
+| Wali (W) | `PUT /wali/profil`, `POST /wali/tautkan-anak`, `GET /wali/anak` |
 
 ## Stack terpasang
 
@@ -37,11 +46,85 @@ Endpoint yang sudah ada: `GET /api/v1/health`.
 | larastan/larastan | 3.12.2 (level 6) |
 | laravel/pint | 1.32.1 |
 
-Database: MySQL 8 (utf8mb4). Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46. Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL.
+Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46 dan MariaDB 10.11.14 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14.
+
+## Serah terima ke lingkungan lokal
+
+Fase 0–3 dikerjakan di container cloud (Ubuntu 24.04, PHP 8.4.19, MySQL 8.0.46, dijalankan sebagai root). Mulai Fase 4 pengerjaan pindah ke laptop (Arch Linux, MariaDB). Sebelum serah terima, migration, rollback, `DatabaseSeeder`, `DemoSeeder`, dan seluruh test sudah dijalankan ke MariaDB 10.11.14 dengan driver `mariadb` dan lulus. MariaDB 11.x (versi di repo Arch) belum dicoba.
+
+### Ekstensi PHP
+
+PHP 8.4 atau lebih baru. `composer check-platform-reqs` menampilkan ekstensi yang diminta paket di `composer.lock`: `dom`, `fileinfo`, `gd`, `iconv`, `libxml`, `openssl`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, ditambah `mbstring` dan `ctype` (ada polyfill, tetapi versi native lebih cepat). Ekstensi berikut dipakai saat aplikasi berjalan tetapi tidak dicek Composer:
+
+| Ekstensi | Dipakai untuk |
+|---|---|
+| `pdo_mysql` | koneksi MariaDB/MySQL |
+| `pdo_sqlite` | test (SQLite in-memory di `phpunit.xml`) |
+| `gd` dengan dukungan JPEG, PNG, WebP | memproses gambar unggahan (intervention/image driver GD) |
+| `exif` | memutar foto dari HP sesuai orientasi EXIF. Tanpa ekstensi ini unggahan tetap berhasil, tetapi foto bisa tersimpan miring |
+| `pcntl` | `php artisan pail`, bagian dari `php artisan dev` |
+| `curl` | disarankan; Guzzle memakainya untuk mengambil sertifikat Google saat verifikasi ID token |
+
+Di Arch, cek dengan `php -m`; ekstensi yang belum muncul diaktifkan lewat baris `extension=` di `/etc/php/php.ini`.
+
+### Variabel `.env` yang wajib diisi
+
+Mulai dari `cp .env.example .env`, lalu isi:
+
+| Variabel | Nilai di laptop |
+|---|---|
+| `APP_KEY` | diisi `php artisan key:generate` |
+| `APP_URL` | `http://localhost:8000`, sama dengan alamat `php artisan serve`, karena URL file publik (`avatar_url`, `foto_url` guru) dibentuk dari sini |
+| `DB_CONNECTION` | `mariadb`. `.env.example` berisi `mysql` karena produksi memakai MySQL 8 |
+| `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | sesuai database MariaDB lokal |
+| `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | akun Kepala Sekolah; `SuperAdminSeeder` berhenti kalau kosong atau password kurang dari 8 karakter huruf dan angka |
+| `MAIL_FROM_ADDRESS` | alamat pengirim apa saja, misalnya `tu@tkta8.test`. Walau `MAIL_MAILER=log`, email tanpa alamat pengirim gagal dengan "An email must have a "From" or a "Sender" header" dan job-nya masuk `failed_jobs` |
+
+Boleh dibiarkan seperti di `.env.example`: `FRONTEND_URL=http://localhost:3000` (alamat `next dev`), `MAIL_MAILER=log`, `QUEUE_CONNECTION=database`, `CACHE_STORE=database`, `SESSION_DRIVER=file`. `GOOGLE_CLIENT_ID` hanya perlu diisi untuk mencoba login Google; kalau kosong, `POST /auth/google` membalas 503.
+
+### Dari `composer install` sampai test lulus
+
+Database MariaDB kosong sudah dibuat dan `.env` sudah diisi.
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+# isi .env sesuai tabel di atas
+php artisan migrate --seed
+php artisan storage:link
+php artisan db:seed --class=DemoSeeder   # opsional: data contoh dan akun demo
+php artisan test
+./vendor/bin/pint --test
+./vendor/bin/phpstan analyse
+composer check:slop
+```
+
+Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa temuan.
+
+- Test memakai SQLite in-memory dari `phpunit.xml`, jadi tidak menyentuh database lokal. Untuk menjalankan test ke MariaDB, buat database terpisah lalu timpa lewat variabel environment, misalnya `DB_CONNECTION=mariadb DB_DATABASE=tk_test php artisan test`; variabel environment shell mengalahkan nilai di `phpunit.xml`. Jangan arahkan ke database utama, karena `RefreshDatabase` mengosongkannya.
+- Kalau `php artisan config:cache` pernah dijalankan, test ikut membaca konfigurasi yang di-cache. Jalankan `php artisan config:clear`, atau pakai `composer test` yang membersihkannya lebih dulu.
+
+### Queue dan scheduler
+
+- `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
+- Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
+- Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
+- Scheduler belum punya jadwal (`php artisan schedule:list` kosong). Mulai Fase 5 (tagihan otomatis), jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan").
+
+### Yang khusus container dan tidak berlaku di laptop
+
+- Container berjalan sebagai root, jadi Composer dijalankan dengan `COMPOSER_ALLOW_SUPERUSER=1` supaya plugin Pest aktif. Di laptop jalankan Composer sebagai user biasa tanpa variabel itu.
+- Database container dinyalakan dengan `service mysql start` (MySQL 8.0.46, lalu diganti MariaDB 10.11.14 untuk verifikasi serah terima), dengan user `tk` / `tkLokal2026`. Kredensial ini hanya ada di `.env` container yang tidak di-commit; di laptop pakai kredensial MariaDB sendiri.
+- Jaringan container lewat proxy dengan CA bundle sendiri, dan unduhan zip dari api.github.com diblokir. Karena itu `phpstan/phpstan` dipasang dari clone git dan `lang/id/validation.php` dibuat dengan `laravel-lang` di proyek terpisah. Di laptop `composer install` biasa sudah cukup: `composer.json` tidak berisi repository atau path khusus, dan `lang/id/validation.php` sudah di-commit.
+- PHP container sudah memuat hampir semua ekstensi (termasuk `exif`, `pcntl`, `pdo_sqlite`). Di Arch cek satu per satu dengan `php -m`.
+- `.env`, `vendor/`, symlink `public/storage`, gambar demo di `storage/app/...`, dan log tidak ikut repo. Semuanya dibuat ulang lewat urutan perintah di atas; gambar demo ditulis ulang oleh `DemoSeeder`.
+- Batas unggahan PHP bawaan (`upload_max_filesize=2M`, `post_max_size=8M`) sama di container dan di Arch, dan juga berlaku untuk `php artisan serve`. Untuk mencoba unggahan sampai 5 MB lewat server lokal, naikkan ke `5M` dan `55M` di `php.ini`. Test tidak terpengaruh karena memakai file palsu.
+- Pekerjaan di container memakai branch `claude/project-spec-setup-1vjwxm` yang di-merge ke `main` lewat PR per fase. Di laptop mulai dari `main` terbaru setelah PR Fase 3 di-merge.
 
 ## Instalasi dan menjalankan
 
-Prasyarat: PHP 8.4 dengan ekstensi `pdo_mysql`, `mbstring`, `gd`, `zip`, `intl`, `dom`, `xml`, `fileinfo`; Composer 2; MySQL 8.
+Prasyarat: PHP 8.4 dengan ekstensi di "Serah terima ke lingkungan lokal", Composer 2, MySQL 8 atau MariaDB.
 
 ```bash
 composer install
@@ -96,21 +179,23 @@ php artisan scramble:export --path=storage/api-docs/api.json
 |---|---|
 | `APP_URL` | URL backend; dipakai sebagai server di dokumentasi OpenAPI |
 | `APP_LOCALE`, `APP_FAKER_LOCALE` | `id`, `id_ID` |
-| `DB_*` | Koneksi MySQL |
+| `DB_*` | Koneksi MySQL (`DB_CONNECTION=mysql`) atau MariaDB (`DB_CONNECTION=mariadb`) |
 | `SESSION_DRIVER` | `file`; session hanya dipakai halaman `/docs/api` |
 | `QUEUE_CONNECTION` | `database` |
 | `CACHE_STORE` | `database` (rate limiter dan cache pengaturan) |
-| `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `log` untuk lokal. `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example`, wajib diisi sebelum email dipakai (Fase 3) |
-| `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS |
+| `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
+| `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan di email (`/login`, `/reset-password`) |
+| `GOOGLE_CLIENT_ID` | Client ID OAuth Google Identity Services (sama dengan yang dipakai FE). Wajib untuk `POST /auth/google`; kalau kosong, endpoint itu membalas 503 `SERVER_ERROR` "Login Google belum dikonfigurasi. Hubungi pihak sekolah." dan penyebabnya tercatat di log |
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
-Variabel yang akan ditambahkan saat dipakai: `GOOGLE_CLIENT_ID` (Fase 3).
+`APP_URL` harus sama dengan alamat yang dibuka klien untuk URL file publik (`avatar_url`, `foto_url` guru), karena URL disk `public` dibentuk dari `APP_URL`. Signed URL file private dibentuk dari host request, jadi di balik reverse proxy server harus mempercayai header `X-Forwarded-*` (diatur di Fase 8).
 
 ## Dokumentasi API
 
 - UI: `GET /docs/api` (Stoplight Elements), JSON: `GET /docs/api.json`. Hanya terbuka di environment selain `production` (Gate `viewApiDocs`).
 - Spec hasil export dikomit di `storage/api-docs/api.json` untuk generate tipe TypeScript di FE. Server di spec: `{APP_URL}/api/v1`, path relatif terhadap prefix itu (misal `/health`).
 - Route dengan middleware `auth:sanctum` otomatis bertanda Bearer; route lain `security: []`.
+- Respons error ditulis inline per operasi dengan skema A7 dan `code` berupa enum. `ApiErrorResponseExtension` memetakan exception yang terdeteksi Scramble (termasuk `@throws` di service) ke kode A7. `ResponsErrorRouteExtension` menambahkan respons dari middleware yang tidak terdeteksi otomatis: 403 `FORBIDDEN` (`role:`, `signed`), 403 `ACCOUNT_PENDING`/`ACCOUNT_REJECTED`/`ACCOUNT_INACTIVE` (`akun.aktif`), 404 `NOT_FOUND` (route berparameter), 429 `TOO_MANY_REQUESTS` (`throttle:`). Beberapa kode pada status yang sama digabung dalam satu enum, misal 422 `BUSINESS_RULE` + `VALIDATION_ERROR`.
 
 ## Pola respons
 
@@ -127,7 +212,12 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 | `AuthenticationException` | 401 | `UNAUTHENTICATED` |
 | `BusinessRuleException` | 422 | `BUSINESS_RULE` |
 | `AuthorizationException` / 403 | 403 | `FORBIDDEN` |
-| `ModelNotFoundException`, route tidak ada, metode HTTP salah (405) | 404 | `NOT_FOUND` |
+| `AksesAkunDitolakException` (login dengan akun belum/tidak aktif) | 403 | `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE` |
+| `LayananBelumDikonfigurasiException` (misalnya `GOOGLE_CLIENT_ID` kosong) | 503 | `SERVER_ERROR` dengan pesan untuk pengguna dari exception; penyebab teknis tercatat di log |
+| `InvalidSignatureException` (signed URL media kedaluwarsa atau diubah) | 403 | `FORBIDDEN` ("Tautan file sudah kedaluwarsa atau tidak valid. …") |
+| `ModelNotFoundException` / `abort(404)` di route yang ada | 404 | `NOT_FOUND` ("Data tidak ditemukan.") |
+| Route tidak ada, metode HTTP salah (405) | 404 | `NOT_FOUND` ("Endpoint tidak ditemukan. …") |
+| `InvalidQuery` spatie (filter/sort di luar daftar) | 422 | `VALIDATION_ERROR` |
 | Throttle | 429 | `TOO_MANY_REQUESTS` (header `Retry-After` ikut dikirim) |
 | Unggahan melebihi `post_max_size` (413) | 422 | `VALIDATION_ERROR` ("Ukuran file terlalu besar. Maksimal 5 MB per file.") |
 | Status 4xx lain di luar daftar A7 | 422 | `VALIDATION_ERROR` |
@@ -139,6 +229,26 @@ Middleware:
 - `ForceJsonResponse`: dipasang di grup `api`, memaksa `Accept: application/json`.
 - `akun.aktif` (`EnsureAccountActive`): token milik akun selain `aktif` ditolak 403 dengan `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
+- `signed:relative`: hanya di `GET /media/{token}`.
+- Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-google` 10/menit per IP, `tautkan-anak` 5/menit per user. Limiter API umum 120/menit dipasang di Fase 8.
+
+## Auth dan akun
+
+- Token Sanctum dikirim sebagai `Authorization: Bearer`, berlaku 30 hari, nama token = `perangkat` (`web` | `mobile`). Logout mencabut token yang sedang dipakai; ganti password mencabut token lain; reset password dan penonaktifan akun mencabut semua token.
+- Login email hanya untuk Kepala Sekolah dan guru. Email tidak terdaftar, password salah, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
+- Login Google (`GoogleLoginService`): ID token diverifikasi `GoogleIdTokenVerifier` (tanda tangan, `aud` = `GOOGLE_CLIENT_ID`, masa berlaku) dan email harus terverifikasi. Akun dicari lewat `google_id` lalu email; email milik guru/Kepala Sekolah ditolak `BUSINESS_RULE`. Email baru dibuatkan akun wali murid aktif dengan `profil_lengkap = false` dan `is_new = true`. Kalau `GOOGLE_CLIENT_ID` kosong, verifier melempar `LayananBelumDikonfigurasiException` (503). Di test, verifier diganti mock.
+- Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya password). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
+- `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
+- Password baru (registrasi, ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
+- Gate `kelola-keuangan` memakai `User::bisaKelolaKeuangan()`; dipakai endpoint keuangan mulai Fase 5. Pembatasan per role lewat middleware `role:`.
+
+## File dan media
+
+`App\Services\MediaService` (B5):
+
+- Gambar (`MediaService::aturanGambar()`: jpg/jpeg/png/webp, maksimal 5 MB) diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80 dengan nama UUID, metadata EXIF dibuang.
+- File publik (avatar, foto guru) di disk `public`, URL lewat `Storage::url()`. File lama dihapus setelah transaksi berhasil.
+- File private di disk `local` disajikan lewat `GET /media/{token}`: token = path terenkripsi (`Crypt`, base64 url-safe), URL ditandatangani relatif (`URL::temporarySignedRoute(..., absolute: false)`) dan berlaku 30 menit, respons `Cache-Control: private, max-age=1800`. Token rusak atau file sudah dihapus dibalas 404.
 
 ## Skema database
 
@@ -230,10 +340,25 @@ Diambil selama Fase 2:
 - `DemoSeeder` dipecah per domain di `database/seeders/Demo/`. Email akun demo memakai domain `.test` (tidak bisa menerima email sungguhan). Alamat, telepon, email sekolah, dan rekening di `WebsiteDemoSeeder` fiktif.
 - Tanggal data demo mengikuti waktu penulisan (September 2026): SPP Juli–September, rapor semester 1 sudah ada yang terbit, PPDB 2027/2028 sedang dibuka. Jumlah murid 61: 60 murid di kelas ditambah satu murid dari pendaftaran PPDB yang diterima (belum punya kelas karena kelas 2027/2028 belum dibuat).
 
+Diambil selama Fase 3:
+
+- `MediaService` dan `GET /media/{token}` dikerjakan di Fase 3, bukan Fase 4, karena `/auth/me` untuk wali memuat `anak[].foto_url` yang berupa signed URL.
+- Parameter route ditulis `{id}` persis seperti A7 (`Route::pattern('id', '[0-9]+')`), sehingga id bukan angka langsung 404. Controller mengambil data dengan `findOrFail`, bukan route model binding.
+- `GET /wali/anak` (A7 tidak merinci bentuknya) memakai `AnakWaliResource`: `id, nis, nama_lengkap, nama_panggilan, jenis_kelamin, tanggal_lahir, kelas {id, nama} | null, foto_url, hubungan, is_kontak_utama`. `catatan_khusus` dan data sensitif lain (NIK, alamat) tidak ikut; data lengkap murid ada di `GET /murid/{id}` (Fase 4). Resource yang sama dipakai untuk `anak` di `GET /wali-murid/{id}` dan respons `POST /wali/tautkan-anak`.
+- Notifikasi `anak_tertaut` dikirim ke Kepala Sekolah (url `/dashboard/murid/{id}`) dan wali lain yang sudah tertaut ke anak yang sama (url `/dashboard/anak`), supaya penautan oleh orang yang tidak dikenal cepat ketahuan. Wali yang menautkan tidak dikirimi.
+- `guru_baru` dikirim ke Kepala Sekolah aktif dengan url `/dashboard/guru/{id}`. Semua notifikasi database memakai kelas dasar `App\Notifications\NotifikasiDatabase` (bentuk `{ jenis, judul, pesan, url }`) dan lewat queue.
+- Kode tautan dinormalisasi sebelum validasi (huruf besar, spasi dan tanda hubung dibuang), karena kode sering disalin dari pesan WhatsApp. Kode salah, kedaluwarsa, dan tanggal lahir tidak cocok dibalas 422 `VALIDATION_ERROR` dengan pesan berbeda di field `kode` / `tanggal_lahir`; anak yang sudah tertaut dibalas `BUSINESS_RULE`.
+- `GET /guru` dan `GET /wali-murid` menerima `sort` (`nama`, `created_at`, awali `-` untuk menurun; bawaan `nama`), `per_page` (bawaan 15, maksimal 100), dan `search`. Parameter di luar daftar ditolak 422.
+- `PATCH /wali-murid/{id}/status` mencabut semua token saat menonaktifkan, sama seperti guru, dan dicatat di activity log `akun`.
+- Profil guru Kepala Sekolah dibuat `SuperAdminSeeder` dengan `bisa_kelola_keuangan = true`, supaya data di `GET /guru/{id}` sesuai kenyataan. Nilai yang dikirim ulang tanpa perubahan di `PUT /guru/{id}` diterima; yang mengubahnya ditolak `BUSINESS_RULE`.
+- Password awal dari `POST /guru`: 10 karakter huruf dan angka tanpa simbol, supaya mudah didiktekan.
+- Enum `Perangkat` (`web`, `mobile`) untuk nama token.
+- `lang/id.json` berisi terjemahan teks template email bawaan Laravel (tautan cadangan dan hak cipta). Atribut validasi (`name` → "nama", `no_hp` → "nomor HP", dan seterusnya) ditambahkan di `lang/id/validation.php`.
+- Scramble: respons 403 middleware didokumentasikan lewat `ResponsErrorRouteExtension` (lihat "Dokumentasi API"). Skema error A7 dibentuk di satu tempat, `App\Support\Scramble\SkemaErrorA7`.
+
 ## Rencana yang sudah disepakati untuk fase berikutnya
 
-- Fase 4 dan 5: setelah `KodeTautanService`, `TagihanService`, dan `PembayaranService` ada, `DemoSeeder` memakai service itu untuk kode tautan, nomor INV/PAY, dan perhitungan potongan. Sekarang seeder menghitungnya sendiri dengan format yang sama.
-- Fase 3: `ApiErrorResponseExtension` (atau extension Scramble terpisah) juga mendokumentasikan respons 403 dari middleware, yaitu `ACCOUNT_PENDING`, `ACCOUNT_REJECTED`, `ACCOUNT_INACTIVE` dari `akun.aktif` dan `FORBIDDEN` dari `role:...`, supaya `api.json` lengkap untuk FE.
+- Fase 4 dan 5: pembuatan kode tautan ditambahkan ke `KodeTautanService` (sekarang baru berisi penautan), lalu `DemoSeeder` memakai service itu dan `TagihanService`/`PembayaranService` untuk kode tautan, nomor INV/PAY, dan perhitungan potongan. Sekarang seeder menghitungnya sendiri dengan format yang sama.
 
 ## Akun seed
 
@@ -250,6 +375,7 @@ Diambil selama Fase 2:
 | `rina.kusumawati@guru.tkta8.test` | guru pendamping TK A1 |
 | `fitri.handayani@guru.tkta8.test`, `ahmad.fauzi@guru.tkta8.test` | status `pending` (menunggu persetujuan) |
 
+- Kode tautan demo: murid yang belum punya wali tertaut. Lihat lewat Tinker: `App\Models\Murid::whereNotNull('kode_tautan')->get(['nama_panggilan', 'tanggal_lahir', 'kode_tautan'])`.
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
@@ -258,6 +384,45 @@ Diambil selama Fase 2:
 
 - `PROMPT_BE_TK.md`: spesifikasi proyek, lalu diperbarui dengan perubahan yang disetujui (lihat "Perubahan dari spesifikasi awal").
 - `CLAUDE.md`: aturan kerja agent (baca spesifikasi dan dokumentasi, satu fase per sesi, patuhi Bagian C).
+
+### Fase 3
+
+Revisi setelah laporan Fase 3:
+
+- `app/Exceptions/LayananBelumDikonfigurasiException.php` (baru): `POST /auth/google` dengan `GOOGLE_CLIENT_ID` kosong membalas 503 `SERVER_ERROR` "Login Google belum dikonfigurasi. Hubungi pihak sekolah." (sebelumnya 500); penyebabnya tetap tercatat di log.
+- `app/Services/GoogleIdTokenVerifier.php`, `GoogleLoginService.php`, `app/Exceptions/ApiExceptionRenderer.php`: melempar dan merender exception itu.
+- `app/Support/Scramble/{ApiErrorResponseExtension, ResponsErrorRouteExtension, SkemaErrorA7}.php`: respons 503 terdokumentasi di `POST /auth/google`; status respons error bisa berbeda dari status bawaan kodenya.
+- `tests/Feature/Auth/LoginGoogleTest.php`, `tests/Feature/DokumentasiApiTest.php`: test respons 503, isi log, dan dokumentasinya.
+- `.env.example` sudah memakai `MAIL_MAILER=log`; tidak diubah.
+- `dokumentasi.md`: bagian "Serah terima ke lingkungan lokal"; migration, seeder, dan test diverifikasi di MariaDB 10.11.14.
+- `storage/api-docs/api.json`: diekspor ulang.
+
+File baru:
+
+- `app/Http/Controllers/Api/V1/Auth/{AuthController, RegistrasiGuruController, ResetPasswordController, ProfilController}.php`, `Guru/GuruController.php`, `WaliMurid/WaliMuridController.php`, `Wali/{ProfilWaliController, AnakController}.php`, `MediaController.php`.
+- `app/Http/Requests/Auth/*` (7 request), `Guru/{DaftarGuruRequest, SimpanGuruRequest, TolakGuruRequest}.php`, `WaliMurid/DaftarWaliMuridRequest.php`, `Wali/{LengkapiProfilWaliRequest, TautkanAnakRequest}.php`, `UbahStatusAkunRequest.php`, `Concerns/MemvalidasiDaftar.php` (aturan `page`, `per_page`, `search`, `sort`).
+- `app/Http/Resources/{UserResource, AkunResource, GuruResource, WaliMuridResource, AnakWaliResource}.php`.
+- `app/Services/{AuthService, GoogleIdTokenVerifier, GoogleLoginService, GuruService, WaliMuridService, KodeTautanService, MediaService}.php`.
+- `app/Notifications/{NotifikasiDatabase, GuruBaruNotification, AnakTertautNotification, GuruDisetujuiNotification, GuruDitolakNotification, ResetPasswordNotification}.php`.
+- `app/Exceptions/AksesAkunDitolakException.php`, `app/Enums/Perangkat.php`, `app/Rules/NomorHp.php`.
+- `app/Support/Scramble/{ResponsErrorRouteExtension, SkemaErrorA7}.php`.
+- `lang/id.json`.
+- Test: `tests/Feature/Auth/{LoginTest, LoginGoogleTest, RegistrasiGuruTest, ResetPasswordTest, SesiDanProfilTest}.php`, `Guru/{ManajemenGuruTest, PersetujuanGuruTest}.php`, `WaliMurid/ManajemenWaliMuridTest.php`, `Wali/{TautkanAnakTest, ProfilDanAnakWaliTest}.php`, `Media/MediaPrivatTest.php` (100 test, dihitung per dataset).
+
+File yang diubah:
+
+- `routes/api.php`: 24 operasi Fase 3.
+- `app/Exceptions/ApiExceptionRenderer.php`: `AksesAkunDitolakException`, `InvalidSignatureException`, `InvalidQuery`; pesan 404 dibedakan antara data dan endpoint.
+- `app/Providers/AppServiceProvider.php`: `Password::defaults()`, Gate `kelola-keuangan`, rate limiter `login`, `login-google`, `tautkan-anak`.
+- `app/Models/User.php` (`scopeKepalaSekolahAktif`, `profilWaliMurid()`, notifikasi reset password FE), `Guru.php` (`milikKepalaSekolah()`, `scopeBukanKepalaSekolah`, `scopeCari`), `WaliMurid.php` (`scopeCari`), `Murid.php` (`kelasAktif()`).
+- `app/Support/Scramble/ApiErrorResponseExtension.php`: satu exception bisa dipetakan ke beberapa kode (`AksesAkunDitolakException` → `ACCOUNT_*`); skema dari `SkemaErrorA7`.
+- `config/app.php` (`frontend_url`), `config/services.php` (`google.client_id`), `config/scramble.php` (extension baru), `.env.example` (`GOOGLE_CLIENT_ID`).
+- `database/seeders/SuperAdminSeeder.php`: profil guru Kepala Sekolah dengan `bisa_kelola_keuangan = true`.
+- `database/factories/TahunAjaranFactory.php`: tahun acak diambil dari 1990–2020. Sebelumnya 2015–2045, sehingga test yang menulis nama `2025/2026` langsung sesekali gagal karena nama tahun ajaran bentrok (unique).
+- `lang/id/validation.php`: nama atribut field Fase 3.
+- `phpunit.xml`: `MAIL_FROM_ADDRESS` dan `FRONTEND_URL` untuk test.
+- `tests/Pest.php` (helper `buatKepalaSekolah()`, `buatGuru()`), `tests/Feature/DokumentasiApiTest.php` (memeriksa kode error 401/403/404/429 per operasi). Total test sekarang 189.
+- `storage/api-docs/api.json`, `dokumentasi.md`.
 
 ### Fase 2
 

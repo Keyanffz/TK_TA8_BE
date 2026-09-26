@@ -3,12 +3,12 @@
 namespace App\Support\Scramble;
 
 use App\Enums\KodeError;
+use App\Exceptions\AksesAkunDitolakException;
 use App\Exceptions\BusinessRuleException;
+use App\Exceptions\LayananBelumDikonfigurasiException;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
-use Dedoc\Scramble\Support\Generator\Schema;
-use Dedoc\Scramble\Support\Generator\Types as OpenApi;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Dedoc\Scramble\Support\Type\Type;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -27,15 +27,25 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
  */
 class ApiErrorResponseExtension extends ExceptionToResponseExtension
 {
+    private const AKUN_TIDAK_AKTIF = [KodeError::AccountPending, KodeError::AccountRejected, KodeError::AccountInactive];
+
+    /** @var array<class-string, non-empty-list<KodeError>> */
     private const KODE_PER_EXCEPTION = [
-        ValidationException::class => KodeError::ValidationError,
-        BusinessRuleException::class => KodeError::BusinessRule,
-        AuthenticationException::class => KodeError::Unauthenticated,
-        AuthorizationException::class => KodeError::Forbidden,
-        AccessDeniedHttpException::class => KodeError::Forbidden,
-        RecordsNotFoundException::class => KodeError::NotFound,
-        NotFoundHttpException::class => KodeError::NotFound,
-        TooManyRequestsHttpException::class => KodeError::TooManyRequests,
+        ValidationException::class => [KodeError::ValidationError],
+        BusinessRuleException::class => [KodeError::BusinessRule],
+        AksesAkunDitolakException::class => self::AKUN_TIDAK_AKTIF,
+        AuthenticationException::class => [KodeError::Unauthenticated],
+        AuthorizationException::class => [KodeError::Forbidden],
+        AccessDeniedHttpException::class => [KodeError::Forbidden],
+        RecordsNotFoundException::class => [KodeError::NotFound],
+        NotFoundHttpException::class => [KodeError::NotFound],
+        TooManyRequestsHttpException::class => [KodeError::TooManyRequests],
+        LayananBelumDikonfigurasiException::class => [KodeError::ServerError],
+    ];
+
+    /** @var array<class-string, int> Exception yang statusnya berbeda dari status bawaan kodenya. */
+    private const STATUS_PER_EXCEPTION = [
+        LayananBelumDikonfigurasiException::class => LayananBelumDikonfigurasiException::STATUS,
     ];
 
     public function shouldHandle(Type $type): bool
@@ -51,20 +61,14 @@ class ApiErrorResponseExtension extends ExceptionToResponseExtension
             return null;
         }
 
-        $errors = $kode === KodeError::ValidationError
-            ? (new OpenApi\ObjectType)->additionalProperties((new OpenApi\ArrayType)->setItems(new OpenApi\StringType))
-            : new OpenApi\NullType;
+        $status = null;
+        foreach (self::STATUS_PER_EXCEPTION as $class => $statusKhusus) {
+            if ($type instanceof ObjectType && $type->isInstanceOf($class)) {
+                $status = $statusKhusus;
+            }
+        }
 
-        $body = (new OpenApi\ObjectType)
-            ->addProperty('success', (new OpenApi\BooleanType)->const(false))
-            ->addProperty('message', new OpenApi\StringType)
-            ->addProperty('code', (new OpenApi\StringType)->const($kode->value))
-            ->addProperty('errors', $errors)
-            ->setRequired(['success', 'message', 'code', 'errors']);
-
-        return Response::make($kode->status())
-            ->setDescription($kode->value)
-            ->setContent('application/json', Schema::fromType($body));
+        return SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)), $status);
     }
 
     public function reference(ObjectType $type): Reference
@@ -72,7 +76,10 @@ class ApiErrorResponseExtension extends ExceptionToResponseExtension
         return new Reference('responses', Str::start($type->name, '\\'), $this->components);
     }
 
-    private function kodeUntuk(Type $type): ?KodeError
+    /**
+     * @return non-empty-list<KodeError>|null
+     */
+    private function kodeUntuk(Type $type): ?array
     {
         if (! $type instanceof ObjectType) {
             return null;

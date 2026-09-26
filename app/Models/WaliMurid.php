@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\WaliMuridFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,21 @@ class WaliMurid extends Model
         return [
             'profil_lengkap' => 'boolean',
         ];
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeCari(Builder $query, ?string $kata): void
+    {
+        if ($kata === null) {
+            return;
+        }
+
+        $query->whereHas('user', fn (Builder $user) => $user
+            ->where('name', 'like', "%{$kata}%")
+            ->orWhere('email', 'like', "%{$kata}%")
+            ->orWhere('no_hp', 'like', "%{$kata}%"));
     }
 
     /**

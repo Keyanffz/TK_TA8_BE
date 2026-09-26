@@ -4,15 +4,18 @@ namespace App\Models;
 
 use App\Enums\Role;
 use App\Enums\StatusAkun;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use LogicException;
 
 #[Fillable(['name', 'email', 'password', 'google_id', 'role', 'status', 'no_hp', 'avatar_path', 'email_verified_at', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
@@ -36,6 +39,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeKepalaSekolahAktif(Builder $query): void
+    {
+        $query->where('role', Role::SuperAdmin)->where('status', StatusAkun::Aktif);
+    }
+
+    /**
      * @return HasOne<Guru, $this>
      */
     public function guru(): HasOne
@@ -49,6 +60,19 @@ class User extends Authenticatable
     public function waliMurid(): HasOne
     {
         return $this->hasOne(WaliMurid::class);
+    }
+
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
+     * Akun wali murid selalu punya profil wali (dibuat bersamaan saat login Google pertama).
+     */
+    public function profilWaliMurid(): WaliMurid
+    {
+        return $this->waliMurid ?? throw new LogicException("Akun {$this->email} tidak punya profil wali murid.");
     }
 
     /**
