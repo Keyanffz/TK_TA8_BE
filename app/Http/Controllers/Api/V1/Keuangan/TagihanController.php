@@ -14,10 +14,10 @@ use App\Models\User;
 use App\Services\PengaturanService;
 use App\Services\TagihanService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -63,7 +63,7 @@ class TagihanController extends Controller
     public function show(int $id, PengaturanService $pengaturan): JsonResponse
     {
         $tagihan = Tagihan::query()->findOrFail($id);
-        Gate::authorize('view', $tagihan);
+        Jangkauan::pastikanTerlihat($tagihan);
 
         $tagihan->load([
             'murid.kelasAktif', 'jenisTagihan',

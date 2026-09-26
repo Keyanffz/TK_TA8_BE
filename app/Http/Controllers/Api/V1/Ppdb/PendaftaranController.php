@@ -12,10 +12,10 @@ use App\Models\Pendaftaran;
 use App\Models\User;
 use App\Services\PendaftaranService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\AllowedSort;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -56,7 +56,7 @@ class PendaftaranController extends Controller
     public function show(int $id): JsonResponse
     {
         $pendaftaran = Pendaftaran::query()->findOrFail($id);
-        Gate::authorize('view', $pendaftaran);
+        Jangkauan::pastikanTerlihat($pendaftaran);
 
         return ApiResponse::success(new PendaftaranResource($pendaftaran->load(self::RELASI_DETAIL)));
     }

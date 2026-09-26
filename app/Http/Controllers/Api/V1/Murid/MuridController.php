@@ -11,10 +11,10 @@ use App\Models\User;
 use App\Services\KodeTautanService;
 use App\Services\MuridService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\AllowedSort;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -56,7 +56,7 @@ class MuridController extends Controller
     public function show(int $id): JsonResponse
     {
         $murid = Murid::query()->findOrFail($id);
-        Gate::authorize('view', $murid);
+        Jangkauan::pastikanTerlihat($murid);
 
         return ApiResponse::success(new MuridResource($murid->load(['kelasAktif', 'waliMurid.user'])));
     }

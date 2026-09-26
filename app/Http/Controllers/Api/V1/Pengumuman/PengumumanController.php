@@ -10,6 +10,7 @@ use App\Models\Pengumuman;
 use App\Models\User;
 use App\Services\PengumumanService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -56,7 +57,7 @@ class PengumumanController extends Controller
     public function show(int $id): JsonResponse
     {
         $pengumuman = Pengumuman::query()->findOrFail($id);
-        Gate::authorize('view', $pengumuman);
+        Jangkauan::pastikanTerlihat($pengumuman);
 
         return ApiResponse::success(new PengumumanResource($pengumuman->load(self::RELASI)));
     }

@@ -12,6 +12,7 @@ use App\Models\KegiatanKelas;
 use App\Models\User;
 use App\Services\KegiatanKelasService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -52,7 +53,7 @@ class KegiatanKelasController extends Controller
     public function show(int $id): JsonResponse
     {
         $kegiatan = KegiatanKelas::query()->findOrFail($id);
-        Gate::authorize('view', $kegiatan);
+        Jangkauan::pastikanTerlihat($kegiatan);
 
         return ApiResponse::success(new KegiatanKelasResource($kegiatan->load(self::RELASI)));
     }

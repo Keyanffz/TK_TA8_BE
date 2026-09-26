@@ -11,9 +11,9 @@ use App\Models\Kelas;
 use App\Models\User;
 use App\Services\KelasService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -51,7 +51,7 @@ class KelasController extends Controller
     public function show(int $id): JsonResponse
     {
         $kelas = Kelas::query()->findOrFail($id);
-        Gate::authorize('view', $kelas);
+        Jangkauan::pastikanTerlihat($kelas);
 
         return ApiResponse::success(new KelasResource($kelas->muatDetail()));
     }

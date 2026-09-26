@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\RaporPdfService;
 use App\Services\RaporService;
 use App\Support\ApiResponse;
+use App\Support\Jangkauan;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
@@ -67,7 +68,7 @@ class RaporController extends Controller
     public function show(int $id): JsonResponse
     {
         $rapor = Rapor::query()->findOrFail($id);
-        Gate::authorize('view', $rapor);
+        Jangkauan::pastikanTerlihat($rapor);
 
         return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)));
     }
@@ -146,7 +147,7 @@ class RaporController extends Controller
     public function pdf(int $id, RaporPdfService $raporPdf): HttpResponse
     {
         $rapor = Rapor::query()->findOrFail($id);
-        Gate::authorize('view', $rapor);
+        Jangkauan::pastikanTerlihat($rapor);
 
         return $raporPdf->buat($rapor)->download($raporPdf->namaFile($rapor));
     }
