@@ -13,7 +13,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 4. Master akademik | Selesai, disetujui (dengan revisi) |
 | 5. Keuangan | Selesai, disetujui (dengan revisi) |
 | 6. Akademik & komunikasi | Selesai, menunggu review |
-| 7. PPDB, CMS, dashboard | Belum |
+| 7. PPDB, CMS, dashboard | Selesai, menunggu review |
 | 8. Hardening | Belum |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
@@ -40,6 +40,12 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role), `POST /pengumuman` (SA, G), `PUT/DELETE /pengumuman/{id}` (penulis, SA) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
+| Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb` |
+| Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
+| PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
+| Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA) |
+| Galeri (SA) | `GET/POST /galeri-album`, `PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
+| Log aktivitas (SA) | `GET /log-aktivitas` |
 
 K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga middleware `can:kelola-keuangan`.
 
@@ -65,6 +71,23 @@ Fase 6:
 12. Pengumuman, terbit: notifikasi dikirim saat pengumuman berubah dari draft menjadi terbit (`published_at` kosong → terisi). Mengubah pengumuman yang sudah terbit tidak mengirim ulang dan `published_at` tetap. `publish: false` pada pengumuman terbit menariknya kembali jadi draft (`published_at` dikosongkan); kalau diterbitkan lagi, notifikasi terkirim lagi.
 13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran. `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1`, `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
 14. Di OpenAPI, `GET /kegiatan/{id}`, `GET /rapor/{id}`, `GET /pengumuman/{id}`, dan `GET /rapor/{id}/pdf` masih mencantumkan 403 `FORBIDDEN` (sama seperti keputusan Fase 4 nomor 14). Dirapikan di Fase 8 bersama `*_url` yang seharusnya nullable.
+
+Fase 7:
+
+15. Pengaturan, simpan: `PUT /pengaturan` hanya mengubah kunci yang dikirim. Kunci di luar daftar A4 ditolak 422 di field `items`. Kesalahan per kunci memakai nama kunci sebagai field error (misalnya `profil.nama_sekolah`, `landing.program.0.judul`), tanpa awalan `items.`. Kunci angka disimpan sebagai integer walau dikirim sebagai string. Kunci HTML (`profil.sejarah`, `profil.sambutan_kepsek`, `ppdb.info`) disanitasi. Log aktivitas `pengaturan` mencatat nama kunci yang diubah, bukan nilainya.
+16. Pengaturan, batas nilai: `profil.npsn` 8 digit, `profil.maps_embed_url` harus `https`, `keuangan.hari_pengingat` 1–14, `ppdb.kuota` 0–1000, `keuangan.rekening` paling banyak 5, daftar (misi, program, fasilitas, keunggulan) paling banyak 20, `ikon` huruf kecil/angka/tanda hubung (nama ikon lucide). `ppdb.tanggal_tutup` tidak boleh sebelum `ppdb.tanggal_buka`, dibandingkan juga dengan nilai yang sudah tersimpan. `ppdb.dibuka = true` tanpa tahun ajaran tujuan ditolak `BUSINESS_RULE`.
+17. Pengaturan, gambar: `POST /pengaturan/upload` menyimpan ke disk public folder `pengaturan/`. Field gambar di `PUT` harus path dari folder itu yang filenya ada. Gambar yang tidak dipakai lagi setelah `PUT` dihapus dari disk; gambar yang diunggah tetapi tidak pernah disimpan ke pengaturan tetap tertinggal (tidak ada pembersihan otomatis).
+18. Pengaturan, akses dan cache: guru berizin keuangan wajib mengirim `grup=keuangan` (tanpa itu 403). Semua kunci dibaca sekali lalu disimpan di cache tanpa batas waktu; cache dibuang lewat event `saved`/`deleted` model `Pengaturan`, jadi perubahan dari seeder atau Tinker juga langsung terbaca.
+19. Galeri: A7 tidak punya `GET /galeri-album/{id}`, jadi `GET /galeri-album` (Kepala Sekolah) sudah memuat `foto` tiap album. `cover` opsional (multipart); tanpa sampul, `cover_url` memakai foto dengan urutan terkecil. Album baru tidak publik kecuali `is_publik` dikirim. Slug album tetap walau judul diganti. Maksimal 20 foto per unggahan, tanpa batas total. `PUT /galeri-foto/{id}` menerima `caption` dan `urutan` dan membalas `{ id, caption, urutan }`. Menghapus foto yang sedang jadi sampul mengosongkan `cover_path`.
+20. Publik: `/public/pengumuman` hanya `is_publik` yang `published_at`-nya sudah lewat, urut disematkan lalu terbaru, tanpa penulis dan sasaran. `/public/guru` berisi guru berakun aktif dengan `tampil_di_landing` (termasuk profil Kepala Sekolah), Kepala Sekolah lebih dulu lalu urut nama; bentuknya `{ id, nama, jabatan, foto_url }`. `/public/galeri` berpaginasi; `/public/agenda` memakai bentuk yang sama dengan `GET /agenda`.
+21. `/public/ppdb`: `{ dibuka, tanggal_buka, tanggal_tutup, kuota, sisa_kuota, info, tahun_ajaran }`. `dibuka` sudah memperhitungkan tanggal buka/tutup dan keberadaan tahun ajaran tujuan, tetapi tidak memperhitungkan kuota (lihat `sisa_kuota`). `kuota = 0` berarti tidak ada tempat.
+22. PPDB, pendaftaran: dokumen dikirim per jenis sebagai field multipart `akta_kelahiran` dan `kartu_keluarga` (gambar atau PDF, wajib), `pas_foto` (gambar, wajib), dan `lainnya[]` (opsional, maksimal 3). `nik` wajib 16 digit karena kolomnya tidak nullable di A4. Anak dengan NIK yang sudah punya pendaftaran selain `ditolak` di tahun ajaran yang sama ditolak `BUSINESS_RULE` (mencegah ayah dan ibu mendaftarkan anak yang sama dua kali). Profil wali tidak harus lengkap untuk mendaftar. Kode `PPDB-{tahun mulai tahun ajaran}-XXXX`. Parameter daftar: `filter[status|tahun_ajaran_id|tingkat_tujuan]`, `search` (kode, nama anak), `sort=created_at|nama`.
+23. PPDB, keputusan: `verifikasi` hanya dari `diajukan`; `terima` hanya dari `diverifikasi`; `tolak` dari `diajukan` atau `diverifikasi`, alasannya disimpan di `catatan`. `kelas_id` saat menerima harus kelas di tahun ajaran tujuan dan dicek kapasitasnya; kalau gagal, seluruh penerimaan dibatalkan. Ketiga keputusan dicatat di activity log `ppdb` dan mengirim `pendaftaran_diproses` ke wali pendaftar (url `/dashboard/ppdb/{id}`); `pendaftaran_baru` dikirim ke Kepala Sekolah aktif.
+24. PPDB, murid baru: NIS memakai tahun `tanggal_mulai` tahun ajaran tujuan, `tanggal_masuk` = `tanggal_mulai` itu, pas foto disalin (kalau berupa gambar) ke folder `murid/`, dan wali pendaftar menjadi kontak utama. Nama dan pekerjaan orang tua dari formulir tidak disalin ke murid karena tabel murid tidak punya kolomnya.
+25. Dashboard Kepala Sekolah: `guru_aktif` = akun guru berstatus aktif, `kelas` = kelas di tahun ajaran aktif, `wali_murid` = akun wali murid berstatus aktif. `keuangan_bulan_ini` memakai aturan laporan keuangan (tagihan menurut bulan jatuh tempo, tanpa yang dibatalkan). `grafik_pemasukan` 12 bulan sampai bulan ini dari pembayaran `diterima` menurut `tanggal_bayar`. `pendaftaran_baru` = pendaftaran berstatus `diajukan`. Daftar terbaru dan mendatang berisi paling banyak 5; `pengumuman_terbaru` hanya yang sudah terbit, `agenda_mendatang` agenda yang belum selesai.
+26. Dashboard guru: `progres_rapor.total` = jumlah murid berpenempatan aktif di kelas yang diampu; keempat status menghitung rapor semester aktif, jadi yang belum dibuat = total dikurangi jumlah keempatnya. `keuangan_kelas` menghitung jumlah tagihan (bukan rupiah) murid kelasnya yang jatuh tempo bulan ini; `belum` mencakup belum bayar, menunggu verifikasi, dan terlambat.
+27. Dashboard wali: tanpa `murid_id`, anak pertama menurut nama panggilan. `anak` memakai bentuk `GET /wali/anak`. `tagihan_aktif` = tagihan berstatus belum bayar, menunggu verifikasi, atau terlambat, urut jatuh tempo; `total_belum_bayar` tidak menghitung yang menunggu verifikasi. `kegiatan_terbaru` dari semua kelas yang pernah diikuti anak itu. Wali tanpa anak tertaut mendapat `anak: null`, daftar kosong, dan `rapor_terbaru: null`.
+28. Log aktivitas: `{ id, jenis, event, deskripsi, pelaku { id, nama, role } | null, subjek { tipe, id } | null, properti, created_at }`, berpaginasi, terbaru dulu. Filter `filter[user_id]`, `filter[jenis]` (salah satu `akun, guru, wali, tagihan, pembayaran, rapor, ppdb, pengaturan`), `filter[tanggal]`.
 
 ## Keputusan Fase 4–5 (sudah direview)
 
@@ -482,7 +505,7 @@ Diambil selama Fase 3:
 ## Rencana yang sudah disepakati untuk fase berikutnya
 
 - Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan.
-- Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
+- Sudah dikerjakan di Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
 - Fase 8: rapikan dokumentasi respons file di OpenAPI (keputusan Fase 5 nomor 29), 403 yang tidak mungkin terjadi di endpoint detail, dan tipe `*_url` private yang tertulis `string` padahal bisa `null` (misalnya `MuridResource.foto_url`).
 
 ## Akun seed
@@ -504,6 +527,30 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Fase 7
+
+File baru:
+
+- `app/Http/Controllers/Api/V1/Pengaturan/PengaturanController.php`, `Galeri/GaleriController.php`, `Publik/PublikController.php`, `Ppdb/PendaftaranController.php`, `Dashboard/DashboardController.php`, `LogAktivitas/LogAktivitasController.php`.
+- `app/Http/Requests/HalamanRequest.php`, `Pengaturan/{DaftarPengaturanRequest, SimpanPengaturanRequest, UnggahGambarPengaturanRequest}.php`, `Galeri/{DaftarGaleriRequest, SimpanAlbumRequest, TambahFotoGaleriRequest, PerbaruiFotoGaleriRequest}.php`, `Pendaftaran/{DaftarPendaftaranRequest, BuatPendaftaranRequest, TerimaPendaftaranRequest}.php`, `Dashboard/DashboardRequest.php`, `LogAktivitas/DaftarLogAktivitasRequest.php`.
+- `app/Http/Resources/{GaleriAlbumResource, PengumumanPublikResource, GuruPublikResource, PendaftaranResource, LogAktivitasResource}.php`.
+- `app/Policies/PendaftaranPolicy.php`.
+- `app/Services/{GaleriService, PendaftaranService, DashboardService}.php`.
+- `app/Notifications/{PendaftaranBaruNotification, PendaftaranDiprosesNotification}.php`.
+- `app/Support/SlugUnik.php`.
+- Test: `tests/Feature/Pengaturan/PengaturanTest.php`, `Galeri/GaleriTest.php`, `Publik/LandingPublikTest.php`, `Ppdb/PendaftaranTest.php`, `Dashboard/DashboardTest.php`, `LogAktivitas/LogAktivitasTest.php`.
+
+File yang diubah:
+
+- `routes/api.php`: 26 operasi Fase 7, grup `/public` tanpa login.
+- `app/Services/PengaturanService.php`: ditulis ulang (cache, `untukRespons()`, `simpan()`, `aturan()` per kunci). `app/Models/Pengaturan.php`: event `saved`/`deleted` membuang cache.
+- `app/Services/MediaService.php` (`aturanDokumen()`, `simpanDokumen()` untuk gambar/PDF, `salinPrivat()`), `MuridService.php` (`buatDenganFotoTersimpan()`, `FOLDER_FOTO` publik), `PengumumanService.php` (slug lewat `SlugUnik`).
+- `app/Models/GaleriAlbum.php` (`fotoPertama()`).
+- `tests/Feature/DokumentasiApiTest.php` (endpoint publik tanpa auth, dashboard tiga bentuk).
+- `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 537 test lulus di SQLite dan di MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan. Data demo diisi ulang lalu dicoba lewat `php artisan serve`: dashboard ketiga role, `/public/*`, daftar PPDB, dan pendaftaran PPDB sungguhan lewat `curl` multipart dengan akta berupa PDF asli (tersimpan `.pdf`, tersaji `application/pdf` lewat signed URL).
 
 ### Fase 6
 
