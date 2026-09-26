@@ -9,8 +9,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 0. Analisis | Selesai, rencana disetujui |
 | 1. Fondasi | Selesai |
 | 2. Database | Selesai |
-| 3. Auth & akun | Selesai, menunggu konfirmasi |
-| 4. Master akademik | Belum |
+| 3. Auth & akun | Selesai |
+| 4. Master akademik | Belum; dilanjutkan di laptop (lihat "Serah terima ke lingkungan lokal") |
 | 5. Keuangan | Belum |
 | 6. Akademik & komunikasi | Belum |
 | 7. PPDB, CMS, dashboard | Belum |
@@ -46,11 +46,85 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | larastan/larastan | 3.12.2 (level 6) |
 | laravel/pint | 1.32.1 |
 
-Database: MySQL 8 (utf8mb4). Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46. Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL.
+Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46 dan MariaDB 10.11.14 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14.
+
+## Serah terima ke lingkungan lokal
+
+Fase 0–3 dikerjakan di container cloud (Ubuntu 24.04, PHP 8.4.19, MySQL 8.0.46, dijalankan sebagai root). Mulai Fase 4 pengerjaan pindah ke laptop (Arch Linux, MariaDB). Sebelum serah terima, migration, rollback, `DatabaseSeeder`, `DemoSeeder`, dan seluruh test sudah dijalankan ke MariaDB 10.11.14 dengan driver `mariadb` dan lulus. MariaDB 11.x (versi di repo Arch) belum dicoba.
+
+### Ekstensi PHP
+
+PHP 8.4 atau lebih baru. `composer check-platform-reqs` menampilkan ekstensi yang diminta paket di `composer.lock`: `dom`, `fileinfo`, `gd`, `iconv`, `libxml`, `openssl`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, ditambah `mbstring` dan `ctype` (ada polyfill, tetapi versi native lebih cepat). Ekstensi berikut dipakai saat aplikasi berjalan tetapi tidak dicek Composer:
+
+| Ekstensi | Dipakai untuk |
+|---|---|
+| `pdo_mysql` | koneksi MariaDB/MySQL |
+| `pdo_sqlite` | test (SQLite in-memory di `phpunit.xml`) |
+| `gd` dengan dukungan JPEG, PNG, WebP | memproses gambar unggahan (intervention/image driver GD) |
+| `exif` | memutar foto dari HP sesuai orientasi EXIF. Tanpa ekstensi ini unggahan tetap berhasil, tetapi foto bisa tersimpan miring |
+| `pcntl` | `php artisan pail`, bagian dari `php artisan dev` |
+| `curl` | disarankan; Guzzle memakainya untuk mengambil sertifikat Google saat verifikasi ID token |
+
+Di Arch, cek dengan `php -m`; ekstensi yang belum muncul diaktifkan lewat baris `extension=` di `/etc/php/php.ini`.
+
+### Variabel `.env` yang wajib diisi
+
+Mulai dari `cp .env.example .env`, lalu isi:
+
+| Variabel | Nilai di laptop |
+|---|---|
+| `APP_KEY` | diisi `php artisan key:generate` |
+| `APP_URL` | `http://localhost:8000`, sama dengan alamat `php artisan serve`, karena URL file publik (`avatar_url`, `foto_url` guru) dibentuk dari sini |
+| `DB_CONNECTION` | `mariadb`. `.env.example` berisi `mysql` karena produksi memakai MySQL 8 |
+| `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | sesuai database MariaDB lokal |
+| `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | akun Kepala Sekolah; `SuperAdminSeeder` berhenti kalau kosong atau password kurang dari 8 karakter huruf dan angka |
+| `MAIL_FROM_ADDRESS` | alamat pengirim apa saja, misalnya `tu@tkta8.test`. Walau `MAIL_MAILER=log`, email tanpa alamat pengirim gagal dengan "An email must have a "From" or a "Sender" header" dan job-nya masuk `failed_jobs` |
+
+Boleh dibiarkan seperti di `.env.example`: `FRONTEND_URL=http://localhost:3000` (alamat `next dev`), `MAIL_MAILER=log`, `QUEUE_CONNECTION=database`, `CACHE_STORE=database`, `SESSION_DRIVER=file`. `GOOGLE_CLIENT_ID` hanya perlu diisi untuk mencoba login Google; kalau kosong, `POST /auth/google` membalas 503.
+
+### Dari `composer install` sampai test lulus
+
+Database MariaDB kosong sudah dibuat dan `.env` sudah diisi.
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+# isi .env sesuai tabel di atas
+php artisan migrate --seed
+php artisan storage:link
+php artisan db:seed --class=DemoSeeder   # opsional: data contoh dan akun demo
+php artisan test
+./vendor/bin/pint --test
+./vendor/bin/phpstan analyse
+composer check:slop
+```
+
+Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa temuan.
+
+- Test memakai SQLite in-memory dari `phpunit.xml`, jadi tidak menyentuh database lokal. Untuk menjalankan test ke MariaDB, buat database terpisah lalu timpa lewat variabel environment, misalnya `DB_CONNECTION=mariadb DB_DATABASE=tk_test php artisan test`; variabel environment shell mengalahkan nilai di `phpunit.xml`. Jangan arahkan ke database utama, karena `RefreshDatabase` mengosongkannya.
+- Kalau `php artisan config:cache` pernah dijalankan, test ikut membaca konfigurasi yang di-cache. Jalankan `php artisan config:clear`, atau pakai `composer test` yang membersihkannya lebih dulu.
+
+### Queue dan scheduler
+
+- `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
+- Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
+- Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
+- Scheduler belum punya jadwal (`php artisan schedule:list` kosong). Mulai Fase 5 (tagihan otomatis), jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan").
+
+### Yang khusus container dan tidak berlaku di laptop
+
+- Container berjalan sebagai root, jadi Composer dijalankan dengan `COMPOSER_ALLOW_SUPERUSER=1` supaya plugin Pest aktif. Di laptop jalankan Composer sebagai user biasa tanpa variabel itu.
+- Database container dinyalakan dengan `service mysql start` (MySQL 8.0.46, lalu diganti MariaDB 10.11.14 untuk verifikasi serah terima), dengan user `tk` / `tkLokal2026`. Kredensial ini hanya ada di `.env` container yang tidak di-commit; di laptop pakai kredensial MariaDB sendiri.
+- Jaringan container lewat proxy dengan CA bundle sendiri, dan unduhan zip dari api.github.com diblokir. Karena itu `phpstan/phpstan` dipasang dari clone git dan `lang/id/validation.php` dibuat dengan `laravel-lang` di proyek terpisah. Di laptop `composer install` biasa sudah cukup: `composer.json` tidak berisi repository atau path khusus, dan `lang/id/validation.php` sudah di-commit.
+- PHP container sudah memuat hampir semua ekstensi (termasuk `exif`, `pcntl`, `pdo_sqlite`). Di Arch cek satu per satu dengan `php -m`.
+- `.env`, `vendor/`, symlink `public/storage`, gambar demo di `storage/app/...`, dan log tidak ikut repo. Semuanya dibuat ulang lewat urutan perintah di atas; gambar demo ditulis ulang oleh `DemoSeeder`.
+- Batas unggahan PHP bawaan (`upload_max_filesize=2M`, `post_max_size=8M`) sama di container dan di Arch, dan juga berlaku untuk `php artisan serve`. Untuk mencoba unggahan sampai 5 MB lewat server lokal, naikkan ke `5M` dan `55M` di `php.ini`. Test tidak terpengaruh karena memakai file palsu.
+- Pekerjaan di container memakai branch `claude/project-spec-setup-1vjwxm` yang di-merge ke `main` lewat PR per fase. Di laptop mulai dari `main` terbaru setelah PR Fase 3 di-merge.
 
 ## Instalasi dan menjalankan
 
-Prasyarat: PHP 8.4 dengan ekstensi `pdo_mysql`, `mbstring`, `gd`, `zip`, `intl`, `dom`, `xml`, `fileinfo`; Composer 2; MySQL 8.
+Prasyarat: PHP 8.4 dengan ekstensi di "Serah terima ke lingkungan lokal", Composer 2, MySQL 8 atau MariaDB.
 
 ```bash
 composer install
@@ -105,13 +179,13 @@ php artisan scramble:export --path=storage/api-docs/api.json
 |---|---|
 | `APP_URL` | URL backend; dipakai sebagai server di dokumentasi OpenAPI |
 | `APP_LOCALE`, `APP_FAKER_LOCALE` | `id`, `id_ID` |
-| `DB_*` | Koneksi MySQL |
+| `DB_*` | Koneksi MySQL (`DB_CONNECTION=mysql`) atau MariaDB (`DB_CONNECTION=mariadb`) |
 | `SESSION_DRIVER` | `file`; session hanya dipakai halaman `/docs/api` |
 | `QUEUE_CONNECTION` | `database` |
 | `CACHE_STORE` | `database` (rate limiter dan cache pengaturan) |
-| `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `log` untuk lokal. `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
+| `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
 | `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan di email (`/login`, `/reset-password`) |
-| `GOOGLE_CLIENT_ID` | Client ID OAuth Google Identity Services (sama dengan yang dipakai FE). Wajib untuk `POST /auth/google`; kalau kosong, endpoint itu membalas 500 dan pesan penyebabnya tercatat di log |
+| `GOOGLE_CLIENT_ID` | Client ID OAuth Google Identity Services (sama dengan yang dipakai FE). Wajib untuk `POST /auth/google`; kalau kosong, endpoint itu membalas 503 `SERVER_ERROR` "Login Google belum dikonfigurasi. Hubungi pihak sekolah." dan penyebabnya tercatat di log |
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
 `APP_URL` harus sama dengan alamat yang dibuka klien untuk URL file publik (`avatar_url`, `foto_url` guru), karena URL disk `public` dibentuk dari `APP_URL`. Signed URL file private dibentuk dari host request, jadi di balik reverse proxy server harus mempercayai header `X-Forwarded-*` (diatur di Fase 8).
@@ -139,6 +213,7 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 | `BusinessRuleException` | 422 | `BUSINESS_RULE` |
 | `AuthorizationException` / 403 | 403 | `FORBIDDEN` |
 | `AksesAkunDitolakException` (login dengan akun belum/tidak aktif) | 403 | `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE` |
+| `LayananBelumDikonfigurasiException` (misalnya `GOOGLE_CLIENT_ID` kosong) | 503 | `SERVER_ERROR` dengan pesan untuk pengguna dari exception; penyebab teknis tercatat di log |
 | `InvalidSignatureException` (signed URL media kedaluwarsa atau diubah) | 403 | `FORBIDDEN` ("Tautan file sudah kedaluwarsa atau tidak valid. …") |
 | `ModelNotFoundException` / `abort(404)` di route yang ada | 404 | `NOT_FOUND` ("Data tidak ditemukan.") |
 | Route tidak ada, metode HTTP salah (405) | 404 | `NOT_FOUND` ("Endpoint tidak ditemukan. …") |
@@ -161,7 +236,7 @@ Middleware:
 
 - Token Sanctum dikirim sebagai `Authorization: Bearer`, berlaku 30 hari, nama token = `perangkat` (`web` | `mobile`). Logout mencabut token yang sedang dipakai; ganti password mencabut token lain; reset password dan penonaktifan akun mencabut semua token.
 - Login email hanya untuk Kepala Sekolah dan guru. Email tidak terdaftar, password salah, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
-- Login Google (`GoogleLoginService`): ID token diverifikasi `GoogleIdTokenVerifier` (tanda tangan, `aud` = `GOOGLE_CLIENT_ID`, masa berlaku) dan email harus terverifikasi. Akun dicari lewat `google_id` lalu email; email milik guru/Kepala Sekolah ditolak `BUSINESS_RULE`. Email baru dibuatkan akun wali murid aktif dengan `profil_lengkap = false` dan `is_new = true`. Di test, verifier diganti mock.
+- Login Google (`GoogleLoginService`): ID token diverifikasi `GoogleIdTokenVerifier` (tanda tangan, `aud` = `GOOGLE_CLIENT_ID`, masa berlaku) dan email harus terverifikasi. Akun dicari lewat `google_id` lalu email; email milik guru/Kepala Sekolah ditolak `BUSINESS_RULE`. Email baru dibuatkan akun wali murid aktif dengan `profil_lengkap = false` dan `is_new = true`. Kalau `GOOGLE_CLIENT_ID` kosong, verifier melempar `LayananBelumDikonfigurasiException` (503). Di test, verifier diganti mock.
 - Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya password). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
 - Password baru (registrasi, ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
@@ -311,6 +386,16 @@ Diambil selama Fase 3:
 - `CLAUDE.md`: aturan kerja agent (baca spesifikasi dan dokumentasi, satu fase per sesi, patuhi Bagian C).
 
 ### Fase 3
+
+Revisi setelah laporan Fase 3:
+
+- `app/Exceptions/LayananBelumDikonfigurasiException.php` (baru): `POST /auth/google` dengan `GOOGLE_CLIENT_ID` kosong membalas 503 `SERVER_ERROR` "Login Google belum dikonfigurasi. Hubungi pihak sekolah." (sebelumnya 500); penyebabnya tetap tercatat di log.
+- `app/Services/GoogleIdTokenVerifier.php`, `GoogleLoginService.php`, `app/Exceptions/ApiExceptionRenderer.php`: melempar dan merender exception itu.
+- `app/Support/Scramble/{ApiErrorResponseExtension, ResponsErrorRouteExtension, SkemaErrorA7}.php`: respons 503 terdokumentasi di `POST /auth/google`; status respons error bisa berbeda dari status bawaan kodenya.
+- `tests/Feature/Auth/LoginGoogleTest.php`, `tests/Feature/DokumentasiApiTest.php`: test respons 503, isi log, dan dokumentasinya.
+- `.env.example` sudah memakai `MAIL_MAILER=log`; tidak diubah.
+- `dokumentasi.md`: bagian "Serah terima ke lingkungan lokal"; migration, seeder, dan test diverifikasi di MariaDB 10.11.14.
+- `storage/api-docs/api.json`: diekspor ulang.
 
 File baru:
 
