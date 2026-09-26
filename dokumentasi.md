@@ -10,8 +10,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 1. Fondasi | Selesai |
 | 2. Database | Selesai |
 | 3. Auth & akun | Selesai |
-| 4. Master akademik | Belum; dilanjutkan di laptop (lihat "Serah terima ke lingkungan lokal") |
-| 5. Keuangan | Belum |
+| 4. Master akademik | Selesai (di laptop) |
+| 5. Keuangan | Sedang dikerjakan |
 | 6. Akademik & komunikasi | Belum |
 | 7. PPDB, CMS, dashboard | Belum |
 | 8. Hardening | Belum |
@@ -26,6 +26,31 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, `PATCH /guru/{id}/status` |
 | Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PATCH /wali-murid/{id}/status` |
 | Wali (W) | `PUT /wali/profil`, `POST /wali/tautkan-anak`, `GET /wali/anak` |
+| Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
+| Kelas | `GET /kelas`, `GET /kelas/{id}` (SA, G terbatas), `POST /kelas`, `PUT/DELETE /kelas/{id}`, `POST /kelas/{id}/murid`, `DELETE /kelas/{id}/murid/{murid_id}`, `POST /kelas/kenaikan` (SA) |
+| Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `POST /murid/{id}/kode-tautan`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
+| Tagihan (baca) | `GET /tagihan`, `GET /tagihan/{id}` (petugas keuangan semua, G murid kelasnya, W anak sendiri) |
+
+## Keputusan menunggu review
+
+Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Fase 4:
+
+1. `GET /tagihan` dan `GET /tagihan/{id}` (baca saja, dengan scope B4 dan Policy) dibuat di Fase 4, bukan Fase 5, karena Policy dan scope diminta berlaku untuk semua endpoint murid, kelas, dan tagihan di Fase 4. Detail tagihan sudah berisi riwayat pembayaran dan `rekening` sekolah dari `keuangan.rekening`.
+2. Tahun ajaran pertama yang dibuat langsung aktif; tahun ajaran berikutnya dibuat tidak aktif. `is_aktif` tidak diterima di `POST`/`PUT /tahun-ajaran`; satu-satunya jalan mengubahnya `POST /tahun-ajaran/{id}/aktifkan`. `semester_aktif` opsional (bawaan 1).
+3. `DELETE /tahun-ajaran/{id}` ditolak `BUSINESS_RULE` kalau tahun ajaran sedang aktif, sudah punya kelas, tagihan, jenis tagihan, atau pendaftar PPDB, atau dipakai di `ppdb.tahun_ajaran_id`.
+4. Kapasitas kelas dan `jumlah_murid` hanya menghitung penempatan berstatus `aktif`. `PUT /kelas/{id}` menolak kapasitas di bawah jumlah itu, dan menolak mengganti tahun ajaran kalau kelas sudah berisi murid. `DELETE /kelas/{id}` ditolak kalau kelas sudah punya murid, kegiatan, atau rapor. Wali kelas dan guru pendamping harus guru berakun aktif (profil guru Kepala Sekolah boleh) dan tidak boleh orang yang sama.
+5. `DELETE /kelas/{id}/murid/{murid_id}` menghapus baris penempatan (untuk memperbaiki salah penempatan), bukan memberi status `keluar`. Murid yang keluar sekolah diubah lewat `PUT /murid/{id}`.
+6. Kenaikan kelas: tahun ajaran asal = tahun ajaran aktif, tujuan harus berbeda. Setiap murid harus aktif dan punya penempatan `aktif` di tahun ajaran asal, dan belum punya kelas di tahun ajaran tujuan. Tingkat kelas tujuan tidak dicek (naik dari A ke B tidak dipaksa). Murid `lulus` mendapat `status = lulus` dan `tanggal_keluar` = `tanggal_selesai` tahun ajaran asal. Respons `{ naik, tinggal, lulus }` (jumlah per status). Tidak dicatat di activity log karena tidak ada di daftar B7.
+7. `POST /murid` tidak menerima `status` (selalu `aktif`). `PUT /murid/{id}` mewajibkan `status`; `tanggal_keluar` wajib untuk `lulus`/`pindah`/`keluar` dan dikosongkan untuk `aktif`. Perubahan status ikut mengubah penempatan di tahun ajaran aktif: `lulus` → `lulus`, `pindah`/`keluar` → `keluar`, kembali `aktif` → penempatan dibuka lagi (dengan cek kapasitas). NIS tidak bisa diubah.
+8. `DELETE /murid/{id}` hanya untuk data salah input: ditolak kalau murid sudah punya tagihan, rapor, atau data PPDB. Murid di-soft delete, penempatannya dihapus, dan kode tautannya dikosongkan.
+9. Isi `MuridResource` sama untuk semua yang boleh melihat murid (Kepala Sekolah, guru pengampu, wali anak itu), termasuk NIK, alamat, dan `catatan_khusus`. Detail murid berisi `wali[]` (`id, nama, email, no_hp, hubungan, is_kontak_utama, tertaut_at`), sehingga ayah dan ibu saling melihat kontak masing-masing. `kode_tautan` dan `kode_tautan_expired_at` hanya untuk Kepala Sekolah.
+10. Kode tautan hanya dibuat untuk murid aktif; kode baru menggantikan kode lama. `kode-tautan:bersihkan` dijadwalkan harian pukul 01:00 WIB (B6.2 tidak menyebut jam).
+11. Melepas wali yang menjadi kontak utama memindahkan kontak utama ke wali yang paling awal tertaut. Wali yang dilepas tidak diberi notifikasi (tidak ada jenis notifikasi untuk itu di A7).
+12. `bukti_url` pembayaran hanya diisi untuk petugas keuangan dan wali murid; guru tanpa izin keuangan melihat riwayat pembayaran murid kelasnya dengan `bukti_url: null`.
+13. Parameter daftar di luar yang disebut A7: `GET /murid` `sort=nama|nis|created_at`; `GET /kelas` `sort=nama|created_at`; `GET /tahun-ajaran` `sort=nama|tanggal_mulai`; `GET /tagihan` `search` (kode tagihan, nama murid) dan `sort=jatuh_tempo|periode|created_at`. Semua daftar berpaginasi (bawaan 15, maksimal 100).
+14. Di OpenAPI, `GET /murid/{id}` dan `GET /tagihan/{id}` masih mencantumkan 403 `FORBIDDEN` karena Scramble membaca pemanggilan `Gate::authorize`. Pada kenyataannya Policy membalas 404 `NOT_FOUND` untuk data di luar jangkauan.
 
 ## Stack terpasang
 
@@ -46,11 +71,23 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | larastan/larastan | 3.12.2 (level 6) |
 | laravel/pint | 1.32.1 |
 
-Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46 dan MariaDB 10.11.14 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14.
+Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46, MariaDB 10.11.14, dan MariaDB 12.3.3 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14 (sampai Fase 3) dan ke MariaDB 12.3.3 (mulai Fase 4).
+
+PHP: dikembangkan di 8.4.19 (Fase 0–3, container) dan 8.5.10 (mulai Fase 4, laptop). Test dijalankan dengan `--display-deprecations` di PHP 8.5.10 tanpa deprecation.
 
 ## Serah terima ke lingkungan lokal
 
 Fase 0–3 dikerjakan di container cloud (Ubuntu 24.04, PHP 8.4.19, MySQL 8.0.46, dijalankan sebagai root). Mulai Fase 4 pengerjaan pindah ke laptop (Arch Linux, MariaDB). Sebelum serah terima, migration, rollback, `DatabaseSeeder`, `DemoSeeder`, dan seluruh test sudah dijalankan ke MariaDB 10.11.14 dengan driver `mariadb` dan lulus. MariaDB 11.x (versi di repo Arch) belum dicoba.
+
+### Hasil di laptop (awal Fase 4)
+
+Laptop: Arch Linux, PHP 8.5.10, Composer 2.9.2, MariaDB 12.3.3 (server `utf8mb4_unicode_ci`).
+
+- `composer install` sempat gagal dua kali karena unduhan `google/apiclient-services` (±50 MB) dari codeload.github.com timeout di 300 detik. Berhasil setelah diulang dengan batas waktu lebih panjang: `COMPOSER_PROCESS_TIMEOUT=3600 php -d default_socket_timeout=3600 $(command -v composer) install`. Kalau ekstraksi gagal dengan "cannot find or open ... tmp-*.zip", hapus `vendor/composer/tmp-*` lalu ulangi. Ini masalah jaringan, bukan repo.
+- `php artisan key:generate`, `migrate:fresh --seed`, `storage:link`, dan `DemoSeeder` lancar di MariaDB 12.3.3.
+- 190 test lulus di SQLite dan di MariaDB 12.3.3, tanpa deprecation PHP 8.5; Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak ada perbaikan yang dibutuhkan karena perbedaan versi.
+- Ekstensi `exif` belum aktif di laptop (`php -m`). Unggahan tetap berhasil, tetapi foto dari HP bisa tersimpan miring (lihat tabel di bawah).
+- Tidak ada database test terpisah. Test ke MariaDB dijalankan ke database utama `TK_TA8` (`DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test`), lalu database diisi ulang dengan `php artisan migrate:fresh --seed && php artisan db:seed --class=DemoSeeder` karena `RefreshDatabase` mengosongkannya.
 
 ### Ekstensi PHP
 
@@ -110,7 +147,7 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
 - Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
 - Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
-- Scheduler belum punya jadwal (`php artisan schedule:list` kosong). Mulai Fase 5 (tagihan otomatis), jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan").
+- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan").
 
 ### Yang khusus container dan tidak berlaku di laptop
 
@@ -169,6 +206,7 @@ php artisan test
 ./vendor/bin/phpstan analyse
 composer check:slop
 php artisan scramble:export --path=storage/api-docs/api.json
+DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: migrate:fresh --seed + DemoSeeder
 ```
 
 `composer check:slop` menjalankan `scripts/check-slop.sh` (Bagian C6): emoji di source/dokumentasi/pesan commit, sisa debug, placeholder, domain contoh di luar test, pembungkam checker, dan kata terlarang C3.
@@ -229,6 +267,7 @@ Middleware:
 - `ForceJsonResponse`: dipasang di grup `api`, memaksa `Accept: application/json`.
 - `akun.aktif` (`EnsureAccountActive`): token milik akun selain `aktif` ditolak 403 dengan `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
+- Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Controller memanggil `Gate::authorize('view', $model)` setelah `findOrFail`.
 - `signed:relative`: hanya di `GET /media/{token}`.
 - Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-google` 10/menit per IP, `tautkan-anak` 5/menit per user. Limiter API umum 120/menit dipasang di Fase 8.
 
@@ -260,6 +299,7 @@ Middleware:
 | Scope | Kepala Sekolah | Guru | Wali murid |
 |---|---|---|---|
 | `Kelas::diampuOleh($user)` | – | kelas di tahun ajaran aktif tempat dia wali kelas atau guru pendamping | – |
+| `GET /kelas`, `GET /kelas/{id}` | semua kelas | `Kelas::diampuOleh` | ditolak 403 (`role:`) |
 | `Murid::visibleTo` | semua | murid di kelas yang diampu | anaknya |
 | `Tagihan::visibleTo` | semua | petugas keuangan: semua; lainnya: murid yang terlihat | tagihan anaknya |
 | `Pembayaran::visibleTo` | semua | petugas keuangan: semua; lainnya: pembayaran dari tagihan yang terlihat (riwayat di detail tagihan) | pembayaran tagihan anaknya |
@@ -340,6 +380,16 @@ Diambil selama Fase 2:
 - `DemoSeeder` dipecah per domain di `database/seeders/Demo/`. Email akun demo memakai domain `.test` (tidak bisa menerima email sungguhan). Alamat, telepon, email sekolah, dan rekening di `WebsiteDemoSeeder` fiktif.
 - Tanggal data demo mengikuti waktu penulisan (September 2026): SPP Juli–September, rapor semester 1 sudah ada yang terbit, PPDB 2027/2028 sedang dibuka. Jumlah murid 61: 60 murid di kelas ditambah satu murid dari pendaftaran PPDB yang diterima (belum punya kelas karena kelas 2027/2028 belum dibuat).
 
+Diambil selama Fase 4 (lihat juga "Keputusan menunggu review"):
+
+- Scope dipakai di dua tempat yang sama: query daftar (`visibleTo` / `diampuOleh`) dan Policy `view` untuk detail, supaya daftar dan detail tidak pernah berbeda. Pembatasan per role tetap di middleware `role:` (B4).
+- `KelasService` memegang CRUD kelas dan penempatan; `KenaikanKelasService` terpisah karena alurnya panjang dan memakai aturan penempatan yang sama (`pastikanMuridAktif`, `pastikanBelumPunyaKelas`, `pastikanMuatKapasitas`). Penempatan mengunci baris kelas dan murid (`lockForUpdate`) di dalam transaksi supaya dua penempatan bersamaan tidak melewati kapasitas atau menaruh murid di dua kelas.
+- NIS diambil dari NIS terbesar berawalan `TA{tahun masuk}` (termasuk murid yang di-soft delete, karena kolom `nis` unik) dengan `lockForUpdate`, maksimal 9999 per tahun.
+- Relasi `Kelas::muridAktif()` (penempatan `aktif`) dipakai untuk `jumlah_murid` dan kapasitas. `Kelas::muatDetail()` memuat relasi detail kelas di satu tempat.
+- `PengaturanService` dibuat minimal (`nilai()`, `rekeningSekolah()`) tanpa cache, karena `PUT /pengaturan` (yang akan meng-invalidate cache) baru ada di Fase 7.
+- Foto murid disimpan di disk private folder `murid/` lewat `MediaService`; foto lama dihapus setelah transaksi berhasil.
+- `routes/console.php`: contoh command `inspire` bawaan skeleton dihapus, diganti jadwal `kode-tautan:bersihkan`.
+
 Diambil selama Fase 3:
 
 - `MediaService` dan `GET /media/{token}` dikerjakan di Fase 3, bukan Fase 4, karena `/auth/me` untuk wali memuat `anak[].foto_url` yang berupa signed URL.
@@ -358,7 +408,7 @@ Diambil selama Fase 3:
 
 ## Rencana yang sudah disepakati untuk fase berikutnya
 
-- Fase 4 dan 5: pembuatan kode tautan ditambahkan ke `KodeTautanService` (sekarang baru berisi penautan), lalu `DemoSeeder` memakai service itu dan `TagihanService`/`PembayaranService` untuk kode tautan, nomor INV/PAY, dan perhitungan potongan. Sekarang seeder menghitungnya sendiri dengan format yang sama.
+- Fase 5: `DemoSeeder` memakai `TagihanService`/`PembayaranService` untuk nomor INV/PAY dan perhitungan potongan. Kode tautan demo sudah dibuat lewat `KodeTautanService::buat()` sejak Fase 4.
 
 ## Akun seed
 
@@ -379,6 +429,31 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Fase 4
+
+File baru:
+
+- `app/Policies/{KelasPolicy, MuridPolicy, TagihanPolicy}.php`: otorisasi per data, di luar jangkauan dibalas 404.
+- `app/Http/Controllers/Api/V1/TahunAjaran/TahunAjaranController.php`, `Kelas/{KelasController, PenempatanMuridController}.php`, `Murid/MuridController.php`, `Tagihan/TagihanController.php`.
+- `app/Http/Requests/TahunAjaran/{DaftarTahunAjaranRequest, SimpanTahunAjaranRequest}.php`, `Kelas/{DaftarKelasRequest, SimpanKelasRequest, TempatkanMuridRequest, KenaikanKelasRequest}.php`, `Murid/{DaftarMuridRequest, SimpanMuridRequest}.php`, `Tagihan/DaftarTagihanRequest.php`.
+- `app/Http/Resources/{TahunAjaranResource, KelasResource, MuridResource, TagihanResource, PembayaranResource}.php`.
+- `app/Services/{TahunAjaranService, KelasService, KenaikanKelasService, MuridService, PengaturanService}.php`.
+- `app/Console/Commands/BersihkanKodeTautanCommand.php`: `kode-tautan:bersihkan [--dry-run]`.
+- Test: `tests/Feature/TahunAjaran/TahunAjaranTest.php`, `Kelas/{KelasTest, PenempatanMuridTest, KenaikanKelasTest}.php`, `Murid/{AksesMuridTest, ManajemenMuridTest, KodeTautanDanWaliTest}.php`, `Tagihan/AksesTagihanTest.php`.
+
+File yang diubah:
+
+- `routes/api.php`: 21 operasi Fase 4; pola angka untuk parameter `murid_id` dan `wali_murid_id`.
+- `routes/console.php`: jadwal `kode-tautan:bersihkan` harian 01:00.
+- `app/Models/Kelas.php` (`muridAktif()`, `muatDetail()`, `KAPASITAS_BAWAAN`), `Murid.php` (`scopeCari`).
+- `app/Services/KodeTautanService.php`: `buat()` dan `bersihkanKedaluwarsa()`.
+- `database/seeders/Demo/SekolahDemoSeeder.php`: kode tautan demo dibuat lewat `KodeTautanService::buat()`.
+- `lang/id/validation.php`: nama atribut field Fase 4.
+- `tests/Feature/DokumentasiApiTest.php`: 404 terdokumentasi untuk detail murid, kelas, dan tagihan.
+- `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 301 test lulus di SQLite dan di MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan. Endpoint baru juga dicoba lewat `php artisan serve` dengan data demo (guru `nur.aini` hanya melihat TK A1 beserta 15 murid dan 60 tagihannya, kelas lain dibalas 404; wali hanya melihat anaknya).
 
 ### Fase 0
 

@@ -44,3 +44,12 @@ it('mendokumentasikan respons 403 dari middleware role dan status akun', functio
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/google']['post'], 503))->toBe(['SERVER_ERROR'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/media/{token}']['get'], 403))->toBe(['FORBIDDEN']);
 });
+
+it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+
+    expect(kodeErrorTerdokumentasi($dokumen['paths']['/murid/{id}']['get'], 404))->toBe(['NOT_FOUND'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/kelas/{id}']['get'], 404))->toBe(['NOT_FOUND'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/tagihan/{id}']['get'], 404))->toBe(['NOT_FOUND'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/murid']['get'], 403))->not->toContain('FORBIDDEN');
+});
