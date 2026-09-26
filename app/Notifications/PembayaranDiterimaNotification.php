@@ -2,11 +2,13 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
+
 class PembayaranDiterimaNotification extends NotifikasiTagihan
 {
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'pembayaran_diterima';
+        return JenisNotifikasi::PembayaranDiterima;
     }
 
     protected function judul(): string

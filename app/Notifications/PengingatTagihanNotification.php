@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
 use App\Models\Tagihan;
 
 class PengingatTagihanNotification extends NotifikasiTagihan
@@ -11,9 +12,9 @@ class PengingatTagihanNotification extends NotifikasiTagihan
         parent::__construct($tagihan);
     }
 
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'pengingat_tagihan';
+        return JenisNotifikasi::PengingatTagihan;
     }
 
     protected function judul(): string

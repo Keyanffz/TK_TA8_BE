@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
 use App\Models\Pembayaran;
 use App\Support\Rupiah;
 
@@ -30,9 +31,9 @@ class PembayaranMasukNotification extends NotifikasiDatabase
         $this->jumlah = Rupiah::format($pembayaran->jumlah);
     }
 
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'pembayaran_masuk';
+        return JenisNotifikasi::PembayaranMasuk;
     }
 
     protected function judul(): string

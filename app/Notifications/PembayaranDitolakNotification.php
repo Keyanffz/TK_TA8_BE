@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
 use App\Models\Tagihan;
 
 class PembayaranDitolakNotification extends NotifikasiTagihan
@@ -11,9 +12,9 @@ class PembayaranDitolakNotification extends NotifikasiTagihan
         parent::__construct($tagihan);
     }
 
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'pembayaran_ditolak';
+        return JenisNotifikasi::PembayaranDitolak;
     }
 
     protected function judul(): string

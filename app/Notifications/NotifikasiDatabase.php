@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -15,7 +16,7 @@ abstract class NotifikasiDatabase extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    abstract protected function jenis(): string;
+    abstract protected function jenis(): JenisNotifikasi;
 
     abstract protected function judul(): string;
 
@@ -37,7 +38,7 @@ abstract class NotifikasiDatabase extends Notification implements ShouldQueue
     public function toDatabase(object $notifiable): array
     {
         return [
-            'jenis' => $this->jenis(),
+            'jenis' => $this->jenis()->value,
             'judul' => $this->judul(),
             'pesan' => $this->pesan($notifiable),
             'url' => $this->url($notifiable),

@@ -2,11 +2,13 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
+
 class TagihanTerlambatNotification extends NotifikasiTagihan
 {
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'tagihan_terlambat';
+        return JenisNotifikasi::TagihanTerlambat;
     }
 
     protected function judul(): string

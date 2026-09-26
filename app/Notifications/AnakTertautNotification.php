@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
 use App\Enums\Role;
 use App\Models\User;
 
@@ -18,9 +19,9 @@ class AnakTertautNotification extends NotifikasiDatabase
         private readonly string $hubungan,
     ) {}
 
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'anak_tertaut';
+        return JenisNotifikasi::AnakTertaut;
     }
 
     protected function judul(): string

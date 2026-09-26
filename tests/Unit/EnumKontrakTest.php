@@ -4,6 +4,7 @@ use App\Enums\Hubungan;
 use App\Enums\JenisAgenda;
 use App\Enums\JenisDokumen;
 use App\Enums\JenisKelamin;
+use App\Enums\JenisNotifikasi;
 use App\Enums\KodeError;
 use App\Enums\MetodeBayar;
 use App\Enums\PeriodeTagihan;
@@ -39,6 +40,11 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'StatusPendaftaran' => [StatusPendaftaran::class, ['diajukan', 'diverifikasi', 'diterima', 'ditolak']],
     'JenisDokumen' => [JenisDokumen::class, ['akta_kelahiran', 'kartu_keluarga', 'pas_foto', 'lainnya']],
     'JenisKelamin (A4)' => [JenisKelamin::class, ['L', 'P']],
+    'JenisNotifikasi (A7)' => [JenisNotifikasi::class, [
+        'tagihan_baru', 'tagihan_tertunda', 'pengingat_tagihan', 'tagihan_terlambat', 'pembayaran_masuk',
+        'pembayaran_diterima', 'pembayaran_ditolak', 'guru_baru', 'rapor_diajukan', 'rapor_revisi', 'rapor_terbit',
+        'pengumuman_baru', 'pendaftaran_baru', 'pendaftaran_diproses', 'anak_tertaut',
+    ]],
     'KodeError' => [KodeError::class, [
         'UNAUTHENTICATED', 'FORBIDDEN', 'ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE',
         'NOT_FOUND', 'VALIDATION_ERROR', 'BUSINESS_RULE', 'TOO_MANY_REQUESTS', 'SERVER_ERROR',
@@ -53,5 +59,5 @@ it('memberi label bahasa Indonesia untuk setiap nilai enum', function (string $e
     Role::class, StatusAkun::class, StatusMurid::class, Hubungan::class, Tingkat::class,
     StatusKelasMurid::class, PeriodeTagihan::class, TipeKeringanan::class, StatusTagihan::class,
     MetodeBayar::class, StatusPembayaran::class, TargetPengumuman::class, JenisAgenda::class,
-    StatusRapor::class, StatusPendaftaran::class, JenisDokumen::class, JenisKelamin::class,
+    StatusRapor::class, StatusPendaftaran::class, JenisDokumen::class, JenisKelamin::class, JenisNotifikasi::class,
 ]);

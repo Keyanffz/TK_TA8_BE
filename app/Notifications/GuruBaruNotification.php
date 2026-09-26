@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
+
 class GuruBaruNotification extends NotifikasiDatabase
 {
     public function __construct(
@@ -9,9 +11,9 @@ class GuruBaruNotification extends NotifikasiDatabase
         private readonly string $namaGuru,
     ) {}
 
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'guru_baru';
+        return JenisNotifikasi::GuruBaru;
     }
 
     protected function judul(): string

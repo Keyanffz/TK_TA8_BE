@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\JenisNotifikasi;
 use App\Exceptions\PeriodeDiLuarTahunAjaranException;
 
 /**
@@ -20,9 +21,9 @@ class TagihanTertundaNotification extends NotifikasiDatabase
         $this->tahunAjaran = $penyebab->tahunAjaran;
     }
 
-    protected function jenis(): string
+    protected function jenis(): JenisNotifikasi
     {
-        return 'tagihan_tertunda';
+        return JenisNotifikasi::TagihanTertunda;
     }
 
     protected function judul(): string
