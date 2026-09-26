@@ -15,6 +15,9 @@ use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use App\Models\TahunAjaran;
 use App\Models\User;
+use App\Services\PembayaranService;
+use App\Services\TagihanService;
+use App\Support\NomorUrut;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -33,12 +36,6 @@ class KeuanganDemoSeeder extends Seeder
     private const TANGGAL_JATUH_TEMPO = 10;
 
     private const PERIODE_SPP = ['2026-07-01', '2026-08-01', '2026-09-01'];
-
-    /** @var array<string, int> */
-    private array $nomorTagihan = [];
-
-    /** @var array<string, int> */
-    private array $nomorPembayaran = [];
 
     /** @var list<int> */
     private array $petugasKeuangan = [];
@@ -68,11 +65,11 @@ class KeuanganDemoSeeder extends Seeder
         ]);
 
         $murid = Murid::query()->with('waliMurid.user')->orderBy('id')->get();
-        $potonganSpp = $this->buatKeringanan($murid, $spp, $kepalaSekolah);
+        $keringananSpp = $this->buatKeringanan($murid, $spp, $kepalaSekolah);
 
         foreach (self::PERIODE_SPP as $bulanKe => $periode) {
             foreach ($murid as $urutan => $satuMurid) {
-                $this->buatTagihanSpp($satuMurid, $spp, Carbon::parse($periode), $bulanKe, $urutan, $potonganSpp[$satuMurid->id] ?? 0);
+                $this->buatTagihanSpp($satuMurid, $spp, Carbon::parse($periode), $bulanKe, $urutan, TagihanService::potongan(self::NOMINAL_SPP, $keringananSpp->get($satuMurid->id)));
             }
         }
 
@@ -83,19 +80,19 @@ class KeuanganDemoSeeder extends Seeder
 
     /**
      * @param  Collection<int, Murid>  $murid
-     * @return array<int, int> potongan SPP per murid_id
+     * @return Collection<int, Keringanan> keringanan SPP per murid_id
      */
-    private function buatKeringanan(Collection $murid, JenisTagihan $spp, User $pembuat): array
+    private function buatKeringanan(Collection $murid, JenisTagihan $spp, User $pembuat): Collection
     {
         $daftar = [
             [$murid[4], TipeKeringanan::Persen, 50, 'Anak yatim.'],
             [$murid[11], TipeKeringanan::Nominal, 50000, 'Orang tua terdampak PHK, sesuai surat keterangan kelurahan.'],
             [$murid[25], TipeKeringanan::Persen, 100, 'Anak guru TK Tarbiyathul Athfal 8.'],
         ];
-        $potongan = [];
+        $keringanan = [];
 
         foreach ($daftar as [$satuMurid, $tipe, $nilai, $alasan]) {
-            Keringanan::query()->create([
+            $keringanan[$satuMurid->id] = Keringanan::query()->create([
                 'murid_id' => $satuMurid->id,
                 'jenis_tagihan_id' => $spp->id,
                 'tipe' => $tipe,
@@ -105,13 +102,9 @@ class KeuanganDemoSeeder extends Seeder
                 'berlaku_sampai' => null,
                 'dibuat_oleh' => $pembuat->id,
             ]);
-
-            $potongan[$satuMurid->id] = $tipe === TipeKeringanan::Persen
-                ? intdiv(self::NOMINAL_SPP * $nilai, 100)
-                : min($nilai, self::NOMINAL_SPP);
         }
 
-        return $potongan;
+        return new Collection($keringanan);
     }
 
     private function buatTagihanSpp(Murid $murid, JenisTagihan $spp, Carbon $periode, int $bulanKe, int $urutan, int $potongan): void
@@ -227,17 +220,15 @@ class KeuanganDemoSeeder extends Seeder
 
     private function kodeTagihan(Carbon $bulan): string
     {
-        $kunci = $bulan->format('Ym');
-        $this->nomorTagihan[$kunci] = ($this->nomorTagihan[$kunci] ?? 0) + 1;
+        $awalan = TagihanService::awalanKode($bulan);
 
-        return sprintf('INV-%s-%05d', $kunci, $this->nomorTagihan[$kunci]);
+        return NomorUrut::format($awalan, NomorUrut::berikutnya(Tagihan::query(), 'kode', $awalan, TagihanService::DIGIT_KODE), TagihanService::DIGIT_KODE);
     }
 
     private function kodePembayaran(Carbon $tanggal): string
     {
-        $kunci = $tanggal->format('Ymd');
-        $this->nomorPembayaran[$kunci] = ($this->nomorPembayaran[$kunci] ?? 0) + 1;
+        $awalan = PembayaranService::awalanKode($tanggal);
 
-        return sprintf('PAY-%s-%05d', $kunci, $this->nomorPembayaran[$kunci]);
+        return NomorUrut::format($awalan, NomorUrut::berikutnya(Pembayaran::query(), 'kode', $awalan, PembayaranService::DIGIT_KODE), PembayaranService::DIGIT_KODE);
     }
 }
