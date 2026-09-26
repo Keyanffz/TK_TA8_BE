@@ -34,7 +34,7 @@ class RaporPdfService
             'sekolah' => $this->pengaturan->kopSekolah(),
             'rapor' => $rapor,
             'detail' => $detail,
-            'kepalaSekolah' => $rapor->penyetuju?->name ?? User::query()->kepalaSekolahAktif()->value('name'),
+            'kepalaSekolah' => $rapor->penyetuju->name ?? User::query()->kepalaSekolahAktif()->value('name'),
         ])
             ->setPaper('a4')
             ->setOption('isFontSubsettingEnabled', true);
