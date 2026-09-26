@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
+use App\Http\Controllers\Api\V1\Pengumuman\PengumumanController;
 use App\Http\Controllers\Api\V1\Rapor\ElemenPenilaianController;
 use App\Http\Controllers\Api\V1\Rapor\RaporController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
@@ -132,6 +133,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::put('/rapor/{id}', [RaporController::class, 'update']);
         Route::post('/rapor/{id}/detail/{detail_id}/foto', [RaporController::class, 'foto']);
         Route::post('/rapor/{id}/ajukan', [RaporController::class, 'ajukan']);
+
+        Route::post('/pengumuman', [PengumumanController::class, 'store']);
+        Route::put('/pengumuman/{id}', [PengumumanController::class, 'update']);
+        Route::delete('/pengumuman/{id}', [PengumumanController::class, 'destroy']);
     });
 
     Route::get('/murid', [MuridController::class, 'index']);
@@ -152,6 +157,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
     Route::get('/rapor', [RaporController::class, 'index']);
     Route::get('/rapor/{id}', [RaporController::class, 'show']);
     Route::get('/rapor/{id}/pdf', [RaporController::class, 'pdf']);
+
+    Route::get('/pengumuman', [PengumumanController::class, 'index']);
+    Route::get('/pengumuman/{id}', [PengumumanController::class, 'show']);
 
     Route::get('/agenda', [AgendaController::class, 'index']);
 
