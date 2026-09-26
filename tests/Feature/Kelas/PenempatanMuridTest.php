@@ -5,6 +5,7 @@ use App\Enums\StatusMurid;
 use App\Models\Kelas;
 use App\Models\KelasMurid;
 use App\Models\Murid;
+use App\Models\Rapor;
 use App\Models\TahunAjaran;
 
 beforeEach(function () {
@@ -94,6 +95,31 @@ it('memvalidasi daftar murid yang ditempatkan', function (Closure $muridIds) {
 it('mengeluarkan murid dari kelas', function () {
     $bima = Murid::factory()->create();
     $this->kelasA1->murid()->attach($bima);
+
+    $this->actingAs($this->kepsek)->deleteJson("/api/v1/kelas/{$this->kelasA1->id}/murid/{$bima->id}")
+        ->assertOk();
+
+    expect($this->kelasA1->murid()->count())->toBe(0);
+});
+
+it('menolak mengeluarkan murid yang sudah punya rapor di kelas itu', function () {
+    $bima = Murid::factory()->create(['nama_lengkap' => 'Bima Saputra']);
+    $this->kelasA1->murid()->attach($bima);
+    Rapor::factory()->for($bima)->for($this->kelasA1)->for($this->aktif)->create();
+
+    $this->actingAs($this->kepsek)->deleteJson("/api/v1/kelas/{$this->kelasA1->id}/murid/{$bima->id}")
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', 'Bima Saputra sudah punya rapor di TK A1 sehingga tidak bisa dikeluarkan dari kelas ini. Kalau murid keluar sekolah, ubah statusnya di data murid.');
+
+    expect($this->kelasA1->murid()->count())->toBe(1);
+});
+
+it('tetap mengeluarkan murid yang rapornya ada di kelas lain', function () {
+    $bima = Murid::factory()->create();
+    $this->kelasA1->murid()->attach($bima);
+    $lama = Kelas::factory()->for(TahunAjaran::factory()->create(['nama' => '2025/2026']))->create();
+    Rapor::factory()->for($bima)->for($lama, 'kelas')->for($lama->tahunAjaran)->create();
 
     $this->actingAs($this->kepsek)->deleteJson("/api/v1/kelas/{$this->kelasA1->id}/murid/{$bima->id}")
         ->assertOk();

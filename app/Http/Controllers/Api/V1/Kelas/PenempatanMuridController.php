@@ -27,8 +27,8 @@ class PenempatanMuridController extends Controller
     }
 
     /**
-     * Mengeluarkan murid dari kelas untuk memperbaiki salah penempatan. Murid yang keluar sekolah
-     * diubah statusnya lewat `PUT /murid/{id}`.
+     * Mengeluarkan murid dari kelas untuk memperbaiki salah penempatan. Ditolak kalau murid sudah punya rapor
+     * di kelas itu. Murid yang keluar sekolah diubah statusnya lewat `PUT /murid/{id}`.
      */
     public function keluarkan(int $id, int $murid_id, KelasService $kelasService): JsonResponse
     {

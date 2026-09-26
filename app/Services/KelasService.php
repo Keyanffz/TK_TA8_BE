@@ -90,11 +90,19 @@ class KelasService
 
     /**
      * Penempatan dihapus, bukan diberi status `keluar`, karena dipakai untuk memperbaiki salah penempatan.
-     * Murid yang benar-benar keluar sekolah diubah statusnya lewat data murid.
+     * Murid yang benar-benar keluar sekolah diubah statusnya lewat data murid. Murid yang sudah punya rapor
+     * di kelas itu tidak bisa dikeluarkan, supaya rapornya tetap terhubung ke kelas yang benar-benar diikuti.
+     *
+     * @throws BusinessRuleException
      */
     public function keluarkanMurid(Kelas $kelas, int $muridId): void
     {
-        $penempatan = $kelas->kelasMurid()->where('murid_id', $muridId)->firstOrFail();
+        $penempatan = $kelas->kelasMurid()->with('murid')->where('murid_id', $muridId)->firstOrFail();
+
+        if ($kelas->rapor()->where('murid_id', $muridId)->exists()) {
+            throw new BusinessRuleException("{$penempatan->murid->nama_lengkap} sudah punya rapor di {$kelas->nama} sehingga tidak bisa dikeluarkan dari kelas ini. Kalau murid keluar sekolah, ubah statusnya di data murid.");
+        }
+
         $penempatan->delete();
     }
 
