@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
+use App\Http\Controllers\Api\V1\Rapor\ElemenPenilaianController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
 use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
@@ -83,6 +84,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/tagihan/generate', [TagihanController::class, 'generate']);
         Route::patch('/tagihan/{id}/batalkan', [TagihanController::class, 'batalkan']);
 
+        Route::post('/elemen-penilaian', [ElemenPenilaianController::class, 'store']);
+        Route::put('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'update']);
+        Route::delete('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'destroy']);
+
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
         Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
@@ -109,6 +114,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::get('/tahun-ajaran', [TahunAjaranController::class, 'index']);
         Route::get('/kelas', [KelasController::class, 'index']);
         Route::get('/kelas/{id}', [KelasController::class, 'show']);
+        Route::get('/elemen-penilaian', [ElemenPenilaianController::class, 'index']);
     });
 
     Route::get('/murid', [MuridController::class, 'index']);
