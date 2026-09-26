@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Kelas\KelasController;
 use App\Http\Controllers\Api\V1\Kelas\PenempatanMuridController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
+use App\Http\Controllers\Api\V1\Tagihan\TagihanController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
 use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
@@ -79,6 +80,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
 
     Route::get('/murid', [MuridController::class, 'index']);
     Route::get('/murid/{id}', [MuridController::class, 'show']);
+
+    Route::get('/tagihan', [TagihanController::class, 'index']);
+    Route::get('/tagihan/{id}', [TagihanController::class, 'show']);
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
         Route::put('/profil', ProfilWaliController::class);
