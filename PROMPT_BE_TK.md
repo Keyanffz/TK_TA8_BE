@@ -50,7 +50,7 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
 1. **Login:**
    - Kepala Sekolah & Guru → email + password.
    - Wali Murid → Google Sign-In saja (daftar sendiri otomatis saat pertama login).
-   - Akun Kepala Sekolah dibuat lewat seeder (hanya 1 akun `super_admin` aktif), sekaligus profil `guru` miliknya (jabatan "Kepala Sekolah") supaya Kepala Sekolah bisa mencatat kegiatan kelas, menjadi wali kelas bila perlu, dan tampil di daftar guru landing. Profil guru ini tidak muncul di `GET /guru`, tidak bisa dinonaktifkan, dan tidak dihitung sebagai guru di statistik dashboard.
+   - Akun Kepala Sekolah dibuat lewat seeder (hanya 1 akun `super_admin` aktif), sekaligus profil `guru` miliknya (jabatan "Kepala Sekolah") supaya Kepala Sekolah bisa mencatat kegiatan kelas, menjadi wali kelas bila perlu, dan tampil di daftar guru landing. Profil guru ini tidak muncul di `GET /guru`, tidak bisa dinonaktifkan, izin keuangannya tidak bisa diubah, dan tidak dihitung sebagai guru di statistik dashboard; profil ini tetap bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`.
    - Guru bisa daftar sendiri → status `pending` → harus **disetujui Kepala Sekolah** baru bisa login. Kepala Sekolah juga bisa membuat akun guru langsung (status langsung `aktif`).
 2. **Menautkan anak ke wali:** sekolah (super admin) generate **kode tautan** per murid (8 karakter, berlaku 14 hari). Wali memasukkan kode + tanggal lahir anak → langsung tertaut. Kode bisa dipakai lebih dari 1 wali (ayah & ibu) selama belum kedaluwarsa. Super admin bisa melepas tautan.
 3. **PPDB online:** wali bisa mendaftarkan anak baru lewat dashboard saat PPDB dibuka. Pendaftaran selalu untuk tahun ajaran di pengaturan `ppdb.tahun_ajaran_id` (biasanya tahun ajaran berikutnya, bukan yang sedang aktif). PPDB tidak bisa dibuka (`ppdb.dibuka = true` ditolak) kalau `ppdb.tahun_ajaran_id` belum diisi atau tahun ajarannya tidak ada. Kalau diterima, sistem otomatis membuat data murid dan menautkannya ke wali tersebut.
@@ -390,7 +390,11 @@ Kode error: `UNAUTHENTICATED` (401), `FORBIDDEN` (403), `ACCOUNT_PENDING` (403),
 
 Untuk `ACCOUNT_REJECTED` saat login, alasan penolakan disertakan di `message` (contoh: `"Pendaftaran akun Anda ditolak. Alasan: …"`), tanpa field tambahan.
 
+Status HTTP di luar daftar di atas dipetakan ke kode terdekat: 405 (metode HTTP salah) → 404 `NOT_FOUND`; 413 (unggahan melebihi batas server) → 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file."; status 4xx lain → 422 `VALIDATION_ERROR`; 503 (pemeliharaan) → 503 `SERVER_ERROR`.
+
 **Konvensi query list:** `?search=`, `?sort=nama` / `?sort=-created_at`, `?filter[status]=aktif`, `?filter[kelas_id]=3`. Tanggal format `YYYY-MM-DD`, datetime ISO 8601 dengan offset `+07:00`. Uang = integer rupiah.
+
+**File private:** semua `*_url` untuk file private (foto kegiatan, foto murid, foto rapor, bukti bayar, dokumen PPDB) adalah signed URL `GET /media/{token}` yang **bisa langsung dipakai di `<img>` / `<a>` tanpa header Authorization** dan berlaku **30 menit**. Setelah kedaluwarsa, ambil ulang datanya untuk mendapat URL baru. Hak akses dicek saat URL dibuat, jadi URL hanya dikirim ke pengguna yang berhak; siapa pun yang memegang URL bisa membukanya selama masa berlaku.
 
 **Singkatan role:** SA = super_admin, G = guru, K = petugas keuangan (SA atau guru `bisa_kelola_keuangan`), W = wali_murid, Pub = publik.
 
@@ -438,12 +442,12 @@ Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "anak": [{ "id": 9, "
 
 ### Guru (manajemen)
 - `GET /guru` — SA — filter status, search. Tidak termasuk profil guru milik Kepala Sekolah
-- `GET /guru/{id}` — SA
+- `GET /guru/{id}` — SA — termasuk profil guru milik Kepala Sekolah
 - `POST /guru` — SA — buat akun guru langsung aktif → 201, data guru + `password_awal`. `password_awal` hanya muncul di respons ini, tidak dikirim lewat email, dan tidak disimpan sebagai teks biasa
-- `PUT /guru/{id}` — SA — termasuk `bisa_kelola_keuangan`, `tampil_di_landing`
+- `PUT /guru/{id}` — SA — termasuk `bisa_kelola_keuangan`, `tampil_di_landing`. Untuk profil guru milik Kepala Sekolah, mengubah `bisa_kelola_keuangan` ditolak (422 `BUSINESS_RULE`)
 - `POST /guru/{id}/setujui` — SA
 - `POST /guru/{id}/tolak` — SA — `{ alasan }`
-- `PATCH /guru/{id}/status` — SA — `{ status: aktif|nonaktif }` (nonaktif = cabut semua token). Profil guru milik Kepala Sekolah tidak bisa dinonaktifkan
+- `PATCH /guru/{id}/status` — SA — `{ status: aktif|nonaktif }` (nonaktif = cabut semua token). Ditolak untuk profil guru milik Kepala Sekolah (422 `BUSINESS_RULE`)
 
 ### Tahun ajaran & kelas
 - `GET|POST /tahun-ajaran`, `PUT|DELETE /tahun-ajaran/{id}` — SA (GET: SA, G)
@@ -493,7 +497,7 @@ Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "anak": [{ "id": 9, "
 - `POST /kegiatan` — G(kelas sendiri), SA — multipart, `foto[]` maks 10
 - `PUT|DELETE /kegiatan/{id}` — pembuat, SA
 - `POST /kegiatan/{id}/foto`, `DELETE /kegiatan-foto/{id}` — pembuat, SA
-- `GET /media/{token}` — semua — stream file private via signed URL (dipakai untuk semua `*_url` private)
+- `GET /media/{token}` — tanpa token Bearer (signed URL) — stream file private untuk semua `*_url` private; hanya memvalidasi signature, masa berlaku 30 menit, dan token. Lihat "File private" di atas
 - `GET /elemen-penilaian` — SA, G. `POST|PUT|DELETE` — SA
 - `GET /rapor?filter[kelas_id]=&filter[semester]=&filter[status]=` — SA, G(scoped), W(anak, hanya terbit)
 - `GET /rapor/{id}` — sama
@@ -611,7 +615,7 @@ Aturan:
 
 - Disk `public`: logo, aset landing, galeri, avatar, foto guru untuk landing.
 - Disk `local` (private): foto kegiatan, bukti bayar, dokumen PPDB, foto rapor, foto murid.
-- Resource mengembalikan `*_url`. Untuk file private, URL berupa **signed temporary route** (`GET /api/v1/media/{token}`, berlaku 30 menit) yang dilayani `MediaService` setelah cek hak akses. Token berisi path terenkripsi, bukan path mentah.
+- Resource mengembalikan `*_url`. Untuk file private, URL berupa **signed temporary route** (`GET /api/v1/media/{token}`, berlaku 30 menit) yang dilayani `MediaService`. Hak akses dicek saat URL dibuat: Resource hanya membuat URL untuk pengguna yang berhak melihat file itu. Route media tidak memakai `auth:sanctum` karena URL dipakai langsung di `<img>` / `<a>` oleh browser tanpa header Authorization; route hanya memvalidasi signature, masa berlaku, dan token. Token berisi path terenkripsi, bukan path mentah.
 - Validasi upload: gambar `jpg,jpeg,png,webp` maks 5 MB; dokumen PPDB juga boleh `pdf` maks 5 MB. Gambar di-resize/kompres sebelum disimpan. Nama file acak (UUID).
 - Hapus file fisik saat record dihapus (observer / event).
 
@@ -628,7 +632,7 @@ Aturan:
 4. **Tahun ajaran**: tepat 1 yang aktif. Tidak bisa menghapus TA yang sudah punya kelas/tagihan.
 5. **Kelas**: 1 murid maksimal 1 kelas per TA; tolak penempatan jika melebihi kapasitas. Kenaikan kelas massal dalam 1 transaksi (update `kelas_murid.status` lama, buat penempatan baru; `lulus` → `murid.status = lulus`).
 6. **Kode tautan**: 8 karakter huruf besar + angka tanpa karakter ambigu (`0 O 1 I L`), unik, berlaku 14 hari. Tautan valid hanya jika kode cocok + belum kedaluwarsa + `tanggal_lahir` cocok. Gagal 5x/menit → 429. Tolak jika wali sudah tertaut ke murid tsb.
-7. **Guru**: login ditolak saat `pending`/`ditolak`/`nonaktif` dengan kode error yang sesuai (FE mengarahkan ke halaman yang tepat); untuk `ditolak`, alasan penolakan masuk ke `message`. Setujui/tolak → notifikasi email ke guru. Guru daftar → notifikasi ke SA. `POST /guru` membuat password acak dan mengembalikannya sekali sebagai `password_awal`. Profil guru milik Kepala Sekolah tidak muncul di `GET /guru` dan tidak bisa dinonaktifkan.
+7. **Guru**: login ditolak saat `pending`/`ditolak`/`nonaktif` dengan kode error yang sesuai (FE mengarahkan ke halaman yang tepat); untuk `ditolak`, alasan penolakan masuk ke `message`. Setujui/tolak → notifikasi email ke guru. Guru daftar → notifikasi ke SA. `POST /guru` membuat password acak dan mengembalikannya sekali sebagai `password_awal`. Profil guru milik Kepala Sekolah tidak muncul di `GET /guru`, tetapi bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`; menonaktifkan profil itu atau mengubah `bisa_kelola_keuangan`-nya ditolak dengan `BUSINESS_RULE`.
 8. **Google login**: hanya untuk wali murid. Jika email Google sudah terdaftar sebagai guru/SA → tolak dengan pesan "Gunakan login email & password". User baru → buat `users` (role wali_murid, status aktif, email_verified_at terisi) + `wali_murid`, `is_new: true`.
 9. **Rapor**: transisi status hanya sesuai flowchart; guru hanya bisa edit saat `draft`/`revisi`; `POST /rapor` otomatis membuat baris `rapor_detail` untuk semua elemen aktif. Terbit → notifikasi semua wali anak tsb.
 10. **Pengumuman**: guru hanya boleh target `kelas` (kelas yang diampu) atau `murid` (murid di kelasnya). `is_publik` hanya untuk target `semua`. Saat terbit → notifikasi ke penerima sesuai target (via queue, chunk). Feed `GET /pengumuman` untuk user: target semua + target sesuai role + kelas anak/kelas diampu + murid anaknya.
