@@ -31,6 +31,7 @@ class UserResource extends JsonResource
             'role' => $this->role,
             'status' => $this->status,
             'no_hp' => $this->no_hp,
+            /** @var string|null */
             'avatar_url' => $media->urlPublik($this->avatar_path),
             'guru' => $this->guru === null ? null : [
                 'id' => $this->guru->id,
@@ -47,6 +48,7 @@ class UserResource extends JsonResource
                         'id' => $anak->id,
                         'nama_panggilan' => $anak->nama_panggilan,
                         'kelas' => $anak->kelasAktif->first()?->nama,
+                        /** @var string|null */
                         'foto_url' => $media->urlPrivat($anak->foto_path),
                     ])
                     ->values()

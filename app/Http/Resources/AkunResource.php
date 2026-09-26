@@ -26,6 +26,7 @@ class AkunResource extends JsonResource
             'role' => $this->role,
             'status' => $this->status,
             'no_hp' => $this->no_hp,
+            /** @var string|null */
             'avatar_url' => app(MediaService::class)->urlPublik($this->avatar_path),
             'last_login_at' => $this->last_login_at,
         ];

@@ -40,6 +40,7 @@ class MuridResource extends JsonResource
             'agama' => $this->agama,
             'alamat' => $this->alamat,
             'anak_ke' => $this->anak_ke,
+            /** @var string|null */
             'foto_url' => app(MediaService::class)->urlPrivat($this->foto_path),
             'catatan_khusus' => $this->catatan_khusus,
             'status' => $this->status,

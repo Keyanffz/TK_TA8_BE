@@ -2,6 +2,7 @@
 
 use App\Support\Scramble\ApiErrorResponseExtension;
 use App\Support\Scramble\ResponsErrorRouteExtension;
+use App\Support\Scramble\ResponsFileExtension;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
 
@@ -159,6 +160,7 @@ return [
     'extensions' => [
         ApiErrorResponseExtension::class,
         ResponsErrorRouteExtension::class,
+        ResponsFileExtension::class,
     ],
 
     /*

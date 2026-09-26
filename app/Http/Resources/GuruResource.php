@@ -40,6 +40,7 @@ class GuruResource extends JsonResource
             'alamat' => $this->alamat,
             'pendidikan_terakhir' => $this->pendidikan_terakhir,
             'jabatan' => $this->jabatan,
+            /** @var string|null */
             'foto_url' => app(MediaService::class)->urlPublik($this->foto_path),
             'bisa_kelola_keuangan' => $this->bisa_kelola_keuangan,
             'tampil_di_landing' => $this->tampil_di_landing,

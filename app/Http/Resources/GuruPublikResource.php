@@ -21,6 +21,7 @@ class GuruPublikResource extends JsonResource
             'id' => $this->id,
             'nama' => $this->user->name,
             'jabatan' => $this->jabatan,
+            /** @var string|null */
             'foto_url' => app(MediaService::class)->urlPublik($this->foto_path),
         ];
     }

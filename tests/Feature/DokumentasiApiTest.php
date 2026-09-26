@@ -52,6 +52,39 @@ it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/kelas/{id}']['get'], 404))->toBe(['NOT_FOUND'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/tagihan/{id}']['get'], 404))->toBe(['NOT_FOUND'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/murid']['get'], 403))->not->toContain('FORBIDDEN');
+
+    foreach (['/murid/{id}', '/tagihan/{id}', '/kegiatan/{id}', '/rapor/{id}', '/rapor/{id}/pdf', '/pengumuman/{id}'] as $path) {
+        expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->not->toContain('FORBIDDEN');
+    }
+});
+
+it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru tanpa izin keuangan', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $tipeFile = [
+        '/pembayaran/{id}/bukti' => 'image/jpeg',
+        '/pembayaran/{id}/kwitansi' => 'application/pdf',
+        '/rapor/{id}/pdf' => 'application/pdf',
+        '/laporan/keuangan/export' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '/media/{token}' => 'application/octet-stream',
+    ];
+
+    foreach ($tipeFile as $path => $tipe) {
+        expect(array_keys($dokumen['paths'][$path]['get']['responses'][200]['content']))->toBe([$tipe]);
+    }
+    foreach (['/pembayaran/{id}', '/pembayaran/{id}/bukti', '/pembayaran/{id}/kwitansi'] as $path) {
+        expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->toContain('FORBIDDEN');
+    }
+});
+
+it('mendokumentasikan tipe item array bertingkat dan url file yang bisa null', function () {
+    $skema = $this->getJson('/docs/api.json')->assertOk()->json('components.schemas');
+
+    expect($skema['KegiatanKelasResource']['properties']['foto']['items']['properties'])->toHaveKeys(['id', 'url', 'caption', 'urutan'])
+        ->and($skema['MuridResource']['properties']['wali']['items']['properties'])->toHaveKey('hubungan')
+        ->and($skema['RaporResource']['properties']['detail']['items']['properties']['foto_url']['type'])->toBe(['string', 'null'])
+        ->and($skema['MuridResource']['properties']['foto_url']['type'])->toBe(['string', 'null'])
+        ->and($skema['UserResource']['properties']['avatar_url']['type'])->toBe(['string', 'null'])
+        ->and($skema['SimpanPengaturanRequest']['properties']['items']['type'])->toBe('object');
 });
 
 it('mendokumentasikan jenis notifikasi sebagai enum dan rapor PDF sebagai file', function () {

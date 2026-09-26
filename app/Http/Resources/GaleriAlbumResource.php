@@ -31,6 +31,7 @@ class GaleriAlbumResource extends JsonResource
             'deskripsi' => $this->deskripsi,
             'tanggal' => $this->tanggal->toDateString(),
             'is_publik' => $this->is_publik,
+            /** @var string|null */
             'cover_url' => $media->urlPublik($sampul),
             'jumlah_foto' => $this->whenCounted('foto'),
             'foto' => $this->whenLoaded('foto', fn () => $this->foto->map(fn (GaleriFoto $foto): array => [

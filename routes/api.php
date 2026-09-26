@@ -43,17 +43,6 @@ Route::pattern('detail_id', '[0-9]+');
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
 
-Route::prefix('public')->middleware('throttle:api')->group(function () {
-    Route::get('/profil', [PublikController::class, 'profil']);
-    Route::get('/pengumuman', [PublikController::class, 'pengumuman']);
-    Route::get('/pengumuman/{slug}', [PublikController::class, 'detailPengumuman']);
-    Route::get('/agenda', [PublikController::class, 'agenda']);
-    Route::get('/galeri', [PublikController::class, 'galeri']);
-    Route::get('/galeri/{slug}', [PublikController::class, 'detailGaleri']);
-    Route::get('/guru', [PublikController::class, 'guru']);
-    Route::get('/ppdb', [PublikController::class, 'ppdb']);
-});
-
 Route::prefix('auth')->middleware('throttle:api')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('/google', [AuthController::class, 'google'])->middleware('throttle:login-google');
@@ -219,4 +208,17 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
         Route::post('/tautkan-anak', [AnakController::class, 'tautkan'])->middleware('throttle:tautkan-anak');
         Route::get('/anak', [AnakController::class, 'index']);
     });
+});
+
+// Grup publik sengaja ditulis paling akhir: kalau `GET /public/pengumuman` dianalisis Scramble lebih dulu,
+// tipe item array bertingkat di Resource lain (misalnya `foto` kegiatan, `wali` murid) terbaca sebagai string.
+Route::prefix('public')->middleware('throttle:api')->group(function () {
+    Route::get('/profil', [PublikController::class, 'profil']);
+    Route::get('/pengumuman', [PublikController::class, 'pengumuman']);
+    Route::get('/pengumuman/{slug}', [PublikController::class, 'detailPengumuman']);
+    Route::get('/agenda', [PublikController::class, 'agenda']);
+    Route::get('/galeri', [PublikController::class, 'galeri']);
+    Route::get('/galeri/{slug}', [PublikController::class, 'detailGaleri']);
+    Route::get('/guru', [PublikController::class, 'guru']);
+    Route::get('/ppdb', [PublikController::class, 'ppdb']);
 });

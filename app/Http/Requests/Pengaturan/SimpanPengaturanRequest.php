@@ -16,6 +16,11 @@ class SimpanPengaturanRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Objek berkunci lengkap, misalnya `{ "profil.visi": "…", "keuangan.tanggal_jatuh_tempo": 10 }`.
+             *
+             * @var array<string, mixed>
+             */
             'items' => ['required', 'array', 'min:1'],
         ];
     }

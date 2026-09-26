@@ -68,6 +68,7 @@ class RaporResource extends JsonResource
                     'nama' => $detail->elemenPenilaian->nama,
                 ],
                 'deskripsi' => $detail->deskripsi,
+                /** @var string|null */
                 'foto_url' => $media->urlPrivat($detail->foto_path),
             ])
             ->values()

@@ -15,6 +15,7 @@ use App\Services\MediaService;
 use App\Services\PembayaranService;
 use App\Support\ApiResponse;
 use Dedoc\Scramble\Attributes\Response;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -85,6 +86,11 @@ class PembayaranController extends Controller
         return ApiResponse::paginated(PembayaranResource::collection($pembayaran));
     }
 
+    /**
+     * Detail pembayaran. Guru tanpa izin keuangan ditolak 403 untuk pembayaran murid kelasnya.
+     *
+     * @throws AuthorizationException
+     */
     public function show(int $id): JsonResponse
     {
         $pembayaran = $this->cariYangBolehDilihat($id);
@@ -114,7 +120,10 @@ class PembayaranController extends Controller
     }
 
     /**
-     * File bukti transfer. Pembayaran tunai tidak punya bukti (404).
+     * File bukti transfer. Pembayaran tunai atau transfer tanpa bukti dibalas 404. Guru tanpa izin keuangan
+     * ditolak 403 untuk pembayaran murid kelasnya.
+     *
+     * @throws AuthorizationException
      */
     #[Response(200, 'Gambar bukti transfer (JPEG)', mediaType: 'image/jpeg', type: 'string', format: 'binary')]
     public function bukti(int $id, MediaService $media): StreamedResponse
@@ -125,7 +134,10 @@ class PembayaranController extends Controller
     }
 
     /**
-     * Kwitansi PDF, hanya untuk pembayaran yang sudah diterima.
+     * Kwitansi PDF, hanya untuk pembayaran yang sudah diterima. Guru tanpa izin keuangan ditolak 403 untuk
+     * pembayaran murid kelasnya.
+     *
+     * @throws AuthorizationException
      */
     #[Response(200, 'Kwitansi PDF', mediaType: 'application/pdf', type: 'string', format: 'binary')]
     public function kwitansi(int $id, KwitansiService $kwitansi): HttpResponse

@@ -69,6 +69,7 @@ class KelasResource extends JsonResource
                     'jenis_kelamin' => $murid->jenis_kelamin,
                     'status' => $murid->status,
                     'status_kelas' => $penempatan->status,
+                    /** @var string|null */
                     'foto_url' => $media->urlPrivat($murid->foto_path),
                 ];
             })
