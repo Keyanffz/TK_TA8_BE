@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MediaController;
+use App\Http\Controllers\Api\V1\Wali\AnakController;
+use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
+use App\Http\Controllers\Api\V1\WaliMurid\WaliMuridController;
 use Illuminate\Support\Facades\Route;
 
 Route::pattern('id', '[0-9]+');
@@ -38,5 +41,15 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/guru/{id}/setujui', [GuruController::class, 'setujui']);
         Route::post('/guru/{id}/tolak', [GuruController::class, 'tolak']);
         Route::patch('/guru/{id}/status', [GuruController::class, 'ubahStatus']);
+
+        Route::get('/wali-murid', [WaliMuridController::class, 'index']);
+        Route::get('/wali-murid/{id}', [WaliMuridController::class, 'show']);
+        Route::patch('/wali-murid/{id}/status', [WaliMuridController::class, 'ubahStatus']);
+    });
+
+    Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
+        Route::put('/profil', ProfilWaliController::class);
+        Route::post('/tautkan-anak', [AnakController::class, 'tautkan'])->middleware('throttle:tautkan-anak');
+        Route::get('/anak', [AnakController::class, 'index']);
     });
 });
