@@ -30,6 +30,9 @@ class MediaService
 
     public const EKSTENSI_GAMBAR = ['jpg', 'jpeg', 'png', 'webp'];
 
+    /** Dokumen PPDB boleh berupa gambar atau PDF (B5). */
+    public const EKSTENSI_DOKUMEN = [...self::EKSTENSI_GAMBAR, 'pdf'];
+
     private const LEBAR_MAKSIMAL_GAMBAR = 1600;
 
     private const KUALITAS_JPEG = 80;
@@ -42,6 +45,37 @@ class MediaService
     public static function aturanGambar(): array
     {
         return ['image', 'mimes:'.implode(',', self::EKSTENSI_GAMBAR), 'max:'.self::UKURAN_MAKSIMAL_KB];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function aturanDokumen(): array
+    {
+        return ['file', 'mimes:'.implode(',', self::EKSTENSI_DOKUMEN), 'max:'.self::UKURAN_MAKSIMAL_KB];
+    }
+
+    /**
+     * Gambar diproses seperti `simpanGambar()`; PDF disimpan apa adanya dengan nama acak.
+     */
+    public function simpanDokumen(UploadedFile $file, string $disk, string $folder): string
+    {
+        if ($file->getMimeType() !== 'application/pdf') {
+            return $this->simpanGambar($file, $disk, $folder);
+        }
+
+        return (string) Storage::disk($disk)->putFileAs($folder, $file, Str::uuid().'.pdf');
+    }
+
+    /**
+     * Menyalin file private ke folder lain dengan nama acak baru, misalnya pas foto PPDB menjadi foto murid.
+     */
+    public function salinPrivat(string $path, string $folder): string
+    {
+        $tujuan = $folder.'/'.Str::uuid().'.'.pathinfo($path, PATHINFO_EXTENSION);
+        Storage::disk(self::DISK_PRIVAT)->copy($path, $tujuan);
+
+        return $tujuan;
     }
 
     /**

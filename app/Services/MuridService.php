@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class MuridService
 {
-    private const FOLDER_FOTO = 'murid';
+    public const FOLDER_FOTO = 'murid';
 
     private const DIGIT_URUT_NIS = 4;
 
@@ -37,6 +37,18 @@ class MuridService
     {
         $fotoPath = $foto === null ? null : $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
+        return $this->buatDenganFotoTersimpan($data, $fotoPath);
+    }
+
+    /**
+     * Sama dengan `buat()`, untuk foto yang sudah ada di disk private (misalnya salinan pas foto PPDB).
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws BusinessRuleException
+     */
+    public function buatDenganFotoTersimpan(array $data, ?string $fotoPath): Murid
+    {
         return DB::transaction(fn (): Murid => Murid::query()->create([
             ...$data,
             'nis' => $this->nisBaru(Carbon::parse($data['tanggal_masuk'])),

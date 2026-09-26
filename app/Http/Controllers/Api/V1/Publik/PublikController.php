@@ -15,6 +15,7 @@ use App\Models\Agenda;
 use App\Models\GaleriAlbum;
 use App\Models\Guru;
 use App\Models\Pengumuman;
+use App\Services\PendaftaranService;
 use App\Services\PengaturanService;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -84,6 +85,15 @@ class PublikController extends Controller
             ->with(['foto', 'fotoPertama'])->withCount('foto')->firstOrFail();
 
         return ApiResponse::success(new GaleriAlbumResource($album));
+    }
+
+    /**
+     * Status PPDB: `dibuka` (sudah memperhitungkan tanggal buka/tutup dan tahun ajaran tujuan), tanggal, kuota,
+     * sisa kuota, info (HTML), dan tahun ajaran tujuan.
+     */
+    public function ppdb(PendaftaranService $pendaftaran): JsonResponse
+    {
+        return ApiResponse::success($pendaftaran->status());
     }
 
     /**

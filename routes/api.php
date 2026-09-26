@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
 use App\Http\Controllers\Api\V1\Pengaturan\PengaturanController;
 use App\Http\Controllers\Api\V1\Pengumuman\PengumumanController;
+use App\Http\Controllers\Api\V1\Ppdb\PendaftaranController;
 use App\Http\Controllers\Api\V1\Publik\PublikController;
 use App\Http\Controllers\Api\V1\Rapor\ElemenPenilaianController;
 use App\Http\Controllers\Api\V1\Rapor\RaporController;
@@ -46,6 +47,7 @@ Route::prefix('public')->group(function () {
     Route::get('/galeri', [PublikController::class, 'galeri']);
     Route::get('/galeri/{slug}', [PublikController::class, 'detailGaleri']);
     Route::get('/guru', [PublikController::class, 'guru']);
+    Route::get('/ppdb', [PublikController::class, 'ppdb']);
 });
 
 Route::prefix('auth')->group(function () {
@@ -118,6 +120,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/galeri-album/{id}/foto', [GaleriController::class, 'tambahFoto']);
         Route::put('/galeri-foto/{id}', [GaleriController::class, 'perbaruiFoto']);
         Route::delete('/galeri-foto/{id}', [GaleriController::class, 'hapusFoto']);
+
+        Route::post('/pendaftaran/{id}/verifikasi', [PendaftaranController::class, 'verifikasi']);
+        Route::post('/pendaftaran/{id}/terima', [PendaftaranController::class, 'terima']);
+        Route::post('/pendaftaran/{id}/tolak', [PendaftaranController::class, 'tolak']);
 
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
@@ -192,6 +198,12 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
     Route::get('/notifikasi/belum-dibaca', [NotifikasiController::class, 'belumDibaca']);
     Route::post('/notifikasi/baca-semua', [NotifikasiController::class, 'bacaSemua']);
     Route::post('/notifikasi/{id}/baca', [NotifikasiController::class, 'baca'])->whereUuid('id');
+
+    Route::middleware('role:super_admin,wali_murid')->group(function () {
+        Route::get('/pendaftaran', [PendaftaranController::class, 'index']);
+        Route::get('/pendaftaran/{id}', [PendaftaranController::class, 'show']);
+    });
+    Route::post('/pendaftaran', [PendaftaranController::class, 'store'])->middleware('role:wali_murid');
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
         Route::put('/profil', ProfilWaliController::class);
