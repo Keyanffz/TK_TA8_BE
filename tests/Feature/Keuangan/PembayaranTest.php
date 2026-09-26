@@ -176,13 +176,64 @@ it('mencatat pembayaran tunai oleh petugas keuangan dan langsung melunasi tagiha
     Notification::assertSentTo($this->ibu->user, PembayaranDiterimaNotification::class);
 });
 
-it('menolak metode transfer dari petugas keuangan', function () {
+it('mencatat transfer oleh petugas keuangan tanpa bukti dan langsung melunasi tagihan', function () {
     $this->actingAs($this->kepsek)->postJson("/api/v1/tagihan/{$this->tagihan->id}/pembayaran", [
         'metode' => MetodeBayar::Transfer->value,
-        'tanggal_bayar' => '2026-10-05',
+        'tanggal_bayar' => '2026-10-04',
     ])
+        ->assertCreated()
+        ->assertJsonPath('message', 'Pembayaran transfer PAY-20261005-00001 tercatat dan tagihan lunas.')
+        ->assertJsonPath('data.metode', 'transfer')
+        ->assertJsonPath('data.status', 'diterima')
+        ->assertJsonPath('data.bukti_url', null)
+        ->assertJsonPath('data.bank_pengirim', null)
+        ->assertJsonPath('data.diverifikasi_oleh.id', $this->kepsek->id);
+
+    expect($this->tagihan->fresh()?->status)->toBe(StatusTagihan::Lunas)
+        ->and(Activity::query()->where('log_name', 'pembayaran')->where('event', 'transfer_dicatat')->count())->toBe(1);
+    Notification::assertSentTo([$this->ibu->user, $this->ayah->user], PembayaranDiterimaNotification::class);
+    Notification::assertNotSentTo($this->buSiti->user, PembayaranMasukNotification::class);
+});
+
+it('menyimpan bukti transfer yang dilampirkan petugas keuangan', function () {
+    $id = $this->actingAs($this->buSiti->user)->post("/api/v1/tagihan/{$this->tagihan->id}/pembayaran", dataTransfer(['metode' => 'transfer']))
+        ->assertCreated()
+        ->assertJsonPath('data.bank_pengirim', 'BRI')
+        ->assertJsonPath('data.nama_pengirim', 'Siti Maryam')
+        ->json('data.id');
+
+    $pembayaran = Pembayaran::query()->findOrFail($id);
+    Storage::disk('local')->assertExists((string) $pembayaran->bukti_path);
+    expect($pembayaran->status)->toBe(StatusPembayaran::Diterima);
+
+    $this->actingAs($this->ibu->user)->get("/api/v1/pembayaran/{$pembayaran->id}/bukti")->assertOk();
+});
+
+it('menolak bukti atau data pengirim pada pembayaran tunai dari petugas keuangan', function () {
+    $this->actingAs($this->buSiti->user)->post("/api/v1/tagihan/{$this->tagihan->id}/pembayaran", dataTransfer(['metode' => 'tunai']), ['Accept' => 'application/json'])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['metode']);
+        ->assertJsonPath('errors.bukti.0', 'Bukti hanya dilampirkan untuk pembayaran transfer.')
+        ->assertJsonValidationErrors(['bank_pengirim', 'nama_pengirim']);
+
+    expect(Storage::disk('local')->allFiles('bukti-bayar'))->toBe([]);
+});
+
+it('menghapus lagi bukti dari petugas keuangan kalau pencatatan ditolak', function () {
+    $this->tagihan->update(['status' => StatusTagihan::Lunas]);
+
+    $this->actingAs($this->buSiti->user)->post("/api/v1/tagihan/{$this->tagihan->id}/pembayaran", dataTransfer(['metode' => 'transfer']))
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+
+    expect(Storage::disk('local')->allFiles('bukti-bayar'))->toBe([]);
+});
+
+it('tetap mewajibkan bukti transfer dari wali walau mengirim metode tunai', function () {
+    $this->actingAs($this->ibu->user)->postJson("/api/v1/tagihan/{$this->tagihan->id}/pembayaran", ['metode' => 'tunai', 'tanggal_bayar' => '2026-10-05'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['bukti', 'bank_pengirim', 'nama_pengirim']);
+
+    expect(Pembayaran::query()->count())->toBe(0);
 });
 
 it('menolak pembayaran untuk tagihan yang lunas atau dibatalkan', function (StatusTagihan $status) {

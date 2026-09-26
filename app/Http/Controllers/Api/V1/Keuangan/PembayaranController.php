@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
+use LogicException;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,20 +34,23 @@ class PembayaranController extends Controller
     /**
      * Membayar tagihan. Wali murid mengunggah bukti transfer (`multipart/form-data`: `bukti`, `tanggal_bayar`,
      * `bank_pengirim`, `nama_pengirim`) dan pembayaran menunggu verifikasi. Petugas keuangan mencatat pembayaran
-     * tunai (`metode: tunai`, `tanggal_bayar`) yang langsung diterima.
+     * yang langsung diterima: `metode: tunai`, atau `metode: transfer` dengan `bukti`, `bank_pengirim`, dan
+     * `nama_pengirim` opsional.
      */
     public function bayar(BayarTagihanRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
         $tagihan = Tagihan::query()->findOrFail($id);
         Gate::authorize('bayar', $tagihan);
 
-        $pembayaran = $request->dariWali()
-            ? $this->pembayaranService->unggahBukti($tagihan, $request->dataTransfer(), $request->bukti(), $user)
-            : $this->pembayaranService->catatTunai($tagihan, $request->tanggalBayar(), $user);
-
-        $pesan = $request->dariWali()
-            ? 'Bukti transfer terkirim dan menunggu verifikasi petugas keuangan.'
-            : "Pembayaran tunai {$pembayaran->kode} tercatat dan tagihan lunas.";
+        if ($request->dariWali()) {
+            $bukti = $request->bukti() ?? throw new LogicException('Bukti transfer wali sudah divalidasi wajib ada.');
+            $pembayaran = $this->pembayaranService->unggahBukti($tagihan, $request->dataPembayaran(), $bukti, $user);
+            $pesan = 'Bukti transfer terkirim dan menunggu verifikasi petugas keuangan.';
+        } else {
+            $metode = $request->metode();
+            $pembayaran = $this->pembayaranService->catatOlehPetugas($tagihan, $metode, $request->dataPembayaran(), $request->bukti(), $user);
+            $pesan = "Pembayaran {$metode->value} {$pembayaran->kode} tercatat dan tagihan lunas.";
+        }
 
         return ApiResponse::success(new PembayaranResource($pembayaran->load(self::RELASI)), $pesan, status: 201);
     }

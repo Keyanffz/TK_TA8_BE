@@ -21,7 +21,7 @@ class TagihanPolicy
     }
 
     /**
-     * Wali mengunggah bukti transfer untuk tagihan anaknya; petugas keuangan mencatat pembayaran tunai.
+     * Wali mengunggah bukti transfer untuk tagihan anaknya; petugas keuangan mencatat pembayaran tunai atau transfer.
      * Guru tanpa izin keuangan hanya bisa melihat (403 untuk tagihan murid kelasnya, 404 untuk lainnya).
      */
     public function bayar(User $user, Tagihan $tagihan): Response
