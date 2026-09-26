@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Auth\RegistrasiGuruController;
 use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Kegiatan\KegiatanKelasController;
 use App\Http\Controllers\Api\V1\Kelas\KelasController;
 use App\Http\Controllers\Api\V1\Kelas\PenempatanMuridController;
 use App\Http\Controllers\Api\V1\Keuangan\JenisTagihanController;
@@ -115,6 +116,12 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::get('/kelas', [KelasController::class, 'index']);
         Route::get('/kelas/{id}', [KelasController::class, 'show']);
         Route::get('/elemen-penilaian', [ElemenPenilaianController::class, 'index']);
+
+        Route::post('/kegiatan', [KegiatanKelasController::class, 'store']);
+        Route::put('/kegiatan/{id}', [KegiatanKelasController::class, 'update']);
+        Route::delete('/kegiatan/{id}', [KegiatanKelasController::class, 'destroy']);
+        Route::post('/kegiatan/{id}/foto', [KegiatanKelasController::class, 'tambahFoto']);
+        Route::delete('/kegiatan-foto/{id}', [KegiatanKelasController::class, 'hapusFoto']);
     });
 
     Route::get('/murid', [MuridController::class, 'index']);
@@ -128,6 +135,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
     Route::get('/pembayaran/{id}', [PembayaranController::class, 'show']);
     Route::get('/pembayaran/{id}/bukti', [PembayaranController::class, 'bukti']);
     Route::get('/pembayaran/{id}/kwitansi', [PembayaranController::class, 'kwitansi']);
+
+    Route::get('/kegiatan', [KegiatanKelasController::class, 'index']);
+    Route::get('/kegiatan/{id}', [KegiatanKelasController::class, 'show']);
 
     Route::get('/agenda', [AgendaController::class, 'index']);
 

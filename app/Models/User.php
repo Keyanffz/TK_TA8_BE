@@ -91,6 +91,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Profil guru milik guru atau Kepala Sekolah (A2.1), dipakai sebagai pembuat kegiatan kelas dan rapor.
+     */
+    public function profilGuru(): Guru
+    {
+        return $this->guru ?? throw new LogicException("Akun {$this->email} tidak punya profil guru.");
+    }
+
+    /**
      * Petugas keuangan: Kepala Sekolah, atau guru yang diberi izin `bisa_kelola_keuangan`.
      */
     public function bisaKelolaKeuangan(): bool
