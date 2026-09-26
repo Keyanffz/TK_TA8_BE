@@ -12,7 +12,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 3. Auth & akun | Selesai |
 | 4. Master akademik | Selesai, disetujui (dengan revisi) |
 | 5. Keuangan | Selesai, disetujui (dengan revisi) |
-| 6. Akademik & komunikasi | Belum |
+| 6. Akademik & komunikasi | Selesai, menunggu review |
 | 7. PPDB, CMS, dashboard | Belum |
 | 8. Hardening | Belum |
 
@@ -34,6 +34,12 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan` (SA) |
 | Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
 | Laporan (K) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
+| Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
+| Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
+| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA), `PUT /rapor/{id}`, `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi` (SA) |
+| Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role), `POST /pengumuman` (SA, G), `PUT/DELETE /pengumuman/{id}` (penulis, SA) |
+| Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
+| Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
 
 K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga middleware `can:kelola-keuangan`.
 
@@ -43,7 +49,22 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
 
-(Diisi selama Fase 6–8.)
+Fase 6:
+
+1. `be/fase-6-8` dibuat dari `main` (Fase 3); sebelum mulai, branch ini di-fast-forward ke `be/fase-4-5`.
+2. Enum `JenisNotifikasi` (15 nilai A7, termasuk `tagihan_tertunda`) dipakai semua kelas notifikasi dan terdokumentasi sebagai enum di OpenAPI. Tidak mengubah nilai.
+3. Notifikasi: `GET /notifikasi` berpaginasi, terbaru dulu, dengan `filter[dibaca]=0|1`. `POST /notifikasi/baca-semua` membalas `{ jumlah }` (yang baru ditandai). `{id}` notifikasi berupa UUID (id tabel `notifications`); id bukan UUID atau milik orang lain dibalas 404.
+4. Agenda: `GET /agenda` tidak berpaginasi, `bulan` bawaan bulan ini, dan berisi agenda yang bersinggungan dengan bulan itu (agenda lintas bulan muncul di kedua bulan). Semua pengguna yang masuk melihat semua agenda, termasuk yang `is_publik = false`. `is_publik` bawaan `false`.
+5. Elemen penilaian: `GET` tidak berpaginasi dan memuat elemen nonaktif (ada `is_aktif`). `kode` diubah ke huruf besar dan hanya boleh huruf, angka, garis bawah. Tanpa `urutan`, elemen baru ditaruh paling akhir. Hapus ditolak `BUSINESS_RULE` kalau elemen sudah dipakai di rapor. Elemen baru atau yang dinonaktifkan tidak mengubah rapor yang sudah dibuat.
+6. Kegiatan kelas: guru hanya untuk kelas yang dia ampu di tahun ajaran aktif (selain itu 422 di `kelas_id`); Kepala Sekolah untuk kelas mana pun, tercatat atas profil gurunya. `tanggal` tidak boleh di masa depan. `PUT` hanya mengubah tanggal, tema, judul, deskripsi (`kelas_id` dan `foto` ditolak). Maksimal 10 foto per unggahan dan 30 per kegiatan. `caption` foto belum bisa diisi lewat API (A7 tidak punya field-nya), jadi `null` kecuali data demo. Guru pengampu lain di kelas yang sama bisa melihat tetapi mendapat 403 saat mengubah. Parameter daftar: `filter[kelas_id]`, `search` (judul, tema), `sort=tanggal|created_at` (bawaan `-tanggal`).
+7. Rapor, pembuat: A7 menulis `POST /rapor` untuk G; Kepala Sekolah juga diizinkan (A3: "semua yang bisa guru lakukan"), tercatat atas profil gurunya. Mengisi, mengunggah foto, dan mengajukan hanya oleh guru pembuat (Kepala Sekolah yang bukan pembuat mendapat 403). Kelas rapor = kelas murid dengan penempatan `aktif` di tahun ajaran aktif; semester 1 atau 2 bebas dipilih.
+8. Rapor, isi: `tinggi_badan` 50–200 cm dan `berat_badan` 5–80 kg, satu desimal. `detail` di `PUT` boleh sebagian; elemen yang tidak ada di rapor ditolak 422. Mengajukan ditolak `BUSINESS_RULE` kalau ada elemen yang deskripsinya kosong; tinggi, berat, dan catatan guru tidak wajib. Foto per elemen menggantikan foto lama; tidak ada endpoint hapus foto rapor (tidak ada di A7).
+9. Rapor, review: `catatan_revisi` tetap tersimpan setelah diajukan ulang atau terbit, dan tidak dikirim ke wali murid. Rapor terbit tidak bisa diubah atau ditarik lagi. `GET /rapor/{id}/pdf` untuk Kepala Sekolah dan guru bisa dipakai sebelum terbit sebagai pratinjau (PDF bertanda "Pratinjau"). Nama file `rapor-{nis}-{tahun-ajaran}-semester-{n}.pdf`. Parameter daftar: `filter[kelas_id|semester|status|tahun_ajaran_id|murid_id]`, `search` (nama/NIS murid), `sort=updated_at|diajukan_at|created_at` (bawaan `-updated_at`).
+10. Notifikasi rapor: `rapor_diajukan` ke Kepala Sekolah aktif, `rapor_revisi` ke guru pembuat, `rapor_terbit` ke semua wali murid anak itu; semua ber-url `/dashboard/rapor/{id}`.
+11. Pengumuman, penerima notifikasi `pengumuman_baru` (akun aktif, selain penulis): `semua` = semua guru dan wali murid; `guru`; `wali_murid`; `kelas` = wali murid yang anaknya berpenempatan aktif di kelas itu ditambah wali kelas dan guru pendampingnya; `murid` = wali murid anak itu ditambah guru pengampu kelasnya di tahun ajaran aktif. Kepala Sekolah tidak dikirimi karena melihat semua pengumuman. Judul notifikasi = judul pengumuman, pesan = 140 karakter pertama isi tanpa HTML, url `/dashboard/pengumuman/{id}`.
+12. Pengumuman, terbit: notifikasi dikirim saat pengumuman berubah dari draft menjadi terbit (`published_at` kosong → terisi). Mengubah pengumuman yang sudah terbit tidak mengirim ulang dan `published_at` tetap. `publish: false` pada pengumuman terbit menariknya kembali jadi draft (`published_at` dikosongkan); kalau diterbitkan lagi, notifikasi terkirim lagi.
+13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran. `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1`, `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
+14. Di OpenAPI, `GET /kegiatan/{id}`, `GET /rapor/{id}`, `GET /pengumuman/{id}`, dan `GET /rapor/{id}/pdf` masih mencantumkan 403 `FORBIDDEN` (sama seperti keputusan Fase 4 nomor 14). Dirapikan di Fase 8 bersama `*_url` yang seharusnya nullable.
 
 ## Keputusan Fase 4–5 (sudah direview)
 
@@ -165,7 +186,7 @@ php artisan storage:link
 php artisan db:seed --class=DemoSeeder   # opsional: data contoh dan akun demo
 php artisan test
 ./vendor/bin/pint --test
-./vendor/bin/phpstan analyse
+./vendor/bin/phpstan analyse --memory-limit=1G
 composer check:slop
 ```
 
@@ -236,7 +257,7 @@ Composer yang dijalankan sebagai root (misalnya di container) menonaktifkan plug
 ```bash
 php artisan test
 ./vendor/bin/pint --test
-./vendor/bin/phpstan analyse
+./vendor/bin/phpstan analyse --memory-limit=1G
 composer check:slop
 php artisan scramble:export --path=storage/api-docs/api.json
 DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: migrate:fresh --seed + DemoSeeder
@@ -462,7 +483,7 @@ Diambil selama Fase 3:
 
 - Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan.
 - Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
-- Fase 8: rapikan dokumentasi respons file di OpenAPI (keputusan nomor 29).
+- Fase 8: rapikan dokumentasi respons file di OpenAPI (keputusan Fase 5 nomor 29), 403 yang tidak mungkin terjadi di endpoint detail, dan tipe `*_url` private yang tertulis `string` padahal bisa `null` (misalnya `MuridResource.foto_url`).
 
 ## Akun seed
 
@@ -483,6 +504,34 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Fase 6
+
+File baru:
+
+- `app/Enums/JenisNotifikasi.php`.
+- `app/Http/Controllers/Api/V1/Notifikasi/NotifikasiController.php`, `Agenda/AgendaController.php`, `Kegiatan/KegiatanKelasController.php`, `Rapor/{ElemenPenilaianController, RaporController}.php`, `Pengumuman/PengumumanController.php`.
+- `app/Http/Requests/Notifikasi/DaftarNotifikasiRequest.php`, `Agenda/{DaftarAgendaRequest, SimpanAgendaRequest}.php`, `ElemenPenilaian/SimpanElemenPenilaianRequest.php`, `Kegiatan/{DaftarKegiatanRequest, SimpanKegiatanRequest, TambahFotoKegiatanRequest}.php`, `Rapor/{DaftarRaporRequest, BuatRaporRequest, IsiRaporRequest, FotoRaporRequest, CatatanRevisiRequest}.php`, `Pengumuman/{DaftarPengumumanRequest, SimpanPengumumanRequest}.php`.
+- `app/Http/Resources/{NotifikasiResource, AgendaResource, ElemenPenilaianResource, KegiatanKelasResource, RaporResource, PengumumanResource}.php`.
+- `app/Policies/{KegiatanKelasPolicy, RaporPolicy, PengumumanPolicy}.php`.
+- `app/Services/{ElemenPenilaianService, KegiatanKelasService, RaporService, RaporPdfService, PengumumanService}.php`.
+- `app/Jobs/KirimNotifikasiPengumuman.php`: mengirim `pengumuman_baru` per 200 penerima di dalam satu job antrean.
+- `app/Notifications/{NotifikasiRapor, RaporDiajukanNotification, RaporRevisiNotification, RaporTerbitNotification, PengumumanBaruNotification}.php`.
+- `resources/views/pdf/rapor.blade.php`, `resources/views/pdf/bagian/kop.blade.php`.
+- Test: `tests/Feature/Notifikasi/NotifikasiTest.php`, `Agenda/AgendaTest.php`, `Kegiatan/KegiatanKelasTest.php`, `Rapor/{ElemenPenilaianTest, AlurRaporTest, AksesRaporTest}.php`, `Pengumuman/PengumumanTest.php`.
+
+File yang diubah:
+
+- `routes/api.php`: 31 operasi Fase 6; pola angka untuk `detail_id`; `{id}` notifikasi memakai `whereUuid`.
+- `app/Notifications/*`: `jenis()` mengembalikan `JenisNotifikasi`.
+- `app/Models/User.php` (`profilGuru()`), `Agenda.php` (`scopeBerlangsungDi`).
+- `app/Services/PengaturanService.php` (`kopSekolah()`, dipindah dari `KwitansiService`), `KwitansiService.php`, `resources/views/pdf/kwitansi.blade.php` (memakai partial kop).
+- `tests/Unit/EnumKontrakTest.php` (JenisNotifikasi), `tests/Feature/DokumentasiApiTest.php` (jenis notifikasi enum, rapor PDF).
+- `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 473 test lulus di SQLite dan di MariaDB 12.3.3; Pint, PHPStan (level 6), dan `check:slop` tanpa temuan. Data demo diisi ulang (`migrate:fresh --seed` + `DemoSeeder`) lalu dicoba lewat `php artisan serve`: guru `sri.wahyuni` melihat rapor TK B1 dan mengunduh rapor PDF terbit (satu halaman A4, sekitar 25 KB, dicek visual).
+
+PHPStan: di laptop (PHP CLI `memory_limit` 128M) worker paralel PHPStan kehabisan memori, jadi dijalankan dengan `./vendor/bin/phpstan analyse --memory-limit=1G`.
 
 ### Revisi setelah review Fase 4–5
 
