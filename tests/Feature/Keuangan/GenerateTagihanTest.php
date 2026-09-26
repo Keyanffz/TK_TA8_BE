@@ -2,6 +2,7 @@
 
 use App\Enums\Hubungan;
 use App\Enums\PeriodeTagihan;
+use App\Enums\StatusAkun;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
 use App\Enums\StatusTagihan;
@@ -14,8 +15,10 @@ use App\Models\Murid;
 use App\Models\Pengaturan;
 use App\Models\Tagihan;
 use App\Models\TahunAjaran;
+use App\Models\User;
 use App\Models\WaliMurid;
 use App\Notifications\TagihanBaruNotification;
+use App\Notifications\TagihanTertundaNotification;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -220,6 +223,42 @@ it('hanya menghitung saat command dijalankan dengan --dry-run', function () {
 it('menolak format periode yang salah dan periode di luar tahun ajaran di command', function () {
     $this->artisan('tagihan:generate', ['--periode' => '10-2026'])->assertExitCode(2);
     $this->artisan('tagihan:generate', ['--periode' => '2027-08'])->assertFailed();
+});
+
+it('memberi tahu Kepala Sekolah saat generate terjadwal melewati bulan di luar tahun ajaran aktif', function () {
+    Carbon::setTestNow('2027-07-01 00:10:00');
+    $kepsekNonaktif = User::factory()->superAdmin()->status(StatusAkun::Nonaktif)->create();
+
+    $this->artisan('tagihan:generate')->assertFailed();
+
+    expect(Tagihan::query()->count())->toBe(0);
+    Notification::assertSentTo($this->kepsek, TagihanTertundaNotification::class, function ($notifikasi) {
+        $isi = $notifikasi->toDatabase($this->kepsek);
+
+        return $isi['jenis'] === 'tagihan_tertunda'
+            && $isi['judul'] === 'Tagihan Juli 2027 belum dibuat'
+            && $isi['pesan'] === 'Tagihan bulanan Juli 2027 belum dibuat karena bulan itu di luar tahun ajaran aktif 2026/2027. Aktifkan tahun ajaran yang sesuai, lalu buat tagihannya lewat generate tagihan manual.'
+            && $isi['url'] === '/dashboard/tahun-ajaran';
+    });
+    Notification::assertNotSentTo($kepsekNonaktif, TagihanTertundaNotification::class);
+});
+
+it('memberi tahu Kepala Sekolah saat generate terjadwal berjalan tanpa tahun ajaran aktif', function () {
+    $this->tahunAjaran->update(['is_aktif' => false]);
+
+    $this->artisan('tagihan:generate')->assertFailed();
+
+    Notification::assertSentTo($this->kepsek, TagihanTertundaNotification::class, fn ($notifikasi) => str_contains($notifikasi->toDatabase($this->kepsek)['pesan'], 'karena belum ada tahun ajaran aktif'));
+});
+
+it('tidak mengirim pemberitahuan tagihan tertunda untuk --periode, --dry-run, atau generate manual', function () {
+    Carbon::setTestNow('2027-07-01 00:10:00');
+
+    $this->artisan('tagihan:generate', ['--periode' => '2027-08'])->assertFailed();
+    $this->artisan('tagihan:generate', ['--dry-run' => true])->assertFailed();
+    $this->actingAs($this->kepsek)->postJson('/api/v1/tagihan/generate', ['periode' => '2027-07'])->assertStatus(422);
+
+    Notification::assertNothingSent();
 });
 
 it('menjadwalkan command keuangan sesuai B6.2', function () {

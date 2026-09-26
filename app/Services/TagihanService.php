@@ -9,6 +9,7 @@ use App\Enums\StatusPembayaran;
 use App\Enums\StatusTagihan;
 use App\Enums\TipeKeringanan;
 use App\Exceptions\BusinessRuleException;
+use App\Exceptions\PeriodeDiLuarTahunAjaranException;
 use App\Models\JenisTagihan;
 use App\Models\KelasMurid;
 use App\Models\Keringanan;
@@ -64,7 +65,7 @@ class TagihanService
      *
      * @return array{dibuat: int, dilewati: int}
      *
-     * @throws BusinessRuleException
+     * @throws PeriodeDiLuarTahunAjaranException
      */
     public function generateBulanan(Carbon $periode, ?User $pelaku = null, bool $simulasi = false): array
     {
@@ -171,18 +172,18 @@ class TagihanService
     }
 
     /**
-     * @throws BusinessRuleException
+     * @throws PeriodeDiLuarTahunAjaranException
      */
     private function tahunAjaranUntuk(Carbon $periode): TahunAjaran
     {
         $tahunAjaran = TahunAjaran::query()->aktif()->first()
-            ?? throw new BusinessRuleException('Belum ada tahun ajaran aktif, jadi tagihan bulanan belum bisa dibuat.');
+            ?? throw new PeriodeDiLuarTahunAjaranException($periode, null, 'Belum ada tahun ajaran aktif, jadi tagihan bulanan belum bisa dibuat.');
 
         $awal = $tahunAjaran->tanggal_mulai->copy()->startOfMonth();
         $akhir = $tahunAjaran->tanggal_selesai->copy()->startOfMonth();
 
         if ($periode->lt($awal) || $periode->gt($akhir)) {
-            throw new BusinessRuleException("Periode {$periode->translatedFormat('F Y')} di luar tahun ajaran aktif {$tahunAjaran->nama} ({$awal->translatedFormat('F Y')} – {$akhir->translatedFormat('F Y')}).");
+            throw new PeriodeDiLuarTahunAjaranException($periode, $tahunAjaran->nama, "Periode {$periode->translatedFormat('F Y')} di luar tahun ajaran aktif {$tahunAjaran->nama} ({$awal->translatedFormat('F Y')} – {$akhir->translatedFormat('F Y')}).");
         }
 
         return $tahunAjaran;
