@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Keuangan\PembayaranController;
 use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
+use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
 use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
@@ -116,6 +117,11 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
     Route::get('/pembayaran/{id}', [PembayaranController::class, 'show']);
     Route::get('/pembayaran/{id}/bukti', [PembayaranController::class, 'bukti']);
     Route::get('/pembayaran/{id}/kwitansi', [PembayaranController::class, 'kwitansi']);
+
+    Route::get('/notifikasi', [NotifikasiController::class, 'index']);
+    Route::get('/notifikasi/belum-dibaca', [NotifikasiController::class, 'belumDibaca']);
+    Route::post('/notifikasi/baca-semua', [NotifikasiController::class, 'bacaSemua']);
+    Route::post('/notifikasi/{id}/baca', [NotifikasiController::class, 'baca'])->whereUuid('id');
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
         Route::put('/profil', ProfilWaliController::class);
