@@ -22,14 +22,14 @@ class GaleriController extends Controller
     public function __construct(private readonly GaleriService $galeriService) {}
 
     /**
-     * Semua album galeri (publik dan belum publik) beserta fotonya, terbaru lebih dulu. A7 tidak punya detail
-     * album untuk Kepala Sekolah, jadi foto ikut di daftar ini. Filter `filter[is_publik]`, `search` mencari
-     * judul, urutan `sort` = `tanggal` | `created_at`.
+     * Semua album galeri (publik dan belum publik) dengan `cover_url` dan `jumlah_foto`, terbaru lebih dulu.
+     * Foto album ada di `GET /galeri-album/{id}`. Filter `filter[is_publik]`, `search` mencari judul, urutan
+     * `sort` = `tanggal` | `created_at`.
      */
     public function index(DaftarGaleriRequest $request): JsonResponse
     {
         $kata = $request->kataCari();
-        $album = QueryBuilder::for(GaleriAlbum::query()->with(['foto', 'fotoPertama'])->withCount('foto')
+        $album = QueryBuilder::for(GaleriAlbum::query()->with('fotoPertama')->withCount('foto')
             ->when($kata !== null, fn (Builder $query) => $query->where('judul', 'like', "%{$kata}%")), $request)
             ->allowedFilters(AllowedFilter::exact('is_publik'))
             ->allowedSorts('tanggal', 'created_at')
@@ -38,6 +38,16 @@ class GaleriController extends Controller
             ->withQueryString();
 
         return ApiResponse::paginated(GaleriAlbumResource::collection($album));
+    }
+
+    /**
+     * Detail album beserta semua fotonya, termasuk album yang belum publik.
+     */
+    public function show(int $id): JsonResponse
+    {
+        $album = GaleriAlbum::query()->with(['foto', 'fotoPertama'])->withCount('foto')->findOrFail($id);
+
+        return ApiResponse::success(new GaleriAlbumResource($album));
     }
 
     /**

@@ -117,6 +117,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
 
         Route::get('/galeri-album', [GaleriController::class, 'index']);
         Route::post('/galeri-album', [GaleriController::class, 'store']);
+        Route::get('/galeri-album/{id}', [GaleriController::class, 'show']);
         Route::put('/galeri-album/{id}', [GaleriController::class, 'update']);
         Route::delete('/galeri-album/{id}', [GaleriController::class, 'destroy']);
         Route::post('/galeri-album/{id}/foto', [GaleriController::class, 'tambahFoto']);

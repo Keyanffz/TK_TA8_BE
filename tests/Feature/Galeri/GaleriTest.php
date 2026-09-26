@@ -84,14 +84,31 @@ it('mengubah keterangan foto, menghapus foto sampul, lalu menghapus album besert
         ->and(Storage::disk('public')->allFiles('galeri'))->toBe([]);
 });
 
-it('menampilkan semua album beserta foto ke Kepala Sekolah dengan filter publik', function () {
+it('menampilkan semua album dengan jumlah foto tanpa daftar foto, dengan filter publik', function () {
     GaleriAlbum::factory()->create(['is_publik' => false]);
     GaleriFoto::factory()->count(2)->for(GaleriAlbum::factory()->create(['is_publik' => true]), 'album')->create();
 
     $this->actingAs($this->kepsek)->getJson('/api/v1/galeri-album')->assertOk()->assertJsonPath('meta.total', 2);
     $this->actingAs($this->kepsek)->getJson('/api/v1/galeri-album?filter[is_publik]=1')
         ->assertJsonPath('meta.total', 1)
-        ->assertJsonCount(2, 'data.0.foto');
+        ->assertJsonPath('data.0.jumlah_foto', 2)
+        ->assertJsonMissingPath('data.0.foto');
+});
+
+it('menampilkan detail album beserta semua foto ke Kepala Sekolah, termasuk album yang belum publik', function () {
+    $album = GaleriAlbum::factory()->create(['is_publik' => false]);
+    GaleriFoto::factory()->for($album, 'album')->create(['urutan' => 2, 'path' => 'galeri/b.jpg']);
+    GaleriFoto::factory()->for($album, 'album')->create(['urutan' => 1, 'path' => 'galeri/a.jpg']);
+
+    $this->actingAs($this->kepsek)->getJson("/api/v1/galeri-album/{$album->id}")
+        ->assertOk()
+        ->assertJsonPath('data.jumlah_foto', 2)
+        ->assertJsonCount(2, 'data.foto')
+        ->assertJsonPath('data.foto.0.url', Storage::disk('public')->url('galeri/a.jpg'))
+        ->assertJsonPath('data.cover_url', Storage::disk('public')->url('galeri/a.jpg'));
+
+    $this->actingAs($this->kepsek)->getJson('/api/v1/galeri-album/999999')->assertNotFound();
+    $this->actingAs(buatGuru()->user)->getJson("/api/v1/galeri-album/{$album->id}")->assertForbidden();
 });
 
 it('hanya Kepala Sekolah yang bisa mengelola galeri', function () {
