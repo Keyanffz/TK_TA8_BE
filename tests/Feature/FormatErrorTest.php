@@ -3,6 +3,7 @@
 use App\Exceptions\ApiExceptionRenderer;
 use App\Exceptions\BusinessRuleException;
 use App\Models\User;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,7 @@ beforeEach(function () {
         Route::get('/terlarang', fn () => abort(403));
         Route::get('/dibatasi', fn () => 'ok')->middleware('throttle:1,1');
         Route::get('/rusak', fn () => throw new RuntimeException('detail internal SQLSTATE'));
+        Route::post('/unggah', fn () => throw new PostTooLargeException);
     });
 });
 
@@ -88,4 +90,15 @@ it('membalas error tak terduga dengan 500 SERVER_ERROR tanpa membocorkan detail 
     $response->assertStatus(500)
         ->assertJson(['code' => 'SERVER_ERROR', 'message' => ApiExceptionRenderer::PESAN_SERVER]);
     expect($response->getContent())->not->toContain('SQLSTATE');
+});
+
+it('membalas unggahan yang melebihi batas server dengan 422 VALIDATION_ERROR dan pesan ukuran file', function () {
+    $this->postJson('/api/v1/_uji/unggah')
+        ->assertStatus(422)
+        ->assertExactJson([
+            'success' => false,
+            'message' => 'Ukuran file terlalu besar. Maksimal 5 MB per file.',
+            'code' => 'VALIDATION_ERROR',
+            'errors' => null,
+        ]);
 });

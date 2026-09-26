@@ -28,6 +28,8 @@ final class ApiExceptionRenderer
 
     public const PESAN_ENDPOINT_TIDAK_ADA = 'Endpoint tidak ditemukan. Periksa kembali alamat dan metode HTTP.';
 
+    public const PESAN_UNGGAHAN_TERLALU_BESAR = 'Ukuran file terlalu besar. Maksimal 5 MB per file.';
+
     public const PESAN_SERVER = 'Server sedang mengalami gangguan. Coba lagi beberapa saat lagi; jika masih gagal, hubungi pihak sekolah.';
 
     public function __invoke(Throwable $e, Request $request): ?JsonResponse
@@ -62,7 +64,7 @@ final class ApiExceptionRenderer
                 KodeError::NotFound,
             ),
             $status === 405 => ApiResponse::error(self::PESAN_ENDPOINT_TIDAK_ADA, KodeError::NotFound),
-            $status === 413 => ApiResponse::error('Ukuran data yang dikirim melebihi batas server. Kurangi ukuran atau jumlah file.', KodeError::ValidationError),
+            $status === 413 => ApiResponse::error(self::PESAN_UNGGAHAN_TERLALU_BESAR, KodeError::ValidationError),
             $status === 429 => ApiResponse::error(
                 sprintf('Terlalu banyak percobaan. Coba lagi dalam %d detik.', (int) ($headers['Retry-After'] ?? 60)),
                 KodeError::TooManyRequests,
