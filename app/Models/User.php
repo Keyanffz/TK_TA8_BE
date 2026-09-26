@@ -47,6 +47,21 @@ class User extends Authenticatable
     }
 
     /**
+     * Penerima notifikasi `pembayaran_masuk`: Kepala Sekolah dan guru berizin keuangan yang akunnya aktif.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopePetugasKeuanganAktif(Builder $query): void
+    {
+        $query->where('status', StatusAkun::Aktif)
+            ->where(fn (Builder $user) => $user
+                ->where('role', Role::SuperAdmin)
+                ->orWhere(fn (Builder $guru) => $guru
+                    ->where('role', Role::Guru)
+                    ->whereHas('guru', fn (Builder $profil) => $profil->where('bisa_kelola_keuangan', true))));
+    }
+
+    /**
      * @return HasOne<Guru, $this>
      */
     public function guru(): HasOne

@@ -184,5 +184,6 @@ return [
         'murid_id' => 'murid',
         'kelas_id' => 'kelas',
         'jenis_tagihan_id' => 'jenis tagihan',
+        'bukti' => 'bukti transfer',
     ],
 ];

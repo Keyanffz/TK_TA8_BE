@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\Role;
 use App\Models\Tagihan;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -17,5 +18,20 @@ class TagihanPolicy
         return Tagihan::query()->visibleTo($user)->whereKey($tagihan->id)->exists()
             ? Response::allow()
             : Response::denyAsNotFound();
+    }
+
+    /**
+     * Wali mengunggah bukti transfer untuk tagihan anaknya; petugas keuangan mencatat pembayaran tunai.
+     * Guru tanpa izin keuangan hanya bisa melihat (403 untuk tagihan murid kelasnya, 404 untuk lainnya).
+     */
+    public function bayar(User $user, Tagihan $tagihan): Response
+    {
+        $lihat = $this->view($user, $tagihan);
+
+        if ($lihat->denied() || $user->bisaKelolaKeuangan() || $user->role === Role::WaliMurid) {
+            return $lihat;
+        }
+
+        return Response::deny();
     }
 }

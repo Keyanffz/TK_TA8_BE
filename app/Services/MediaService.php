@@ -101,6 +101,15 @@ class MediaService
             return null;
         }
 
+        return $this->responsPrivat($path);
+    }
+
+    /**
+     * Menyajikan file private langsung, untuk endpoint yang memeriksa hak akses sendiri
+     * (misalnya `GET /pembayaran/{id}/bukti`). Null kalau file tidak ada.
+     */
+    public function responsPrivat(string $path): ?StreamedResponse
+    {
         if (! Storage::disk(self::DISK_PRIVAT)->exists($path)) {
             return null;
         }
