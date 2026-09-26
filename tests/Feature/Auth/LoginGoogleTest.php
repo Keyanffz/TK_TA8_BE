@@ -8,6 +8,7 @@ use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
 use App\Services\GoogleIdTokenVerifier;
+use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
 
 /**
@@ -126,4 +127,23 @@ it('membatasi login Google 10 kali per menit per IP', function () {
     }
 
     $this->postJson('/api/v1/auth/google', ['id_token' => 'id-token-google'])->assertTooManyRequests();
+});
+
+it('membalas 503 dan mencatat penyebabnya di log kalau GOOGLE_CLIENT_ID belum diisi', function () {
+    config(['services.google.client_id' => null]);
+    Log::spy();
+
+    $this->postJson('/api/v1/auth/google', ['id_token' => 'id-token-google'])
+        ->assertStatus(503)
+        ->assertExactJson([
+            'success' => false,
+            'message' => 'Login Google belum dikonfigurasi. Hubungi pihak sekolah.',
+            'code' => 'SERVER_ERROR',
+            'errors' => null,
+        ]);
+
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $pesan): bool => $pesan === 'GOOGLE_CLIENT_ID belum diisi di .env; login Google tidak bisa diverifikasi.')
+        ->once();
+    expect(User::query()->count())->toBe(0);
 });

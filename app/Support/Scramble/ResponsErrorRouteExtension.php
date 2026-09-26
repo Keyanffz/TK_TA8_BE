@@ -55,11 +55,11 @@ class ResponsErrorRouteExtension extends OperationExtension
         ksort($kodePerStatus);
         $operation->responses = $responsSukses;
 
-        foreach ($kodePerStatus as $kode) {
+        foreach ($kodePerStatus as $status => $kode) {
             $kode = array_values(array_unique($kode, SORT_REGULAR));
 
             if ($kode !== []) {
-                $operation->addResponse(SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode))));
+                $operation->addResponse(SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)), $status));
             }
         }
     }

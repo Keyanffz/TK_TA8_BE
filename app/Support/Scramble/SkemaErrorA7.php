@@ -14,8 +14,9 @@ final class SkemaErrorA7
 {
     /**
      * @param  non-empty-list<KodeError>  $kode  semua kode harus berstatus HTTP sama
+     * @param  int|null  $status  bawaan: status HTTP kode pertama
      */
-    public static function respons(array $kode, string $deskripsi): Response
+    public static function respons(array $kode, string $deskripsi, ?int $status = null): Response
     {
         $kodeValidasi = in_array(KodeError::ValidationError, $kode, true);
 
@@ -30,7 +31,7 @@ final class SkemaErrorA7
             ->addProperty('errors', $errors)
             ->setRequired(['success', 'message', 'code', 'errors']);
 
-        return Response::make($kode[0]->status())
+        return Response::make($status ?? $kode[0]->status())
             ->setDescription($deskripsi)
             ->setContent('application/json', Schema::fromType($body));
     }

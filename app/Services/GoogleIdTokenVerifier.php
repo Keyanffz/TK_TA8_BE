@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\LayananBelumDikonfigurasiException;
 use Google\Client as GoogleClient;
 use Illuminate\Support\Str;
-use RuntimeException;
 use UnexpectedValueException;
 
 /**
@@ -16,13 +16,18 @@ class GoogleIdTokenVerifier
 {
     /**
      * @return array{sub: string, email: string, name: string, email_verified: bool}|null null jika token tidak valid
+     *
+     * @throws LayananBelumDikonfigurasiException jika GOOGLE_CLIENT_ID kosong
      */
     public function verifikasi(string $idToken): ?array
     {
         $clientId = config('services.google.client_id');
 
         if (blank($clientId)) {
-            throw new RuntimeException('GOOGLE_CLIENT_ID belum diisi di .env; login Google tidak bisa diverifikasi.');
+            throw new LayananBelumDikonfigurasiException(
+                'Login Google belum dikonfigurasi. Hubungi pihak sekolah.',
+                'GOOGLE_CLIENT_ID belum diisi di .env; login Google tidak bisa diverifikasi.',
+            );
         }
 
         try {

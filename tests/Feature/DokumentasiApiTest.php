@@ -41,5 +41,6 @@ it('mendokumentasikan respons 403 dari middleware role dan status akun', functio
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login']['post'], 403))
         ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/wali/tautkan-anak']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/google']['post'], 503))->toBe(['SERVER_ERROR'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/media/{token}']['get'], 403))->toBe(['FORBIDDEN']);
 });

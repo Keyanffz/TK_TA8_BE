@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Exceptions\AksesAkunDitolakException;
 use App\Exceptions\BusinessRuleException;
+use App\Exceptions\LayananBelumDikonfigurasiException;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,7 @@ class GoogleLoginService
      *
      * @throws AksesAkunDitolakException
      * @throws BusinessRuleException
+     * @throws LayananBelumDikonfigurasiException
      */
     public function login(string $idToken, Perangkat $perangkat): array
     {

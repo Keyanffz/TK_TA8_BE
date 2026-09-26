@@ -669,6 +669,39 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "SERVER_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "SERVER_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": []
