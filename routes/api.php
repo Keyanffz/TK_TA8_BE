@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
 use App\Http\Controllers\Api\V1\Rapor\ElemenPenilaianController;
+use App\Http\Controllers\Api\V1\Rapor\RaporController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
 use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Route;
 Route::pattern('id', '[0-9]+');
 Route::pattern('murid_id', '[0-9]+');
 Route::pattern('wali_murid_id', '[0-9]+');
+Route::pattern('detail_id', '[0-9]+');
 
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
@@ -85,6 +87,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/tagihan/generate', [TagihanController::class, 'generate']);
         Route::patch('/tagihan/{id}/batalkan', [TagihanController::class, 'batalkan']);
 
+        Route::post('/rapor/{id}/terbitkan', [RaporController::class, 'terbitkan']);
+        Route::post('/rapor/{id}/revisi', [RaporController::class, 'revisi']);
+
         Route::post('/elemen-penilaian', [ElemenPenilaianController::class, 'store']);
         Route::put('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'update']);
         Route::delete('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'destroy']);
@@ -122,6 +127,11 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::delete('/kegiatan/{id}', [KegiatanKelasController::class, 'destroy']);
         Route::post('/kegiatan/{id}/foto', [KegiatanKelasController::class, 'tambahFoto']);
         Route::delete('/kegiatan-foto/{id}', [KegiatanKelasController::class, 'hapusFoto']);
+
+        Route::post('/rapor', [RaporController::class, 'store']);
+        Route::put('/rapor/{id}', [RaporController::class, 'update']);
+        Route::post('/rapor/{id}/detail/{detail_id}/foto', [RaporController::class, 'foto']);
+        Route::post('/rapor/{id}/ajukan', [RaporController::class, 'ajukan']);
     });
 
     Route::get('/murid', [MuridController::class, 'index']);
@@ -138,6 +148,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
 
     Route::get('/kegiatan', [KegiatanKelasController::class, 'index']);
     Route::get('/kegiatan/{id}', [KegiatanKelasController::class, 'show']);
+
+    Route::get('/rapor', [RaporController::class, 'index']);
+    Route::get('/rapor/{id}', [RaporController::class, 'show']);
+    Route::get('/rapor/{id}/pdf', [RaporController::class, 'pdf']);
 
     Route::get('/agenda', [AgendaController::class, 'index']);
 
