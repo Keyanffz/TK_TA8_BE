@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\Hubungan;
+use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Murid;
 use App\Models\User;
@@ -19,6 +20,44 @@ use Illuminate\Validation\ValidationException;
  */
 class KodeTautanService
 {
+    public const HARI_BERLAKU = 14;
+
+    /**
+     * Kode baru menggantikan kode lama (kode lama langsung tidak berlaku). Unique index di kolom
+     * `kode_tautan` tetap menjadi penjaga terakhir kalau dua kode acak kebetulan sama.
+     *
+     * @throws BusinessRuleException
+     */
+    public function buat(Murid $murid): Murid
+    {
+        if ($murid->status !== StatusMurid::Aktif) {
+            throw new BusinessRuleException("Kode tautan hanya bisa dibuat untuk murid aktif. Status {$murid->nama_lengkap} saat ini {$murid->status->label()}.");
+        }
+
+        do {
+            $kode = $this->kodeAcak();
+        } while (Murid::withTrashed()->where('kode_tautan', $kode)->exists());
+
+        $murid->update([
+            'kode_tautan' => $kode,
+            'kode_tautan_expired_at' => now()->addDays(self::HARI_BERLAKU),
+        ]);
+
+        return $murid;
+    }
+
+    /**
+     * Mengosongkan kode yang sudah kedaluwarsa (command `kode-tautan:bersihkan`).
+     *
+     * @return int jumlah murid yang kodenya dikosongkan
+     */
+    public function bersihkanKedaluwarsa(bool $simulasi = false): int
+    {
+        $query = Murid::withTrashed()->whereNotNull('kode_tautan')->where('kode_tautan_expired_at', '<', now());
+
+        return $simulasi ? $query->count() : $query->update(['kode_tautan' => null, 'kode_tautan_expired_at' => null]);
+    }
+
     /**
      * @throws BusinessRuleException
      */
@@ -59,5 +98,17 @@ class KodeTautanService
         );
 
         return $murid;
+    }
+
+    private function kodeAcak(): string
+    {
+        $karakter = Murid::KARAKTER_KODE_TAUTAN;
+        $kode = '';
+
+        for ($i = 0; $i < Murid::PANJANG_KODE_TAUTAN; $i++) {
+            $kode .= $karakter[random_int(0, strlen($karakter) - 1)];
+        }
+
+        return $kode;
     }
 }

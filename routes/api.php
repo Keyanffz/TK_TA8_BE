@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Kelas\KelasController;
 use App\Http\Controllers\Api\V1\Kelas\PenempatanMuridController;
 use App\Http\Controllers\Api\V1\MediaController;
+use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
 use App\Http\Controllers\Api\V1\Wali\ProfilWaliController;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::pattern('id', '[0-9]+');
 Route::pattern('murid_id', '[0-9]+');
+Route::pattern('wali_murid_id', '[0-9]+');
 
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
@@ -61,6 +63,12 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/kelas/{id}/murid', [PenempatanMuridController::class, 'tempatkan']);
         Route::delete('/kelas/{id}/murid/{murid_id}', [PenempatanMuridController::class, 'keluarkan']);
         Route::post('/kelas/kenaikan', [PenempatanMuridController::class, 'kenaikan']);
+
+        Route::post('/murid', [MuridController::class, 'store']);
+        Route::put('/murid/{id}', [MuridController::class, 'update']);
+        Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
+        Route::post('/murid/{id}/kode-tautan', [MuridController::class, 'kodeTautan']);
+        Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
     });
 
     Route::middleware('role:super_admin,guru')->group(function () {
@@ -68,6 +76,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::get('/kelas', [KelasController::class, 'index']);
         Route::get('/kelas/{id}', [KelasController::class, 'show']);
     });
+
+    Route::get('/murid', [MuridController::class, 'index']);
+    Route::get('/murid/{id}', [MuridController::class, 'show']);
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
         Route::put('/profil', ProfilWaliController::class);

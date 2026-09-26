@@ -13,9 +13,9 @@ use App\Models\Murid;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
+use App\Services\KodeTautanService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Arr;
 
 /**
  * Tahun ajaran 2026/2027, 6 guru aktif + 2 menunggu persetujuan, 4 kelas @15 murid, dan ±45 wali murid.
@@ -215,9 +215,7 @@ class SekolahDemoSeeder extends Seeder
      */
     private function beriKodeTautan(Collection $anak): void
     {
-        $anak->each(fn (Murid $murid) => $murid->update(Arr::only(
-            Murid::factory()->denganKodeTautan()->raw(),
-            ['kode_tautan', 'kode_tautan_expired_at'],
-        )));
+        $kodeTautan = app(KodeTautanService::class);
+        $anak->each(fn (Murid $murid) => $kodeTautan->buat($murid));
     }
 }

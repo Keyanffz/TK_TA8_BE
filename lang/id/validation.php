@@ -171,6 +171,7 @@ return [
         'kode' => 'kode tautan',
         'bisa_kelola_keuangan' => 'izin kelola keuangan',
         'per_page' => 'jumlah per halaman',
+        'nisn' => 'NISN',
         'tahun_ajaran_id' => 'tahun ajaran',
         'tahun_ajaran_tujuan_id' => 'tahun ajaran tujuan',
         'wali_kelas_id' => 'wali kelas',

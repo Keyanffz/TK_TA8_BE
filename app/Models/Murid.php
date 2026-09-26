@@ -64,6 +64,22 @@ class Murid extends Model
     }
 
     /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeCari(Builder $query, ?string $kata): void
+    {
+        if ($kata === null) {
+            return;
+        }
+
+        $query->where(fn (Builder $murid) => $murid
+            ->where('nama_lengkap', 'like', "%{$kata}%")
+            ->orWhere('nama_panggilan', 'like', "%{$kata}%")
+            ->orWhere('nis', 'like', "%{$kata}%")
+            ->orWhere('nisn', 'like', "%{$kata}%"));
+    }
+
+    /**
      * @return BelongsToMany<WaliMurid, $this, MuridWali>
      */
     public function waliMurid(): BelongsToMany
