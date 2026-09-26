@@ -22,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
 
     private const BATAS_TAUTKAN_ANAK_PER_MENIT = 5;
 
+    private const BATAS_API_PER_MENIT = 120;
+
     private const PANJANG_MINIMAL_PASSWORD = 8;
 
     public function boot(): void
@@ -47,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Batas B7. Limiter API umum (120/menit per user) dipasang di Fase 8.
+     * Batas B7. Limiter `api` dihitung per user untuk request yang sudah login dan per IP untuk yang belum.
      */
     private function daftarkanRateLimiter(): void
     {
@@ -56,6 +58,9 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('login-google', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_GOOGLE_PER_MENIT)
             ->by((string) $request->ip()));
+
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(self::BATAS_API_PER_MENIT)
+            ->by($request->user() === null ? 'ip:'.$request->ip() : 'user:'.$request->user()->getAuthIdentifier()));
 
         RateLimiter::for('tautkan-anak', fn (Request $request) => Limit::perMinute(self::BATAS_TAUTKAN_ANAK_PER_MENIT)
             ->by((string) $request->user()?->getAuthIdentifier()));

@@ -38,10 +38,12 @@ Route::pattern('murid_id', '[0-9]+');
 Route::pattern('wali_murid_id', '[0-9]+');
 Route::pattern('detail_id', '[0-9]+');
 
+// Health check dan file private tidak memakai limiter api: health dipanggil pemantau, dan satu halaman
+// kegiatan bisa memuat puluhan foto lewat signed URL dari satu IP sekolah.
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
 
-Route::prefix('public')->group(function () {
+Route::prefix('public')->middleware('throttle:api')->group(function () {
     Route::get('/profil', [PublikController::class, 'profil']);
     Route::get('/pengumuman', [PublikController::class, 'pengumuman']);
     Route::get('/pengumuman/{slug}', [PublikController::class, 'detailPengumuman']);
@@ -52,7 +54,7 @@ Route::prefix('public')->group(function () {
     Route::get('/ppdb', [PublikController::class, 'ppdb']);
 });
 
-Route::prefix('auth')->group(function () {
+Route::prefix('auth')->middleware('throttle:api')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('/google', [AuthController::class, 'google'])->middleware('throttle:login-google');
     Route::post('/register-guru', RegistrasiGuruController::class);
@@ -60,7 +62,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
 });
 
-Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
+Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
