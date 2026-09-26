@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Keuangan\KeringananController;
 use App\Http\Controllers\Api\V1\Keuangan\LaporanController;
 use App\Http\Controllers\Api\V1\Keuangan\PembayaranController;
 use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
+use App\Http\Controllers\Api\V1\LogAktivitas\LogAktivitasController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
@@ -125,6 +126,8 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/pendaftaran/{id}/verifikasi', [PendaftaranController::class, 'verifikasi']);
         Route::post('/pendaftaran/{id}/terima', [PendaftaranController::class, 'terima']);
         Route::post('/pendaftaran/{id}/tolak', [PendaftaranController::class, 'tolak']);
+
+        Route::get('/log-aktivitas', LogAktivitasController::class);
 
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
