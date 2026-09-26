@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
+use App\Http\Controllers\Api\V1\Pengaturan\PengaturanController;
 use App\Http\Controllers\Api\V1\Pengumuman\PengumumanController;
 use App\Http\Controllers\Api\V1\Rapor\ElemenPenilaianController;
 use App\Http\Controllers\Api\V1\Rapor\RaporController;
@@ -95,12 +96,16 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::put('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'update']);
         Route::delete('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'destroy']);
 
+        Route::put('/pengaturan', [PengaturanController::class, 'update']);
+        Route::post('/pengaturan/upload', [PengaturanController::class, 'upload']);
+
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
         Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
     });
 
     Route::middleware('can:kelola-keuangan')->group(function () {
+        Route::get('/pengaturan', [PengaturanController::class, 'index']);
         Route::get('/jenis-tagihan', [JenisTagihanController::class, 'index']);
 
         Route::get('/keringanan', [KeringananController::class, 'index']);
