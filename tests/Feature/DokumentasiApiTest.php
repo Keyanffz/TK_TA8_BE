@@ -63,3 +63,18 @@ it('mendokumentasikan jenis notifikasi sebagai enum dan rapor PDF sebagai file',
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/rapor/{id}']['get'], 404))->toBe(['NOT_FOUND'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/notifikasi/{id}/baca']['post'], 404))->toBe(['NOT_FOUND']);
 });
+
+it('mendokumentasikan endpoint publik tanpa auth dan dashboard sebagai gabungan tiga bentuk role', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $dashboard = $dokumen['paths']['/dashboard']['get']['responses'][200]['content']['application/json']['schema']['properties']['data'];
+
+    foreach (['/public/profil', '/public/pengumuman', '/public/agenda', '/public/galeri', '/public/guru', '/public/ppdb'] as $path) {
+        expect($dokumen['paths'][$path]['get']['security'])->toBe([]);
+    }
+
+    expect($dashboard['anyOf'])->toHaveCount(3)
+        ->and($dashboard['anyOf'][0]['required'])->toContain('statistik', 'grafik_pemasukan', 'tertunda')
+        ->and($dashboard['anyOf'][1]['required'])->toContain('kelas_saya', 'progres_rapor', 'pembayaran_menunggu')
+        ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'rapor_terbaru')
+        ->and($dokumen['paths']['/public/ppdb']['get']['responses'][200]['content']['application/json']['schema']['properties']['data']['properties']['dibuka'])->toBe(['type' => 'boolean']);
+});

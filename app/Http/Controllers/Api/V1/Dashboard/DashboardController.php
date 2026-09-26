@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\DashboardService;
 use App\Support\ApiResponse;
 use Illuminate\Container\Attributes\CurrentUser;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 
 class DashboardController extends Controller
@@ -17,6 +18,8 @@ class DashboardController extends Controller
      * Isi beranda sesuai role: Kepala Sekolah (statistik, keuangan bulan ini, grafik pemasukan 12 bulan, tindakan
      * tertunda), guru (kelas yang diampu, progres rapor, keuangan kelas), atau wali murid (satu anak, bisa dipilih
      * dengan `murid_id`; anak orang lain dibalas 404).
+     *
+     * @throws ModelNotFoundException
      */
     public function __invoke(DashboardRequest $request, #[CurrentUser] User $user, DashboardService $dashboard): JsonResponse
     {
