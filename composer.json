@@ -55,6 +55,9 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "phpstan": [
+            "phpstan analyse --memory-limit=1G"
+        ],
         "check:slop": [
             "bash scripts/check-slop.sh"
         ],
