@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -17,5 +19,7 @@ class AppServiceProvider extends ServiceProvider
         Carbon::serializeUsing(
             fn (CarbonInterface $waktu): string => $waktu->copy()->setTimezone(config('app.timezone'))->toIso8601String(),
         );
+
+        Gate::define('viewApiDocs', fn (?User $user = null): bool => ! $this->app->isProduction());
     }
 }
