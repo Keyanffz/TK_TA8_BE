@@ -84,7 +84,7 @@ class BuatPendaftaranRequest extends FormRequest
             if ($file instanceof UploadedFile) {
                 $dokumen[$jenis->value] = $file;
             } elseif (is_array($file)) {
-                $dokumen[$jenis->value] = array_values(array_filter($file, fn (mixed $satu): bool => $satu instanceof UploadedFile));
+                $dokumen[$jenis->value] = array_values($file);
             }
         }
 

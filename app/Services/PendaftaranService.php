@@ -52,15 +52,17 @@ class PendaftaranService
         $kuota = (int) $this->pengaturan->nilai('ppdb.kuota', 0);
         $hariIni = today();
 
+        $dibuka = $this->pengaturan->nilai('ppdb.dibuka') === true
+            && $tahunAjaran !== null
+            && ($buka === null || $hariIni->gte($buka))
+            && ($tutup === null || $hariIni->lte($tutup));
+
         return [
-            'dibuka' => $this->pengaturan->nilai('ppdb.dibuka') === true
-                && $tahunAjaran !== null
-                && ($buka === null || $hariIni->gte($buka))
-                && ($tutup === null || $hariIni->lte($tutup)),
+            'dibuka' => (bool) $dibuka,
             'tanggal_buka' => $buka?->toDateString(),
             'tanggal_tutup' => $tutup?->toDateString(),
             'kuota' => $kuota,
-            'sisa_kuota' => $tahunAjaran === null ? 0 : max(0, $kuota - $this->terpakai($tahunAjaran)),
+            'sisa_kuota' => $tahunAjaran === null ? 0 : (int) max(0, $kuota - $this->terpakai($tahunAjaran)),
             'info' => (string) $this->pengaturan->nilai('ppdb.info', ''),
             'tahun_ajaran' => $tahunAjaran === null ? null : ['id' => $tahunAjaran->id, 'nama' => $tahunAjaran->nama],
         ];
