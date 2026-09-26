@@ -7,8 +7,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Fase | Status |
 |---|---|
 | 0. Analisis | Selesai, rencana disetujui |
-| 1. Fondasi | Selesai; push ke GitHub masih ditolak (403), commit ada di branch lokal `claude/project-spec-setup-1vjwxm` |
-| 2. Database | Belum |
+| 1. Fondasi | Selesai |
+| 2. Database | Selesai, menunggu konfirmasi |
 | 3. Auth & akun | Belum |
 | 4. Master akademik | Belum |
 | 5. Keuangan | Belum |
@@ -37,7 +37,7 @@ Endpoint yang sudah ada: `GET /api/v1/health`.
 | larastan/larastan | 3.12.2 (level 6) |
 | laravel/pint | 1.32.1 |
 
-Database: MySQL 8 (utf8mb4). Test memakai SQLite in-memory (`phpunit.xml`).
+Database: MySQL 8 (utf8mb4). Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46. Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL.
 
 ## Instalasi dan menjalankan
 
@@ -47,9 +47,21 @@ Prasyarat: PHP 8.4 dengan ekstensi `pdo_mysql`, `mbstring`, `gd`, `zip`, `intl`,
 composer install
 cp .env.example .env
 php artisan key:generate
-# buat database MySQL sesuai DB_DATABASE di .env
-php artisan migrate
+# buat database MySQL sesuai DB_DATABASE, lalu isi SUPERADMIN_NAME/EMAIL/PASSWORD di .env
+php artisan migrate --seed
+php artisan storage:link
 ```
+
+`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 24 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
+
+Data contoh untuk pengembangan lokal (ditolak di production dan di database yang sudah berisi tahun ajaran):
+
+```bash
+php artisan migrate:fresh --seed
+php artisan db:seed --class=DemoSeeder
+```
+
+Gambar placeholder demo ditulis ke `storage/app/private/{kegiatan,bukti-bayar,ppdb,murid}` dan `storage/app/public/galeri` (di-ignore git). `migrate:fresh` tidak menghapus file itu; hapus foldernya kalau ingin bersih.
 
 Menjalankan di lokal:
 
@@ -90,8 +102,9 @@ php artisan scramble:export --path=storage/api-docs/api.json
 | `CACHE_STORE` | `database` (rate limiter dan cache pengaturan) |
 | `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `log` untuk lokal. `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example`, wajib diisi sebelum email dipakai (Fase 3) |
 | `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS |
+| `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
-Variabel yang akan ditambahkan saat dipakai: `GOOGLE_CLIENT_ID` (Fase 3), `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` (Fase 2).
+Variabel yang akan ditambahkan saat dipakai: `GOOGLE_CLIENT_ID` (Fase 3).
 
 ## Dokumentasi API
 
@@ -126,6 +139,26 @@ Middleware:
 - `ForceJsonResponse`: dipasang di grup `api`, memaksa `Accept: application/json`.
 - `akun.aktif` (`EnsureAccountActive`): token milik akun selain `aktif` ditolak 403 dengan `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
+
+## Skema database
+
+- 35 tabel: 26 tabel domain A4 (termasuk `users`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
+- Foreign key: tabel anak dan pivot `cascade` (`murid_wali`, `kelas_murid`, `pengumuman_kelas`, `pengumuman_murid`, `kegiatan_foto`, `rapor_detail`, `pendaftaran_dokumen`, `galeri_foto`, profil `guru`/`wali_murid` ke `users`); kolom pelaku (`dibuat_oleh`, `diverifikasi_oleh`, `disetujui_oleh`, `diproses_oleh`, `dibayar_oleh`) `null on delete`; `kelas.wali_kelas_id`, `kelas.guru_pendamping_id`, `pendaftaran.murid_id` `null on delete`; sisanya (data keuangan, rapor, kegiatan, tahun ajaran) `restrict`. `users`, `murid`, dan `pengumuman` memakai soft delete, jadi hapus fisik jarang terjadi.
+- Cascade di database tidak menjalankan observer Eloquent. Penghapusan data yang punya file (kegiatan, rapor, PPDB, galeri) harus lewat Eloquent di service supaya file fisiknya ikut terhapus (B5).
+- Scope visibilitas (B4), dipakai semua endpoint terkait mulai Fase 3:
+
+| Scope | Kepala Sekolah | Guru | Wali murid |
+|---|---|---|---|
+| `Kelas::diampuOleh($user)` | – | kelas di tahun ajaran aktif tempat dia wali kelas atau guru pendamping | – |
+| `Murid::visibleTo` | semua | murid di kelas yang diampu | anaknya |
+| `Tagihan::visibleTo` | semua | petugas keuangan: semua; lainnya: murid yang terlihat | tagihan anaknya |
+| `Pembayaran::visibleTo` | semua | petugas keuangan: semua; lainnya: pembayaran dari tagihan yang terlihat (riwayat di detail tagihan) | pembayaran tagihan anaknya |
+| `KegiatanKelas::visibleTo` | semua | kelas yang diampu | kelas yang pernah atau sedang diikuti anaknya |
+| `Rapor::visibleTo` | semua | kelas yang diampu | rapor anaknya berstatus `terbit` |
+| `Pengumuman::visibleTo` (feed) | semua, termasuk draft | terbit untuk semua / guru / kelas yang diampu / murid di kelasnya, plus tulisannya sendiri (termasuk draft) | terbit untuk semua / wali murid / kelas anaknya / anaknya, plus tulisannya sendiri |
+| `Pendaftaran::visibleTo` | semua | tidak ada | miliknya |
+
+`User::bisaKelolaKeuangan()` menentukan petugas keuangan (Kepala Sekolah, atau guru dengan `bisa_kelola_keuangan`).
 
 ## Perubahan dari spesifikasi awal
 
@@ -182,13 +215,42 @@ Diambil selama Fase 1:
 - `laravel/pao` (bawaan skeleton Laravel 13) dilepas karena tidak ada di desain. `CLAUDE.md`/`AGENTS.md` bawaan skeleton (instruksi Laravel Boost), `CHANGELOG.md`, workflow `.github` milik repo Laravel, dan aset npm/Vite tidak disalin.
 - CORS: dengan satu origin yang diizinkan, header `Access-Control-Allow-Origin` selalu berisi `FRONTEND_URL`, sehingga browser di origin lain menolak respons.
 
+Diambil selama Fase 2:
+
+- Enum `JenisKelamin` (`L`, `P`) untuk kolom `jenis_kelamin` di `guru`, `murid`, dan `pendaftaran`. Nilainya dari A4; A5 tidak mendaftarkannya, jadi kontrak tidak berubah.
+- `guru.jenis_kelamin` nullable karena profil guru Kepala Sekolah dibuat seeder dari `.env` yang tidak memuat jenis kelamin. Validasi pendaftaran dan pembuatan guru (Fase 3) tetap mewajibkannya.
+- Kolom lain yang dibuat nullable karena desain tidak menyebut dan datanya memang bisa belum ada: `kegiatan_kelas.tema` dan `deskripsi`, `rapor_detail.deskripsi` (baris dibuat kosong saat `POST /rapor`), `rapor.catatan_guru`, `agenda.deskripsi`, `galeri_album.deskripsi` dan `cover_path`, `pendaftaran.nama_ayah`/`pekerjaan_ayah`/`nama_ibu`/`pekerjaan_ibu` (anak bisa hanya punya satu orang tua/wali), `pengaturan.nilai` (beberapa kunci bernilai null, misal `ppdb.tahun_ajaran_id`).
+- Unique tambahan: `tahun_ajaran.nama` dan `kelas (tahun_ajaran_id, nama)`, supaya tidak ada dua "2026/2027" atau dua "TK A1" di tahun ajaran yang sama.
+- `murid_wali` memakai primary key gabungan `(murid_id, wali_murid_id)` dan hanya `created_at`. Model pivot `MuridWali` meng-override `getUpdatedAtColumn()` ke `null`, karena pivot Laravel memakai nama kolom timestamp milik model induk sehingga konstanta `UPDATED_AT` di pivot tidak berlaku.
+- `kelas_murid` punya `id` dan timestamp (statusnya diperbarui saat kenaikan kelas), memakai model pivot `KelasMurid`. `pengumuman_kelas` dan `pengumuman_murid` pivot murni tanpa `id`/timestamp.
+- Scope memakai konvensi `scopeVisibleTo` (bukan atribut `#[Scope]`) supaya sama dengan nama di B4.
+- Kode PPDB memakai tahun dari tahun ajaran tujuan (`PPDB-2027-0001` untuk TA 2027/2028).
+- `SuperAdminSeeder` membaca `config('superadmin.*')`, bukan `env()`, supaya tetap bekerja saat konfigurasi di-cache. Seeder menolak kalau email dipakai akun non-Kepala Sekolah atau sudah ada Kepala Sekolah aktif dengan email lain.
+- `PengaturanSeeder` hanya mengisi nilai yang tidak mengarang fakta sekolah: nama sekolah, visi, misi, hero, dua program (Kelompok A/B), dan nilai keuangan/PPDB dari A4. NPSN, alamat, kontak, logo, peta, sejarah, sambutan, fasilitas, dan keunggulan dibiarkan kosong untuk diisi lewat CMS.
+- `DemoSeeder` dipecah per domain di `database/seeders/Demo/`. Email akun demo memakai domain `.test` (tidak bisa menerima email sungguhan). Alamat, telepon, email sekolah, dan rekening di `WebsiteDemoSeeder` fiktif.
+- Tanggal data demo mengikuti waktu penulisan (September 2026): SPP Juli–September, rapor semester 1 sudah ada yang terbit, PPDB 2027/2028 sedang dibuka. Jumlah murid 61: 60 murid di kelas ditambah satu murid dari pendaftaran PPDB yang diterima (belum punya kelas karena kelas 2027/2028 belum dibuat).
+
 ## Rencana yang sudah disepakati untuk fase berikutnya
 
+- Fase 4 dan 5: setelah `KodeTautanService`, `TagihanService`, dan `PembayaranService` ada, `DemoSeeder` memakai service itu untuk kode tautan, nomor INV/PAY, dan perhitungan potongan. Sekarang seeder menghitungnya sendiri dengan format yang sama.
 - Fase 3: `ApiErrorResponseExtension` (atau extension Scramble terpisah) juga mendokumentasikan respons 403 dari middleware, yaitu `ACCOUNT_PENDING`, `ACCOUNT_REJECTED`, `ACCOUNT_INACTIVE` dari `akun.aktif` dan `FORBIDDEN` dari `role:...`, supaya `api.json` lengkap untuk FE.
 
 ## Akun seed
 
-Belum ada. `SuperAdminSeeder` dan `DemoSeeder` dibuat di Fase 2.
+- Kepala Sekolah: email dan password dari `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` di `.env`.
+- Guru demo (`DemoSeeder`), password `guru2026`:
+
+| Email | Keterangan |
+|---|---|
+| `siti.rahmawati@guru.tkta8.test` | petugas keuangan (`bisa_kelola_keuangan`), guru pendamping TK B1 |
+| `nur.aini@guru.tkta8.test` | wali kelas TK A1 |
+| `dwi.lestari@guru.tkta8.test` | wali kelas TK A2 |
+| `sri.wahyuni@guru.tkta8.test` | wali kelas TK B1 |
+| `endang.susilowati@guru.tkta8.test` | wali kelas TK B2 |
+| `rina.kusumawati@guru.tkta8.test` | guru pendamping TK A1 |
+| `fitri.handayani@guru.tkta8.test`, `ahmad.fauzi@guru.tkta8.test` | status `pending` (menunggu persetujuan) |
+
+- Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
 
@@ -196,6 +258,29 @@ Belum ada. `SuperAdminSeeder` dan `DemoSeeder` dibuat di Fase 2.
 
 - `PROMPT_BE_TK.md`: spesifikasi proyek, lalu diperbarui dengan perubahan yang disetujui (lihat "Perubahan dari spesifikasi awal").
 - `CLAUDE.md`: aturan kerja agent (baca spesifikasi dan dokumentasi, satu fase per sesi, patuhi Bagian C).
+
+### Fase 2
+
+File baru:
+
+- `database/migrations/0001_01_01_000004_create_cache_locks_table.php`, `0001_01_01_000005_create_failed_jobs_table.php`: dipisah dari migration bawaan (satu migration per tabel).
+- `database/migrations/2026_09_26_153852_create_notifications_table.php`, `2026_09_26_153853_create_activity_log_table.php` (spatie, ditambah `down()`).
+- `database/migrations/2026_09_26_160001` … `160025`: 25 tabel domain A4 sesuai urutan dependensi (guru, wali_murid, tahun_ajaran, murid, murid_wali, kelas, kelas_murid, jenis_tagihan, keringanan, tagihan, pembayaran, pengumuman, pengumuman_kelas, pengumuman_murid, agenda, kegiatan_kelas, kegiatan_foto, elemen_penilaian, rapor, rapor_detail, pendaftaran, pendaftaran_dokumen, galeri_album, galeri_foto, pengaturan).
+- `app/Enums/JenisKelamin.php`.
+- `app/Models/*.php`: 23 model domain dengan `$table` eksplisit, relasi ERD, cast enum/tanggal, dan scope B4. Pivot `MuridWali` dan `KelasMurid`.
+- `database/factories/*.php`: factory untuk semua model domain, data Indonesia (alamat Semarang lewat trait `Concerns/MembuatAlamatSemarang`, NIK berawalan kode wilayah Semarang 3374, HP `081…`), tanpa teks lorem.
+- `config/superadmin.php`.
+- `database/seeders/SuperAdminSeeder.php`, `ElemenPenilaianSeeder.php`, `PengaturanSeeder.php`, `DemoSeeder.php`, dan `Demo/{GambarContoh, SekolahDemoSeeder, KeuanganDemoSeeder, AkademikDemoSeeder, KomunikasiDemoSeeder, PpdbDemoSeeder, WebsiteDemoSeeder}.php`.
+- `tests/Feature/Database/RelasiModelTest.php`, `ScopeVisibilitasTest.php`, `SeederTest.php`.
+
+File yang diubah:
+
+- `database/migrations/0001_01_01_000001_create_cache_table.php`, `0001_01_01_000002_create_jobs_table.php`: hanya satu tabel per file; `job_batches` dihapus.
+- `app/Models/User.php`: relasi `guru()`, `waliMurid()`, dan `bisaKelolaKeuangan()`.
+- `database/seeders/DatabaseSeeder.php`: memanggil seeder wajib.
+- `.env.example`: `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`.
+- `tests/Unit/EnumKontrakTest.php`: menyertakan `JenisKelamin`.
+- `dokumentasi.md`.
 
 ### Fase 1
 
