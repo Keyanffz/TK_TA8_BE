@@ -12,9 +12,9 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 3. Auth & akun | Selesai |
 | 4. Master akademik | Selesai, disetujui (dengan revisi) |
 | 5. Keuangan | Selesai, disetujui (dengan revisi) |
-| 6. Akademik & komunikasi | Selesai, menunggu review |
-| 7. PPDB, CMS, dashboard | Selesai, menunggu review |
-| 8. Hardening | Belum |
+| 6. Akademik & komunikasi | Selesai, disetujui (dengan revisi) |
+| 7. PPDB, CMS, dashboard | Selesai, disetujui (dengan revisi) |
+| 8. Hardening | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -32,11 +32,11 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Jenis tagihan | `GET /jenis-tagihan` (K), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
 | Keringanan (K) | `GET/POST /keringanan`, `PUT/DELETE /keringanan/{id}` |
 | Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan` (SA) |
-| Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
+| Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai atau transfer), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
 | Laporan (K) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
-| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA), `PUT /rapor/{id}`, `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi` (SA) |
+| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}`, `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi` (SA) |
 | Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role), `POST /pengumuman` (SA, G), `PUT/DELETE /pengumuman/{id}` (penulis, SA) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
@@ -44,16 +44,33 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA) |
-| Galeri (SA) | `GET/POST /galeri-album`, `PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
+| Galeri (SA) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
 
 K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga middleware `can:kelola-keuangan`.
+
+Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum).
 
 Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `kode-tautan:bersihkan` (harian 01:00). Jam dalam WIB.
 
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Fase 8:
+
+1. Rate limit: limiter `api` 120 request per menit, dihitung per user untuk request yang sudah login dan per IP untuk endpoint publik serta endpoint auth tanpa login (keduanya berbagi kuota per IP). `GET /health` dan `GET /media/{token}` tidak dibatasi: health dipanggil pemantau, dan satu halaman kegiatan bisa memuat puluhan foto lewat signed URL dari satu IP sekolah. Limiter khusus (`login`, `login-google`, `tautkan-anak`) tetap berlaku di atasnya.
+2. Endpoint detail yang Policy `view`-nya hanya membalas 404 (murid, kelas, tagihan, kegiatan, rapor dan PDF-nya, pengumuman, pendaftaran) memakai `App\Support\Jangkauan::pastikanTerlihat()` alih-alih `Gate::authorize('view', …)`. Perilakunya sama (404 "Data tidak ditemukan."), tetapi OpenAPI tidak lagi mencantumkan 403 `FORBIDDEN` di endpoint tanpa middleware role. Pembayaran tetap memakai `Gate::authorize` karena guru tanpa izin keuangan memang mendapat 403.
+3. OpenAPI: `ResponsFileExtension` membuang entri `application/json` kosong di respons file; `GET /media/{token}` bertipe `application/octet-stream` (isinya JPEG atau PDF); detail, bukti, dan kwitansi pembayaran mencantumkan 403; semua `*_url` file yang bisa kosong bertipe `string | null` lewat anotasi `@var` di Resource; `items` pada `PUT /pengaturan` bertipe objek.
+4. Grup route `/public` dipindah ke akhir `routes/api.php`. Kalau `GET /public/pengumuman` dianalisis Scramble lebih dulu, item array bertingkat di Resource lain (`foto` kegiatan dan galeri, `wali` murid, `detail` rapor, `dokumen` PPDB, `kelas`/`murid` pengumuman, `anak` dan `kelas_diampu` di `/auth/me`) terbaca sebagai `string`. Masalah ini sudah ada sejak commit galeri Fase 7 (`73303be`) dan ikut di `api.json` Fase 7; ditemukan dengan membandingkan ekspor per commit. Test `DokumentasiApiTest` sekarang memeriksa beberapa tipe bertingkat supaya tidak terulang.
+5. Proxy: `config/trustedproxy.php` membaca `TRUSTED_PROXIES` (IP/CIDR dipisah koma, atau `*`). Kosong berarti header `X-Forwarded-*` tidak dipercaya. Di balik reverse proxy HTTPS nilai ini harus diisi supaya signed URL file private memakai host dan skema yang benar.
+6. Audit N+1: `tests/Feature/Hardening/AuditQueryTest.php` mengisi data demo lalu membandingkan jumlah query setiap daftar berpaginasi (28 kombinasi role dan endpoint) antara 8 dan 20 baris. Semua sama, jadi tidak ada perbaikan kode. Pembanding 1–3 baris sempat membuat `/pembayaran` tampak bertambah satu query, karena Laravel melewati eager load `pembayar` ketika semua baris tunai (kuncinya null); itu bukan N+1.
+7. Index: semua kolom yang sering difilter sudah ber-index sejak Fase 2 (status, periode, jatuh tempo, tanggal bayar, `published_at`, `tanggal` kegiatan, `tanggal_mulai` agenda, `is_publik` galeri, semua foreign key, dan unique di A4). Tidak ada migration index baru. `murid.nik` dan `pendaftaran.nik` tidak ber-index; keduanya hanya dicari sekali saat pendaftaran PPDB dan datanya puluhan baris.
+8. `composer phpstan` = `phpstan analyse --memory-limit=1G`, dipakai sebagai perintah pengecekan biasa.
+
+## Keputusan Fase 6–7 (sudah direview)
+
+Disetujui pemilik repo setelah Fase 7, kecuali tiga hal yang diubah (nomor 7, 19, 22; lihat "Revisi setelah review Fase 6–7" di Changelog).
 
 Fase 6:
 
@@ -63,14 +80,14 @@ Fase 6:
 4. Agenda: `GET /agenda` tidak berpaginasi, `bulan` bawaan bulan ini, dan berisi agenda yang bersinggungan dengan bulan itu (agenda lintas bulan muncul di kedua bulan). Semua pengguna yang masuk melihat semua agenda, termasuk yang `is_publik = false`. `is_publik` bawaan `false`.
 5. Elemen penilaian: `GET` tidak berpaginasi dan memuat elemen nonaktif (ada `is_aktif`). `kode` diubah ke huruf besar dan hanya boleh huruf, angka, garis bawah. Tanpa `urutan`, elemen baru ditaruh paling akhir. Hapus ditolak `BUSINESS_RULE` kalau elemen sudah dipakai di rapor. Elemen baru atau yang dinonaktifkan tidak mengubah rapor yang sudah dibuat.
 6. Kegiatan kelas: guru hanya untuk kelas yang dia ampu di tahun ajaran aktif (selain itu 422 di `kelas_id`); Kepala Sekolah untuk kelas mana pun, tercatat atas profil gurunya. `tanggal` tidak boleh di masa depan. `PUT` hanya mengubah tanggal, tema, judul, deskripsi (`kelas_id` dan `foto` ditolak). Maksimal 10 foto per unggahan dan 30 per kegiatan. `caption` foto belum bisa diisi lewat API (A7 tidak punya field-nya), jadi `null` kecuali data demo. Guru pengampu lain di kelas yang sama bisa melihat tetapi mendapat 403 saat mengubah. Parameter daftar: `filter[kelas_id]`, `search` (judul, tema), `sort=tanggal|created_at` (bawaan `-tanggal`).
-7. Rapor, pembuat: A7 menulis `POST /rapor` untuk G; Kepala Sekolah juga diizinkan (A3: "semua yang bisa guru lakukan"), tercatat atas profil gurunya. Mengisi, mengunggah foto, dan mengajukan hanya oleh guru pembuat (Kepala Sekolah yang bukan pembuat mendapat 403). Kelas rapor = kelas murid dengan penempatan `aktif` di tahun ajaran aktif; semester 1 atau 2 bebas dipilih.
+7. Rapor, pembuat: **Revisi:** Kepala Sekolah boleh `POST /rapor` hanya untuk murid di kelas yang dia ampu (wali kelas atau pendamping) di tahun ajaran aktif, sama seperti guru, tercatat atas profil gurunya. Mengisi, mengunggah foto, dan mengajukan hanya oleh guru pembuat (Kepala Sekolah yang bukan pembuat mendapat 403). Kelas rapor = kelas murid dengan penempatan `aktif` di tahun ajaran aktif; semester 1 atau 2 bebas dipilih.
 8. Rapor, isi: `tinggi_badan` 50–200 cm dan `berat_badan` 5–80 kg, satu desimal. `detail` di `PUT` boleh sebagian; elemen yang tidak ada di rapor ditolak 422. Mengajukan ditolak `BUSINESS_RULE` kalau ada elemen yang deskripsinya kosong; tinggi, berat, dan catatan guru tidak wajib. Foto per elemen menggantikan foto lama; tidak ada endpoint hapus foto rapor (tidak ada di A7).
 9. Rapor, review: `catatan_revisi` tetap tersimpan setelah diajukan ulang atau terbit, dan tidak dikirim ke wali murid. Rapor terbit tidak bisa diubah atau ditarik lagi. `GET /rapor/{id}/pdf` untuk Kepala Sekolah dan guru bisa dipakai sebelum terbit sebagai pratinjau (PDF bertanda "Pratinjau"). Nama file `rapor-{nis}-{tahun-ajaran}-semester-{n}.pdf`. Parameter daftar: `filter[kelas_id|semester|status|tahun_ajaran_id|murid_id]`, `search` (nama/NIS murid), `sort=updated_at|diajukan_at|created_at` (bawaan `-updated_at`).
 10. Notifikasi rapor: `rapor_diajukan` ke Kepala Sekolah aktif, `rapor_revisi` ke guru pembuat, `rapor_terbit` ke semua wali murid anak itu; semua ber-url `/dashboard/rapor/{id}`.
 11. Pengumuman, penerima notifikasi `pengumuman_baru` (akun aktif, selain penulis): `semua` = semua guru dan wali murid; `guru`; `wali_murid`; `kelas` = wali murid yang anaknya berpenempatan aktif di kelas itu ditambah wali kelas dan guru pendampingnya; `murid` = wali murid anak itu ditambah guru pengampu kelasnya di tahun ajaran aktif. Kepala Sekolah tidak dikirimi karena melihat semua pengumuman. Judul notifikasi = judul pengumuman, pesan = 140 karakter pertama isi tanpa HTML, url `/dashboard/pengumuman/{id}`.
 12. Pengumuman, terbit: notifikasi dikirim saat pengumuman berubah dari draft menjadi terbit (`published_at` kosong → terisi). Mengubah pengumuman yang sudah terbit tidak mengirim ulang dan `published_at` tetap. `publish: false` pada pengumuman terbit menariknya kembali jadi draft (`published_at` dikosongkan); kalau diterbitkan lagi, notifikasi terkirim lagi.
 13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran. `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1`, `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
-14. Di OpenAPI, `GET /kegiatan/{id}`, `GET /rapor/{id}`, `GET /pengumuman/{id}`, dan `GET /rapor/{id}/pdf` masih mencantumkan 403 `FORBIDDEN` (sama seperti keputusan Fase 4 nomor 14). Dirapikan di Fase 8 bersama `*_url` yang seharusnya nullable.
+14. Di OpenAPI, `GET /kegiatan/{id}`, `GET /rapor/{id}`, `GET /pengumuman/{id}`, dan `GET /rapor/{id}/pdf` masih mencantumkan 403 `FORBIDDEN`. **Selesai di Fase 8** (lihat keputusan Fase 8 nomor 2).
 
 Fase 7:
 
@@ -78,10 +95,10 @@ Fase 7:
 16. Pengaturan, batas nilai: `profil.npsn` 8 digit, `profil.maps_embed_url` harus `https`, `keuangan.hari_pengingat` 1–14, `ppdb.kuota` 0–1000, `keuangan.rekening` paling banyak 5, daftar (misi, program, fasilitas, keunggulan) paling banyak 20, `ikon` huruf kecil/angka/tanda hubung (nama ikon lucide). `ppdb.tanggal_tutup` tidak boleh sebelum `ppdb.tanggal_buka`, dibandingkan juga dengan nilai yang sudah tersimpan. `ppdb.dibuka = true` tanpa tahun ajaran tujuan ditolak `BUSINESS_RULE`.
 17. Pengaturan, gambar: `POST /pengaturan/upload` menyimpan ke disk public folder `pengaturan/`. Field gambar di `PUT` harus path dari folder itu yang filenya ada. Gambar yang tidak dipakai lagi setelah `PUT` dihapus dari disk; gambar yang diunggah tetapi tidak pernah disimpan ke pengaturan tetap tertinggal (tidak ada pembersihan otomatis).
 18. Pengaturan, akses dan cache: guru berizin keuangan wajib mengirim `grup=keuangan` (tanpa itu 403). Semua kunci dibaca sekali lalu disimpan di cache tanpa batas waktu; cache dibuang lewat event `saved`/`deleted` model `Pengaturan`, jadi perubahan dari seeder atau Tinker juga langsung terbaca.
-19. Galeri: A7 tidak punya `GET /galeri-album/{id}`, jadi `GET /galeri-album` (Kepala Sekolah) sudah memuat `foto` tiap album. `cover` opsional (multipart); tanpa sampul, `cover_url` memakai foto dengan urutan terkecil. Album baru tidak publik kecuali `is_publik` dikirim. Slug album tetap walau judul diganti. Maksimal 20 foto per unggahan, tanpa batas total. `PUT /galeri-foto/{id}` menerima `caption` dan `urutan` dan membalas `{ id, caption, urutan }`. Menghapus foto yang sedang jadi sampul mengosongkan `cover_path`.
+19. Galeri: **Revisi:** `GET /galeri-album/{id}` (Kepala Sekolah) mengembalikan album beserta semua foto, termasuk album yang belum publik; `GET /galeri-album` hanya berisi `cover_url` dan `jumlah_foto`. Respons `POST`/`PUT /galeri-album` dan `POST /galeri-album/{id}/foto` memakai bentuk detail (dengan `foto`). `cover` opsional (multipart); tanpa sampul, `cover_url` memakai foto dengan urutan terkecil. Album baru tidak publik kecuali `is_publik` dikirim. Slug album tetap walau judul diganti. Maksimal 20 foto per unggahan, tanpa batas total. `PUT /galeri-foto/{id}` menerima `caption` dan `urutan` dan membalas `{ id, caption, urutan }`. Menghapus foto yang sedang jadi sampul mengosongkan `cover_path`.
 20. Publik: `/public/pengumuman` hanya `is_publik` yang `published_at`-nya sudah lewat, urut disematkan lalu terbaru, tanpa penulis dan sasaran. `/public/guru` berisi guru berakun aktif dengan `tampil_di_landing` (termasuk profil Kepala Sekolah), Kepala Sekolah lebih dulu lalu urut nama; bentuknya `{ id, nama, jabatan, foto_url }`. `/public/galeri` berpaginasi; `/public/agenda` memakai bentuk yang sama dengan `GET /agenda`.
 21. `/public/ppdb`: `{ dibuka, tanggal_buka, tanggal_tutup, kuota, sisa_kuota, info, tahun_ajaran }`. `dibuka` sudah memperhitungkan tanggal buka/tutup dan keberadaan tahun ajaran tujuan, tetapi tidak memperhitungkan kuota (lihat `sisa_kuota`). `kuota = 0` berarti tidak ada tempat.
-22. PPDB, pendaftaran: dokumen dikirim per jenis sebagai field multipart `akta_kelahiran` dan `kartu_keluarga` (gambar atau PDF, wajib), `pas_foto` (gambar, wajib), dan `lainnya[]` (opsional, maksimal 3). `nik` wajib 16 digit karena kolomnya tidak nullable di A4. Anak dengan NIK yang sudah punya pendaftaran selain `ditolak` di tahun ajaran yang sama ditolak `BUSINESS_RULE` (mencegah ayah dan ibu mendaftarkan anak yang sama dua kali). Profil wali tidak harus lengkap untuk mendaftar. Kode `PPDB-{tahun mulai tahun ajaran}-XXXX`. Parameter daftar: `filter[status|tahun_ajaran_id|tingkat_tujuan]`, `search` (kode, nama anak), `sort=created_at|nama`.
+22. PPDB, pendaftaran: dokumen dikirim per jenis sebagai field multipart `akta_kelahiran` dan `kartu_keluarga` (gambar atau PDF, wajib), `pas_foto` (gambar, wajib), dan `lainnya[]` (opsional, maksimal 3). `nik` wajib 16 digit karena kolomnya tidak nullable di A4. **Revisi:** pendaftaran ditolak `BUSINESS_RULE` kalau NIK anak sudah punya pendaftaran selain `ditolak` (di tahun ajaran mana pun) atau sudah dipakai murid (yang tidak di-soft delete); pendaftar yang pernah ditolak boleh mendaftar ulang. Profil wali tidak harus lengkap untuk mendaftar. Kode `PPDB-{tahun mulai tahun ajaran}-XXXX`. Parameter daftar: `filter[status|tahun_ajaran_id|tingkat_tujuan]`, `search` (kode, nama anak), `sort=created_at|nama`.
 23. PPDB, keputusan: `verifikasi` hanya dari `diajukan`; `terima` hanya dari `diverifikasi`; `tolak` dari `diajukan` atau `diverifikasi`, alasannya disimpan di `catatan`. `kelas_id` saat menerima harus kelas di tahun ajaran tujuan dan dicek kapasitasnya; kalau gagal, seluruh penerimaan dibatalkan. Ketiga keputusan dicatat di activity log `ppdb` dan mengirim `pendaftaran_diproses` ke wali pendaftar (url `/dashboard/ppdb/{id}`); `pendaftaran_baru` dikirim ke Kepala Sekolah aktif.
 24. PPDB, murid baru: NIS memakai tahun `tanggal_mulai` tahun ajaran tujuan, `tanggal_masuk` = `tanggal_mulai` itu, pas foto disalin (kalau berupa gambar) ke folder `murid/`, dan wali pendaftar menjadi kontak utama. Nama dan pekerjaan orang tua dari formulir tidak disalin ke murid karena tabel murid tidak punya kolomnya.
 25. Dashboard Kepala Sekolah: `guru_aktif` = akun guru berstatus aktif, `kelas` = kelas di tahun ajaran aktif, `wali_murid` = akun wali murid berstatus aktif. `keuangan_bulan_ini` memakai aturan laporan keuangan (tagihan menurut bulan jatuh tempo, tanpa yang dibatalkan). `grafik_pemasukan` 12 bulan sampai bulan ini dari pembayaran `diterima` menurut `tanggal_bayar`. `pendaftaran_baru` = pendaftaran berstatus `diajukan`. Daftar terbaru dan mendatang berisi paling banyak 5; `pengumuman_terbaru` hanya yang sudah terbit, `agenda_mendatang` agenda yang belum selesai.
@@ -108,7 +125,7 @@ Fase 4:
 11. Melepas wali yang menjadi kontak utama memindahkan kontak utama ke wali yang paling awal tertaut. Wali yang dilepas tidak diberi notifikasi (tidak ada jenis notifikasi untuk itu di A7).
 12. `bukti_url` pembayaran hanya diisi untuk petugas keuangan dan wali murid; guru tanpa izin keuangan melihat riwayat pembayaran murid kelasnya dengan `bukti_url: null`.
 13. Parameter daftar di luar yang disebut A7: `GET /murid` `sort=nama|nis|created_at`; `GET /kelas` `sort=nama|created_at`; `GET /tahun-ajaran` `sort=nama|tanggal_mulai`; `GET /tagihan` `search` (kode tagihan, nama murid) dan `sort=jatuh_tempo|periode|created_at`. Semua daftar berpaginasi (bawaan 15, maksimal 100).
-14. Di OpenAPI, `GET /murid/{id}` dan `GET /tagihan/{id}` masih mencantumkan 403 `FORBIDDEN` karena Scramble membaca pemanggilan `Gate::authorize`. Pada kenyataannya Policy membalas 404 `NOT_FOUND` untuk data di luar jangkauan.
+14. Di OpenAPI, `GET /murid/{id}` dan `GET /tagihan/{id}` masih mencantumkan 403 `FORBIDDEN` karena Scramble membaca pemanggilan `Gate::authorize`. **Selesai di Fase 8.**
 
 Fase 5:
 
@@ -126,7 +143,7 @@ Fase 5:
 26. `GET /pembayaran`: `filter[tanggal]` = tanggal bayar persis (YYYY-MM-DD), `search` mencari kode pembayaran dan nama murid.
 27. Kwitansi: A5 mendatar, kop dari `profil.nama_sekolah`, `profil.alamat`, `profil.telepon`, `profil.email`, dan `profil.logo` (jika ada filenya), tanpa terbilang, dengan waktu cetak.
 28. `phpunit.xml` memasang `memory_limit=512M` untuk test. PHP CLI di Arch bawaannya 128 MB (di container Ubuntu tanpa batas), dan seluruh suite (termasuk pembuatan dokumentasi OpenAPI) melewati 128 MB.
-29. Di OpenAPI, respons file (`bukti`, `kwitansi`, `export`) sudah bertipe media yang benar, tetapi Scramble masih menambahkan entri `application/json` kosong; `bukti` dan `kwitansi` belum mencantumkan 403. Dirapikan di Fase 8.
+29. Di OpenAPI, respons file (`bukti`, `kwitansi`, `export`) sudah bertipe media yang benar, tetapi Scramble masih menambahkan entri `application/json` kosong; `bukti` dan `kwitansi` belum mencantumkan 403. **Selesai di Fase 8.**
 
 ## Stack terpasang
 
@@ -209,7 +226,7 @@ php artisan storage:link
 php artisan db:seed --class=DemoSeeder   # opsional: data contoh dan akun demo
 php artisan test
 ./vendor/bin/pint --test
-./vendor/bin/phpstan analyse --memory-limit=1G
+composer phpstan
 composer check:slop
 ```
 
@@ -225,6 +242,7 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
 - Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `kode-tautan:bersihkan` 01:00, `tagihan:pengingat` 07:00 (WIB). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
 - Notifikasi tagihan dan pembayaran juga lewat queue: tanpa worker, notifikasi hasil generate masih di tabel `jobs`.
+- Mencoba satu jadwal tanpa menunggu jamnya: `php artisan schedule:test --name=tagihan:generate` (atau nama command lain). Command yang dijalankan scheduler memakai jam sistem sebenarnya.
 
 ### Yang khusus container dan tidak berlaku di laptop
 
@@ -280,7 +298,7 @@ Composer yang dijalankan sebagai root (misalnya di container) menonaktifkan plug
 ```bash
 php artisan test
 ./vendor/bin/pint --test
-./vendor/bin/phpstan analyse --memory-limit=1G
+composer phpstan                 # phpstan analyse --memory-limit=1G
 composer check:slop
 php artisan scramble:export --path=storage/api-docs/api.json
 DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: migrate:fresh --seed + DemoSeeder
@@ -301,16 +319,17 @@ DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: mi
 | `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
 | `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan di email (`/login`, `/reset-password`) |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth Google Identity Services (sama dengan yang dipakai FE). Wajib untuk `POST /auth/google`; kalau kosong, endpoint itu membalas 503 `SERVER_ERROR` "Login Google belum dikonfigurasi. Hubungi pihak sekolah." dan penyebabnya tercatat di log |
+| `TRUSTED_PROXIES` | IP/CIDR reverse proxy dipisah koma, atau `*`; kosong di lokal. Menentukan apakah header `X-Forwarded-*` dipercaya (skema dan host signed URL, IP untuk rate limit) |
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
-`APP_URL` harus sama dengan alamat yang dibuka klien untuk URL file publik (`avatar_url`, `foto_url` guru), karena URL disk `public` dibentuk dari `APP_URL`. Signed URL file private dibentuk dari host request, jadi di balik reverse proxy server harus mempercayai header `X-Forwarded-*` (diatur di Fase 8).
+`APP_URL` harus sama dengan alamat yang dibuka klien untuk URL file publik (`avatar_url`, `foto_url` guru), karena URL disk `public` dibentuk dari `APP_URL`. Signed URL file private dibentuk dari host request, jadi di balik reverse proxy isi `TRUSTED_PROXIES` supaya header `X-Forwarded-*` dipercaya.
 
 ## Dokumentasi API
 
 - UI: `GET /docs/api` (Stoplight Elements), JSON: `GET /docs/api.json`. Hanya terbuka di environment selain `production` (Gate `viewApiDocs`).
 - Spec hasil export dikomit di `storage/api-docs/api.json` untuk generate tipe TypeScript di FE. Server di spec: `{APP_URL}/api/v1`, path relatif terhadap prefix itu (misal `/health`).
 - Route dengan middleware `auth:sanctum` otomatis bertanda Bearer; route lain `security: []`.
-- Respons error ditulis inline per operasi dengan skema A7 dan `code` berupa enum. `ApiErrorResponseExtension` memetakan exception yang terdeteksi Scramble (termasuk `@throws` di service) ke kode A7. `ResponsErrorRouteExtension` menambahkan respons dari middleware yang tidak terdeteksi otomatis: 403 `FORBIDDEN` (`role:`, `signed`), 403 `ACCOUNT_PENDING`/`ACCOUNT_REJECTED`/`ACCOUNT_INACTIVE` (`akun.aktif`), 404 `NOT_FOUND` (route berparameter), 429 `TOO_MANY_REQUESTS` (`throttle:`). Beberapa kode pada status yang sama digabung dalam satu enum, misal 422 `BUSINESS_RULE` + `VALIDATION_ERROR`.
+- Respons error ditulis inline per operasi dengan skema A7 dan `code` berupa enum. `ApiErrorResponseExtension` memetakan exception yang terdeteksi Scramble (termasuk `@throws` di service) ke kode A7. `ResponsErrorRouteExtension` menambahkan respons dari middleware yang tidak terdeteksi otomatis: 403 `FORBIDDEN` (`role:`, `signed`), 403 `ACCOUNT_PENDING`/`ACCOUNT_REJECTED`/`ACCOUNT_INACTIVE` (`akun.aktif`), 404 `NOT_FOUND` (route berparameter), 429 `TOO_MANY_REQUESTS` (`throttle:`). `ResponsFileExtension` membuang entri `application/json` kosong di respons file. Beberapa kode pada status yang sama digabung dalam satu enum, misal 422 `BUSINESS_RULE` + `VALIDATION_ERROR`.
 
 ## Pola respons
 
@@ -344,9 +363,9 @@ Middleware:
 - `ForceJsonResponse`: dipasang di grup `api`, memaksa `Accept: application/json`.
 - `akun.aktif` (`EnsureAccountActive`): token milik akun selain `aktif` ditolak 403 dengan `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
-- Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Controller memanggil `Gate::authorize('view', $model)` setelah `findOrFail`.
+- Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Setelah `findOrFail`, controller memanggil `Jangkauan::pastikanTerlihat($model)` untuk Policy `view` yang hanya membalas 404, dan `Gate::authorize(...)` untuk aksi yang bisa membalas 403.
 - `signed:relative`: hanya di `GET /media/{token}`.
-- Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-google` 10/menit per IP, `tautkan-anak` 5/menit per user. Limiter API umum 120/menit dipasang di Fase 8.
+- Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-google` 10/menit per IP, `tautkan-anak` 5/menit per user, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
 
 ## Auth dan akun
 
@@ -411,6 +430,12 @@ Setelah review Fase 4–5 (commit `a460da8` di BE, `1562d42` di FE, Bagian A ked
 15. Petugas keuangan bisa mencatat pembayaran transfer (bukti opsional, langsung diterima), selain tunai (A2.5, A3, A6, A7 `POST /tagihan/{id}/pembayaran`, B6.3).
 16. Jenis notifikasi baru `tagihan_tertunda` untuk Kepala Sekolah saat generate terjadwal dilewati karena bulan di luar tahun ajaran aktif (A6, daftar jenis A7, B6.2).
 17. Mengeluarkan murid dari kelas ditolak kalau murid sudah punya rapor di kelas itu (B6.5).
+
+Setelah review Fase 6–7 (commit `3ecfee0` di BE, `a6a73e7` di FE, Bagian A tetap identik):
+
+18. `POST /rapor` untuk G dan SA, hanya murid di kelas yang diampu sebagai wali kelas atau pendamping di tahun ajaran aktif.
+19. `GET /galeri-album/{id}` (SA) untuk album beserta semua foto; `GET /galeri-album` berisi `cover_url` dan `jumlah_foto` tanpa daftar foto.
+20. `POST /pendaftaran` ditolak kalau NIK anak sudah punya pendaftaran selain `ditolak` atau sudah dipakai murid; pendaftar yang pernah ditolak boleh daftar ulang (A7, B6.11).
 
 ## Keputusan teknis
 
@@ -506,7 +531,8 @@ Diambil selama Fase 3:
 
 - Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan.
 - Sudah dikerjakan di Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
-- Fase 8: rapikan dokumentasi respons file di OpenAPI (keputusan Fase 5 nomor 29), 403 yang tidak mungkin terjadi di endpoint detail, dan tipe `*_url` private yang tertulis `string` padahal bisa `null` (misalnya `MuridResource.foto_url`).
+- Sudah dikerjakan di Fase 8: respons file, 403 di endpoint detail, dan tipe `*_url` nullable di OpenAPI.
+- Belum ada rencana lanjutan dari BE. Yang belum dibuat karena di luar desain saat ini: payment gateway, push notification (FCM), unggah lampiran pengumuman, dan `caption` foto kegiatan lewat API.
 
 ## Akun seed
 
@@ -527,6 +553,41 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Fase 8
+
+File baru:
+
+- `app/Support/Jangkauan.php`: pemeriksaan jangkauan data untuk Policy `view` yang hanya membalas 404.
+- `app/Support/Scramble/ResponsFileExtension.php`: membuang `application/json` kosong di respons file.
+- `config/trustedproxy.php`: `TRUSTED_PROXIES`.
+- Test: `tests/Feature/Hardening/{AuditQueryTest, RateLimitTest, TrustedProxyTest}.php`.
+
+File yang diubah:
+
+- `app/Providers/AppServiceProvider.php`: limiter `api` 120/menit.
+- `routes/api.php`: `throttle:api` di grup publik, auth tanpa login, dan grup login; grup `/public` dipindah ke akhir file.
+- Controller `Keuangan/TagihanController`, `Kegiatan/KegiatanKelasController`, `Murid/MuridController`, `Ppdb/PendaftaranController`, `Kelas/KelasController`, `Rapor/RaporController`, `Pengumuman/PengumumanController`: `Jangkauan::pastikanTerlihat()`. `Keuangan/PembayaranController`: `@throws AuthorizationException` untuk detail, bukti, dan kwitansi. `MediaController`: atribut respons file.
+- `app/Http/Resources/{AkunResource, AnakWaliResource, GaleriAlbumResource, GuruPublikResource, GuruResource, KelasResource, MuridResource, RaporResource, UserResource}.php`: anotasi `@var string|null` untuk `*_url`.
+- `app/Http/Requests/Pengaturan/SimpanPengaturanRequest.php`: tipe `items` untuk OpenAPI.
+- `config/scramble.php`, `.env.example` (`TRUSTED_PROXIES`), `tests/Feature/DokumentasiApiTest.php` (respons file, 403, tipe bertingkat, url nullable), `README.md`, `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 550 test lulus di SQLite dan di MariaDB 12.3.3; Pint, PHPStan (`composer phpstan`), dan `check:slop` tanpa temuan. `api.json` diekspor ulang dan diperiksa dengan skrip: tidak ada field tanpa tipe, tidak ada array bertingkat bertipe `string`, respons file hanya bertipe file.
+
+Verifikasi di MariaDB dengan data demo:
+
+- Queue worker sungguhan: `tagihan:generate --periode=2026-10` (60 tagihan) dan `POST /pengumuman` target semua lewat `php artisan serve` menghasilkan 57 job. `php artisan queue:work --stop-when-empty` memproses semuanya tanpa `failed_jobs`; tabel `notifications` berisi 56 `tagihan_baru` dan 53 `pengumuman_baru` (6 guru + 47 wali; job pengumuman mengirim per potongan di dalam satu job).
+- Scheduler: laptop tidak punya `faketime`, jadi `schedule:run` dijalankan lewat skrip kecil (tidak di-commit) yang memalsukan jam scheduler dengan `Carbon::setTestNow`: 1 Oktober 2026 00:10 menjalankan `tagihan:generate`, 00:30 `tagihan:tandai-terlambat`, 01:00 `kode-tautan:bersihkan`, 07:00 `tagihan:pengingat`, dan 09:00 tidak ada jadwal. Keempatnya selesai dengan exit 0. Karena command dijalankan scheduler sebagai proses terpisah dengan jam sistem (27 September), keempat command juga dijalankan langsung: generate September 0 dibuat 60 sudah ada, terlambat 0, pengingat 0, kode tautan 0.
+- Data demo diisi ulang setelah verifikasi.
+
+### Revisi setelah review Fase 6–7
+
+- `app/Http/Requests/Rapor/BuatRaporRequest.php`, `app/Services/RaporService.php`: Kepala Sekolah membuat rapor hanya untuk kelas yang dia ampu.
+- `app/Http/Controllers/Api/V1/Galeri/GaleriController.php` (`show`), `routes/api.php`: `GET /galeri-album/{id}`; daftar album tanpa foto.
+- `app/Services/PendaftaranService.php`: NIK dobel dicek terhadap pendaftaran selain ditolak dan data murid.
+- `composer.json`: script `phpstan`.
+- `PROMPT_BE_TK.md` (Bagian A, B6.11), `../TK_TA8_FE/PROMPT_FE_TK.md` (Bagian A, di-push ke `main` repo FE).
+- Test: `Rapor/AlurRaporTest` (1 baru, 1 disesuaikan), `Galeri/GaleriTest` (1 baru, 1 disesuaikan), `Ppdb/PendaftaranTest` (3 baru menggantikan 1).
 
 ### Fase 7
 
