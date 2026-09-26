@@ -5,10 +5,12 @@ namespace App\Http\Requests\Rapor;
 use App\Models\Murid;
 use App\Models\User;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Guru hanya membuat rapor untuk murid di kelas yang dia ampu; Kepala Sekolah untuk murid mana pun.
+ * Guru dan Kepala Sekolah hanya membuat rapor untuk murid di kelas yang dia ampu (wali kelas atau guru
+ * pendamping) di tahun ajaran aktif.
  */
 class BuatRaporRequest extends FormRequest
 {
@@ -32,7 +34,10 @@ class BuatRaporRequest extends FormRequest
     {
         $user = $this->user();
 
-        if (! $user instanceof User || ! Murid::query()->visibleTo($user)->whereKey($value)->exists()) {
+        $diKelasnya = $user instanceof User && Murid::query()->whereKey($value)
+            ->whereHas('kelas', fn (Builder $kelas) => $kelas->diampuOleh($user))->exists();
+
+        if (! $diKelasnya) {
             $fail('Murid tidak ditemukan di kelas yang Anda ampu.');
         }
     }

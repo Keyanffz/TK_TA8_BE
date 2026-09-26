@@ -102,9 +102,21 @@ it('menolak guru membuat rapor untuk murid di luar kelas yang dia ampu', functio
 it('menolak rapor untuk murid yang penempatannya di kelas sudah tidak aktif', function () {
     $this->kelasA1->murid()->updateExistingPivot($this->aisyah->id, ['status' => StatusKelasMurid::Keluar]);
 
-    $this->actingAs($this->kepsek)->postJson('/api/v1/rapor', ['murid_id' => $this->aisyah->id, 'semester' => 1])
+    $this->actingAs($this->buAini->user)->postJson('/api/v1/rapor', ['murid_id' => $this->aisyah->id, 'semester' => 1])
         ->assertStatus(422)
         ->assertJsonPath('message', 'Aisyah Putri belum punya kelas aktif di tahun ajaran ini, jadi rapornya belum bisa dibuat.');
+});
+
+it('membolehkan Kepala Sekolah membuat rapor hanya untuk kelas yang dia ampu', function () {
+    $this->actingAs($this->kepsek)->postJson('/api/v1/rapor', ['murid_id' => $this->aisyah->id, 'semester' => 1])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.murid_id.0', 'Murid tidak ditemukan di kelas yang Anda ampu.');
+
+    $this->kelasA1->update(['guru_pendamping_id' => $this->kepsek->guru->id]);
+
+    $this->actingAs($this->kepsek)->postJson('/api/v1/rapor', ['murid_id' => $this->aisyah->id, 'semester' => 1])
+        ->assertCreated()
+        ->assertJsonPath('data.pembuat.id', $this->kepsek->guru->id);
 });
 
 it('menjalankan alur lengkap rapor sampai terbit dan memberi tahu pihak terkait', function () {

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\Role;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusRapor;
 use App\Exceptions\BusinessRuleException;
@@ -15,7 +14,6 @@ use App\Models\User;
 use App\Notifications\RaporDiajukanNotification;
 use App\Notifications\RaporRevisiNotification;
 use App\Notifications\RaporTerbitNotification;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -36,7 +34,7 @@ class RaporService
     public function __construct(private readonly MediaService $media) {}
 
     /**
-     * Rapor dibuat di kelas murid pada tahun ajaran aktif (untuk guru: kelas yang dia ampu), dengan satu baris
+     * Rapor dibuat di kelas murid pada tahun ajaran aktif yang diampu pembuatnya, dengan satu baris
      * detail kosong per elemen penilaian aktif.
      *
      * @throws BusinessRuleException
@@ -201,7 +199,7 @@ class RaporService
     {
         $kelas = $murid->kelasAktif()
             ->wherePivot('status', StatusKelasMurid::Aktif)
-            ->when($pembuat->role === Role::Guru, fn (Builder $query) => $query->diampuOleh($pembuat))
+            ->diampuOleh($pembuat)
             ->first();
 
         return $kelas ?? throw new BusinessRuleException("{$murid->nama_lengkap} belum punya kelas aktif di tahun ajaran ini, jadi rapornya belum bisa dibuat.");
