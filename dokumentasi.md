@@ -7,7 +7,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Fase | Status |
 |---|---|
 | 0. Analisis | Selesai, rencana disetujui |
-| 1. Fondasi | Selesai, menunggu konfirmasi |
+| 1. Fondasi | Selesai; push ke GitHub masih ditolak (403), commit ada di branch lokal `claude/project-spec-setup-1vjwxm` |
 | 2. Database | Belum |
 | 3. Auth & akun | Belum |
 | 4. Master akademik | Belum |
@@ -62,6 +62,7 @@ Di server produksi:
 
 - Worker queue: `php artisan queue:work` (notifikasi dan email lewat queue driver `database`).
 - Scheduler: cron `* * * * * cd /path/ke/app && php artisan schedule:run >> /dev/null 2>&1`.
+- `php.ini`: `upload_max_filesize` minimal `5M` (batas per file di B5) dan `post_max_size` cukup untuk unggahan terbanyak dalam satu request (kegiatan: 10 foto, jadi minimal `55M`). Request yang melewati `post_max_size` dibalas 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file.".
 
 Composer yang dijalankan sebagai root (misalnya di container) menonaktifkan plugin; set `COMPOSER_ALLOW_SUPERUSER=1` supaya plugin Pest terpasang.
 
@@ -115,7 +116,8 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 | `AuthorizationException` / 403 | 403 | `FORBIDDEN` |
 | `ModelNotFoundException`, route tidak ada, metode HTTP salah (405) | 404 | `NOT_FOUND` |
 | Throttle | 429 | `TOO_MANY_REQUESTS` (header `Retry-After` ikut dikirim) |
-| Unggahan melebihi batas server (413) dan status 4xx lain di luar daftar | 422 | `VALIDATION_ERROR` |
+| Unggahan melebihi `post_max_size` (413) | 422 | `VALIDATION_ERROR` ("Ukuran file terlalu besar. Maksimal 5 MB per file.") |
+| Status 4xx lain di luar daftar A7 | 422 | `VALIDATION_ERROR` |
 | Mode pemeliharaan | 503 | `SERVER_ERROR` |
 | Exception lain | 500 | `SERVER_ERROR` (detail tidak dikirim ke klien, tetap tercatat di log) |
 
@@ -127,7 +129,7 @@ Middleware:
 
 ## Perubahan dari spesifikasi awal
 
-Disetujui setelah Fase 0 dan sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B) serta Bagian A `PROMPT_FE_TK.md` (commit `18b77e5` di BE, `d02aa0e` di FE):
+Semua sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B) dan Bagian A `PROMPT_FE_TK.md`, sehingga Bagian A kedua file tetap identik. Nomor 1–11 disetujui setelah Fase 0 (commit `18b77e5` di BE, `d02aa0e` di FE); nomor 12–14 disetujui setelah Fase 1.
 
 1. PHP minimum 8.4 (sebelumnya 8.3+), karena `spatie/laravel-activitylog` 5 dan Pest 5 membutuhkannya.
 2. `intervention/image` v4 (sebelumnya v3), versi stabil terbaru.
@@ -140,12 +142,14 @@ Disetujui setelah Fase 0 dan sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B)
 9. Field opsional `perangkat` (`web` | `mobile`, default `web`) di `POST /auth/login` dan `POST /auth/google`, dipakai sebagai nama token.
 10. Field gambar di respons pengaturan mendapat pasangan `*_url` (`profil.logo_url`, `landing.hero.gambar_url`, `landing.fasilitas[].gambar_url`); diabaikan saat `PUT /pengaturan`.
 11. `POST /tagihan` (tagihan sekali) melewati murid yang sudah punya tagihan jenis itu (selain `dibatalkan`) dan mengembalikan `{ dibuat, dilewati }`.
+12. Signed URL file private (A7 "File private", `GET /media/{token}`, B5): `*_url` file private bisa langsung dipakai di `<img>` / `<a>` tanpa header Authorization dan berlaku 30 menit. Hak akses dicek saat URL dibuat di Resource; route media tidak memakai `auth:sanctum` dan hanya memvalidasi signature, masa berlaku, dan token.
+13. Profil guru milik Kepala Sekolah tetap bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`. `PATCH /guru/{id}/status` dan perubahan `bisa_kelola_keuangan` untuk profil itu ditolak dengan 422 `BUSINESS_RULE`.
+14. Pemetaan status HTTP di luar daftar A7: 405 → 404 `NOT_FOUND`; 413 → 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file."; 4xx lain → 422 `VALIDATION_ERROR`; 503 → 503 `SERVER_ERROR`.
 
 ## Keputusan teknis
 
 Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
 
-- Signed URL media (`GET /media/{token}`): hak akses dicek saat URL dibuat di Resource; endpoint hanya memvalidasi signature, masa berlaku 30 menit, dan path terenkripsi, tanpa `auth:sanctum`, karena FE memakai URL itu langsung di `<img>`. Siapa pun yang memegang URL bisa membukanya selama 30 menit. Keputusan ini belum ditulis ke `PROMPT_BE_TK.md`.
 - Kolom yang tidak diisi saat akun dibuat bersifat nullable: guru (nip, nuptk, tempat/tanggal lahir, alamat, pendidikan terakhir, foto; `jabatan` default "Guru"), wali murid (pekerjaan, alamat; diisi saat onboarding).
 - Resource yang tidak dirinci A7 berisi kolom tabel tanpa password, token, `deleted_at`; `*_path` diganti `*_url`; relasi di-nest.
 - Email hanya untuk persetujuan/penolakan guru dan reset password. Notifikasi lain lewat database.
@@ -178,6 +182,10 @@ Diambil selama Fase 1:
 - `laravel/pao` (bawaan skeleton Laravel 13) dilepas karena tidak ada di desain. `CLAUDE.md`/`AGENTS.md` bawaan skeleton (instruksi Laravel Boost), `CHANGELOG.md`, workflow `.github` milik repo Laravel, dan aset npm/Vite tidak disalin.
 - CORS: dengan satu origin yang diizinkan, header `Access-Control-Allow-Origin` selalu berisi `FRONTEND_URL`, sehingga browser di origin lain menolak respons.
 
+## Rencana yang sudah disepakati untuk fase berikutnya
+
+- Fase 3: `ApiErrorResponseExtension` (atau extension Scramble terpisah) juga mendokumentasikan respons 403 dari middleware, yaitu `ACCOUNT_PENDING`, `ACCOUNT_REJECTED`, `ACCOUNT_INACTIVE` dari `akun.aktif` dan `FORBIDDEN` dari `role:...`, supaya `api.json` lengkap untuk FE.
+
 ## Akun seed
 
 Belum ada. `SuperAdminSeeder` dan `DemoSeeder` dibuat di Fase 2.
@@ -190,6 +198,13 @@ Belum ada. `SuperAdminSeeder` dan `DemoSeeder` dibuat di Fase 2.
 - `CLAUDE.md`: aturan kerja agent (baca spesifikasi dan dokumentasi, satu fase per sesi, patuhi Bagian C).
 
 ### Fase 1
+
+Revisi setelah laporan Fase 1:
+
+- `PROMPT_BE_TK.md` (Bagian A, B5, B6.7) dan Bagian A `PROMPT_FE_TK.md`: perubahan spesifikasi nomor 12–14.
+- `CLAUDE.md` (kedua repo): aturan laporan fase dalam Bahasa Indonesia.
+- `app/Exceptions/ApiExceptionRenderer.php`: pesan 413 menjadi "Ukuran file terlalu besar. Maksimal 5 MB per file." (konstanta `PESAN_UNGGAHAN_TERLALU_BESAR`).
+- `tests/Feature/FormatErrorTest.php`: test untuk respons 413.
 
 File baru:
 
@@ -206,7 +221,7 @@ File baru:
 - `lang/id/validation.php`: pesan validasi bahasa Indonesia.
 - `storage/api-docs/api.json`: hasil export OpenAPI.
 - `pint.json`, `phpstan.neon` (level 6), `scripts/check-slop.sh`.
-- `tests/Pest.php` dan test: `HealthTest`, `FormatErrorTest`, `FormatSuksesTest`, `MiddlewareAksesTest`, `CorsTest`, `DokumentasiApiTest`, `SerialisasiTanggalTest`, `Unit/EnumKontrakTest`.
+- `tests/Pest.php` dan test: `HealthTest`, `FormatErrorTest`, `FormatSuksesTest`, `MiddlewareAksesTest`, `CorsTest`, `DokumentasiApiTest`, `SerialisasiTanggalTest`, `Unit/EnumKontrakTest` (60 test).
 - `README.md`, `dokumentasi.md`.
 
 File bawaan skeleton yang diubah:
