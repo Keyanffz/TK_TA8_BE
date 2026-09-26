@@ -55,7 +55,7 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
 2. **Menautkan anak ke wali:** sekolah (super admin) generate **kode tautan** per murid (8 karakter, berlaku 14 hari). Wali memasukkan kode + tanggal lahir anak → langsung tertaut. Kode bisa dipakai lebih dari 1 wali (ayah & ibu) selama belum kedaluwarsa. Super admin bisa melepas tautan.
 3. **PPDB online:** wali bisa mendaftarkan anak baru lewat dashboard saat PPDB dibuka. Pendaftaran selalu untuk tahun ajaran di pengaturan `ppdb.tahun_ajaran_id` (biasanya tahun ajaran berikutnya, bukan yang sedang aktif). PPDB tidak bisa dibuka (`ppdb.dibuka = true` ditolak) kalau `ppdb.tahun_ajaran_id` belum diisi atau tahun ajarannya tidak ada. Kalau diterima, sistem otomatis membuat data murid dan menautkannya ke wali tersebut.
 4. **Tagihan (SPP) otomatis:** scheduler membuat tagihan bulanan tiap tanggal 1 untuk semua murid aktif, berdasarkan `jenis_tagihan` berperiode `bulanan` yang aktif di tahun ajaran aktif. Idempoten (tidak dobel, dijaga unique index). Potongan dari tabel `keringanan` otomatis diterapkan.
-5. **Pembayaran:** transfer manual ke rekening sekolah + upload bukti oleh wali → diverifikasi. Pembayaran tunai dicatat langsung oleh petugas keuangan (otomatis diterima). **Tidak ada cicilan** (1 tagihan dibayar penuh). Payment gateway (Midtrans) = pengembangan nanti, bukan sekarang.
+5. **Pembayaran:** transfer manual ke rekening sekolah + upload bukti oleh wali → diverifikasi. Petugas keuangan juga bisa mencatat pembayaran tunai, atau transfer yang sudah masuk ke rekening sekolah (bukti opsional); keduanya otomatis diterima. **Tidak ada cicilan** (1 tagihan dibayar penuh). Payment gateway (Midtrans) = pengembangan nanti, bukan sekarang.
 6. **Petugas keuangan:** super admin, ditambah guru yang diberi izin `bisa_kelola_keuangan = true` oleh super admin (untuk guru yang merangkap bendahara).
 7. **Tunggakan:** tagihan lewat jatuh tempo otomatis berstatus `terlambat` dan wali dapat notifikasi. Super admin/guru juga bisa membuat pengumuman dengan target `murid` tertentu (misal yang menunggak).
 8. **Rapor perkembangan anak (Kurikulum Merdeka PAUD):** penilaian naratif per elemen. Elemen bisa dikelola super admin (seed awal: Nilai Agama & Budi Pekerti; Jati Diri; Dasar-dasar Literasi, Matematika, Sains, Teknologi, Rekayasa & Seni). Alur: guru draft → ajukan → kepala sekolah terbitkan atau minta revisi → wali bisa lihat & unduh PDF.
@@ -100,7 +100,7 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
 - Kelola guru: tambah, edit, setujui/tolak pendaftaran, aktif/nonaktifkan, beri izin keuangan, tampilkan di landing
 - Kelola tahun ajaran (aktifkan 1), kelas (wali kelas, pendamping, kapasitas), penempatan murid, kenaikan kelas massal
 - Kelola murid (CRUD, status, generate kode tautan, lepas tautan wali), lihat wali murid
-- Keuangan: jenis tagihan, keringanan, generate tagihan manual (idempoten), tagihan sekali bayar (uang pangkal/seragam), verifikasi pembayaran, catat tunai, batalkan tagihan, laporan & ekspor Excel, daftar tunggakan
+- Keuangan: jenis tagihan, keringanan, generate tagihan manual (idempoten), tagihan sekali bayar (uang pangkal/seragam), verifikasi pembayaran, catat pembayaran tunai/transfer, batalkan tagihan, laporan & ekspor Excel, daftar tunggakan
 - Rapor: review, terbitkan, minta revisi; kelola elemen penilaian
 - Pengumuman (semua target) & agenda
 - PPDB: buka/tutup, verifikasi, terima (pilih kelas), tolak
@@ -312,6 +312,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A([Scheduler tgl 1 pukul 00:10 WIB]) --> B[Ambil tahun ajaran aktif]
+    B -->|Tidak ada / bulan di luar TA aktif| B2[Notifikasi Kepsek: tagihan bulan ini belum dibuat]
     B --> C[Ambil jenis_tagihan bulanan aktif]
     C --> D[Loop murid aktif yang punya kelas di TA aktif]
     D --> E{Jenis tagihan sesuai tingkat murid?}
@@ -333,7 +334,7 @@ flowchart TD
     T -->|Terima| U[Pembayaran diterima, tagihan lunas, kwitansi PDF tersedia]
     T -->|Tolak + alasan| V[Tagihan kembali ke belum_bayar / terlambat]
     V --> O
-    W([Petugas catat bayar tunai]) --> U
+    W([Petugas catat bayar tunai / transfer]) --> U
 ```
 
 ### Rapor
@@ -480,7 +481,7 @@ Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "anak": [{ "id": 9, "
 - `POST /tagihan` — K — tagihan sekali: `{ jenis_tagihan_id, murid_ids?: [], kelas_id?: , jatuh_tempo }` → `{ dibuat, dilewati }`. Murid yang sudah punya tagihan jenis itu (selain `dibatalkan`) dilewati
 - `POST /tagihan/generate` — SA — `{ periode: "YYYY-MM" }` → `{ dibuat, dilewati }` (idempoten)
 - `PATCH /tagihan/{id}/batalkan` — SA — `{ alasan }`
-- `POST /tagihan/{id}/pembayaran` — W (multipart: bukti wajib, tanggal_bayar, bank_pengirim, nama_pengirim) / K (metode tunai → langsung diterima)
+- `POST /tagihan/{id}/pembayaran` — W (multipart: bukti wajib, tanggal_bayar, bank_pengirim, nama_pengirim) / K (`metode` tunai atau transfer, tanggal_bayar → langsung diterima; untuk transfer bukti, bank_pengirim, nama_pengirim opsional)
 - `GET /pembayaran` — K, W(sendiri) — filter status, metode, tanggal
 - `GET /pembayaran/{id}` — K, W(sendiri)
 - `POST /pembayaran/{id}/terima` — K
@@ -515,7 +516,7 @@ Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "anak": [{ "id": 9, "
 - `GET /agenda?bulan=YYYY-MM` — semua. `POST|PUT|DELETE` — SA
 - `GET /notifikasi` — semua. `GET /notifikasi/belum-dibaca` → `{ jumlah }`. `POST /notifikasi/{id}/baca`. `POST /notifikasi/baca-semua`
 
-**Bentuk notifikasi:** `{ id, jenis, judul, pesan, url (path FE tujuan, misal "/dashboard/tagihan/12"), dibaca_at, created_at }`. Jenis: `tagihan_baru`, `pengingat_tagihan`, `tagihan_terlambat`, `pembayaran_masuk`, `pembayaran_diterima`, `pembayaran_ditolak`, `guru_baru`, `rapor_diajukan`, `rapor_revisi`, `rapor_terbit`, `pengumuman_baru`, `pendaftaran_baru`, `pendaftaran_diproses`, `anak_tertaut`.
+**Bentuk notifikasi:** `{ id, jenis, judul, pesan, url (path FE tujuan, misal "/dashboard/tagihan/12"), dibaca_at, created_at }`. Jenis: `tagihan_baru`, `tagihan_tertunda` (ke Kepsek: generate terjadwal dilewati karena bulan di luar tahun ajaran aktif), `pengingat_tagihan`, `tagihan_terlambat`, `pembayaran_masuk`, `pembayaran_diterima`, `pembayaran_ditolak`, `guru_baru`, `rapor_diajukan`, `rapor_revisi`, `rapor_terbit`, `pengumuman_baru`, `pendaftaran_baru`, `pendaftaran_diproses`, `anak_tertaut`.
 
 ### PPDB
 - `POST /pendaftaran` — W — multipart (data + `hubungan` + dokumen). Tahun ajaran diambil dari `ppdb.tahun_ajaran_id`. Tolak jika PPDB tutup / kuota penuh
@@ -623,14 +624,14 @@ Aturan:
 
 1. **Generate tagihan** (`TagihanService::generateBulanan(Carbon $periode)`): sesuai flowchart A6. Idempoten via unique index + `firstOrCreate`/`insertOrIgnore`. Kode tagihan unik berurutan per bulan. Potongan keringanan dihitung: persen → `floor(nominal * nilai / 100)`, nominal → min(nilai, nominal). `total = nominal - potongan`. Jika total 0 → langsung `lunas`. Mengembalikan jumlah dibuat & dilewati. Tagihan sekali (`POST /tagihan`) hanya untuk jenis berperiode `sekali`; karena `periode` null tidak dijaga unique index, service melewati murid yang sudah punya tagihan jenis itu (selain `dibatalkan`) dan mengembalikan `{ dibuat, dilewati }`.
 2. **Scheduler** (`routes/console.php`):
-   - `tagihan:generate` tiap tanggal 1 pukul 00:10 WIB
+   - `tagihan:generate` tiap tanggal 1 pukul 00:10 WIB. Kalau bulan berjalan di luar tahun ajaran aktif (atau belum ada tahun ajaran aktif), tidak ada tagihan dibuat dan Kepala Sekolah mendapat notifikasi `tagihan_tertunda`
    - `tagihan:tandai-terlambat` harian 00:30 WIB (tagihan `belum_bayar` yang lewat jatuh tempo → `terlambat` + notifikasi)
    - `tagihan:pengingat` harian 07:00 WIB (H-`keuangan.hari_pengingat`)
    - `kode-tautan:bersihkan` harian (kosongkan kode kedaluwarsa)
    - Semua command bisa dijalankan manual dengan opsi `--periode=YYYY-MM` / `--dry-run` untuk testing.
-3. **Pembayaran**: tolak upload baru jika sudah ada pembayaran `menunggu` atau tagihan sudah `lunas` / `dibatalkan`. Jumlah pembayaran harus sama dengan `total` tagihan. Terima → tagihan `lunas` + `lunas_at` + notifikasi wali. Tolak → tagihan kembali `terlambat` jika lewat jatuh tempo, selain itu `belum_bayar`. Semua verifikasi dicatat di activity log.
+3. **Pembayaran**: wali selalu transfer dengan bukti wajib (status `menunggu`); petugas keuangan mencatat tunai atau transfer (bukti opsional) yang langsung `diterima`. Tolak upload baru jika sudah ada pembayaran `menunggu` atau tagihan sudah `lunas` / `dibatalkan`. Jumlah pembayaran harus sama dengan `total` tagihan. Terima → tagihan `lunas` + `lunas_at` + notifikasi wali. Tolak → tagihan kembali `terlambat` jika lewat jatuh tempo, selain itu `belum_bayar`. Semua verifikasi dicatat di activity log.
 4. **Tahun ajaran**: tepat 1 yang aktif. Tidak bisa menghapus TA yang sudah punya kelas/tagihan.
-5. **Kelas**: 1 murid maksimal 1 kelas per TA; tolak penempatan jika melebihi kapasitas. Kenaikan kelas massal dalam 1 transaksi (update `kelas_murid.status` lama, buat penempatan baru; `lulus` → `murid.status = lulus`).
+5. **Kelas**: 1 murid maksimal 1 kelas per TA; tolak penempatan jika melebihi kapasitas. Mengeluarkan murid dari kelas ditolak jika murid sudah punya rapor di kelas itu. Kenaikan kelas massal dalam 1 transaksi (update `kelas_murid.status` lama, buat penempatan baru; `lulus` → `murid.status = lulus`).
 6. **Kode tautan**: 8 karakter huruf besar + angka tanpa karakter ambigu (`0 O 1 I L`), unik, berlaku 14 hari. Tautan valid hanya jika kode cocok + belum kedaluwarsa + `tanggal_lahir` cocok. Gagal 5x/menit → 429. Tolak jika wali sudah tertaut ke murid tsb.
 7. **Guru**: login ditolak saat `pending`/`ditolak`/`nonaktif` dengan kode error yang sesuai (FE mengarahkan ke halaman yang tepat); untuk `ditolak`, alasan penolakan masuk ke `message`. Setujui/tolak → notifikasi email ke guru. Guru daftar → notifikasi ke SA. `POST /guru` membuat password acak dan mengembalikannya sekali sebagai `password_awal`. Profil guru milik Kepala Sekolah tidak muncul di `GET /guru`, tetapi bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`; menonaktifkan profil itu atau mengubah `bisa_kelola_keuangan`-nya ditolak dengan `BUSINESS_RULE`.
 8. **Google login**: hanya untuk wali murid. Jika email Google sudah terdaftar sebagai guru/SA → tolak dengan pesan "Gunakan login email & password". User baru → buat `users` (role wali_murid, status aktif, email_verified_at terisi) + `wali_murid`, `is_new: true`.
