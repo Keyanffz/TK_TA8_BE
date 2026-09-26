@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Kelas\KelasController;
 use App\Http\Controllers\Api\V1\Kelas\PenempatanMuridController;
 use App\Http\Controllers\Api\V1\Keuangan\JenisTagihanController;
 use App\Http\Controllers\Api\V1\Keuangan\KeringananController;
+use App\Http\Controllers\Api\V1\Keuangan\LaporanController;
 use App\Http\Controllers\Api\V1\Keuangan\PembayaranController;
 use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\MediaController;
@@ -92,6 +93,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/tagihan', [TagihanController::class, 'store']);
         Route::post('/pembayaran/{id}/terima', [PembayaranController::class, 'terima']);
         Route::post('/pembayaran/{id}/tolak', [PembayaranController::class, 'tolak']);
+
+        Route::get('/laporan/keuangan', [LaporanController::class, 'keuangan']);
+        Route::get('/laporan/keuangan/export', [LaporanController::class, 'export']);
+        Route::get('/laporan/tunggakan', [LaporanController::class, 'tunggakan']);
     });
 
     Route::middleware('role:super_admin,guru')->group(function () {
