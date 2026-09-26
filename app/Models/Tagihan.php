@@ -53,6 +53,17 @@ class Tagihan extends Model
     }
 
     /**
+     * Nama tagihan untuk pesan dan kwitansi: "SPP Oktober 2026" untuk tagihan bulanan, nama jenisnya saja
+     * untuk tagihan sekali bayar. Butuh relasi `jenisTagihan`.
+     */
+    public function label(): string
+    {
+        return $this->periode === null
+            ? $this->jenisTagihan->nama
+            : $this->jenisTagihan->nama.' '.$this->periode->translatedFormat('F Y');
+    }
+
+    /**
      * @return BelongsTo<Murid, $this>
      */
     public function murid(): BelongsTo

@@ -76,6 +76,8 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/jenis-tagihan', [JenisTagihanController::class, 'store']);
         Route::put('/jenis-tagihan/{id}', [JenisTagihanController::class, 'update']);
         Route::delete('/jenis-tagihan/{id}', [JenisTagihanController::class, 'destroy']);
+        Route::post('/tagihan/generate', [TagihanController::class, 'generate']);
+        Route::patch('/tagihan/{id}/batalkan', [TagihanController::class, 'batalkan']);
     });
 
     Route::middleware('can:kelola-keuangan')->group(function () {
@@ -85,6 +87,8 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::post('/keringanan', [KeringananController::class, 'store']);
         Route::put('/keringanan/{id}', [KeringananController::class, 'update']);
         Route::delete('/keringanan/{id}', [KeringananController::class, 'destroy']);
+
+        Route::post('/tagihan', [TagihanController::class, 'store']);
     });
 
     Route::middleware('role:super_admin,guru')->group(function () {
