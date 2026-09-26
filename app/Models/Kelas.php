@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StatusKelasMurid;
 use App\Enums\Tingkat;
 use Database\Factories\KelasFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,6 +18,9 @@ class Kelas extends Model
 {
     /** @use HasFactory<KelasFactory> */
     use HasFactory;
+
+    /** Sama dengan default kolom `kelas.kapasitas` (A4). */
+    public const KAPASITAS_BAWAAN = 20;
 
     protected $table = 'kelas';
 
@@ -44,6 +48,17 @@ class Kelas extends Model
             ->where(fn (Builder $kelas) => $kelas
                 ->whereIn('wali_kelas_id', $guruIds)
                 ->orWhereIn('guru_pendamping_id', $guruIds));
+    }
+
+    /**
+     * Relasi yang ditampilkan `KelasResource` di detail kelas, termasuk daftar murid urut nama.
+     */
+    public function muatDetail(): static
+    {
+        return $this->load([
+            'tahunAjaran', 'waliKelas.user', 'guruPendamping.user',
+            'murid' => fn (BelongsToMany $murid) => $murid->orderBy('nama_lengkap'),
+        ])->loadCount('muridAktif');
     }
 
     /**
@@ -79,6 +94,16 @@ class Kelas extends Model
             ->using(KelasMurid::class)
             ->withPivot('id', 'status')
             ->withTimestamps();
+    }
+
+    /**
+     * Murid yang penempatannya masih berjalan; dipakai untuk jumlah murid dan batas kapasitas.
+     *
+     * @return BelongsToMany<Murid, $this, KelasMurid>
+     */
+    public function muridAktif(): BelongsToMany
+    {
+        return $this->murid()->wherePivot('status', StatusKelasMurid::Aktif);
     }
 
     /**

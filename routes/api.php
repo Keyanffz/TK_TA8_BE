@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\Auth\RegistrasiGuruController;
 use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Kelas\KelasController;
+use App\Http\Controllers\Api\V1\Kelas\PenempatanMuridController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\TahunAjaran\TahunAjaranController;
 use App\Http\Controllers\Api\V1\Wali\AnakController;
@@ -14,6 +16,7 @@ use App\Http\Controllers\Api\V1\WaliMurid\WaliMuridController;
 use Illuminate\Support\Facades\Route;
 
 Route::pattern('id', '[0-9]+');
+Route::pattern('murid_id', '[0-9]+');
 
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
@@ -51,10 +54,19 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::put('/tahun-ajaran/{id}', [TahunAjaranController::class, 'update']);
         Route::delete('/tahun-ajaran/{id}', [TahunAjaranController::class, 'destroy']);
         Route::post('/tahun-ajaran/{id}/aktifkan', [TahunAjaranController::class, 'aktifkan']);
+
+        Route::post('/kelas', [KelasController::class, 'store']);
+        Route::put('/kelas/{id}', [KelasController::class, 'update']);
+        Route::delete('/kelas/{id}', [KelasController::class, 'destroy']);
+        Route::post('/kelas/{id}/murid', [PenempatanMuridController::class, 'tempatkan']);
+        Route::delete('/kelas/{id}/murid/{murid_id}', [PenempatanMuridController::class, 'keluarkan']);
+        Route::post('/kelas/kenaikan', [PenempatanMuridController::class, 'kenaikan']);
     });
 
     Route::middleware('role:super_admin,guru')->group(function () {
         Route::get('/tahun-ajaran', [TahunAjaranController::class, 'index']);
+        Route::get('/kelas', [KelasController::class, 'index']);
+        Route::get('/kelas/{id}', [KelasController::class, 'show']);
     });
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
