@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Kelas\KelasController;
 use App\Http\Controllers\Api\V1\Kelas\PenempatanMuridController;
+use App\Http\Controllers\Api\V1\Keuangan\JenisTagihanController;
+use App\Http\Controllers\Api\V1\Keuangan\KeringananController;
 use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
@@ -70,6 +72,19 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
         Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
         Route::post('/murid/{id}/kode-tautan', [MuridController::class, 'kodeTautan']);
         Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
+
+        Route::post('/jenis-tagihan', [JenisTagihanController::class, 'store']);
+        Route::put('/jenis-tagihan/{id}', [JenisTagihanController::class, 'update']);
+        Route::delete('/jenis-tagihan/{id}', [JenisTagihanController::class, 'destroy']);
+    });
+
+    Route::middleware('can:kelola-keuangan')->group(function () {
+        Route::get('/jenis-tagihan', [JenisTagihanController::class, 'index']);
+
+        Route::get('/keringanan', [KeringananController::class, 'index']);
+        Route::post('/keringanan', [KeringananController::class, 'store']);
+        Route::put('/keringanan/{id}', [KeringananController::class, 'update']);
+        Route::delete('/keringanan/{id}', [KeringananController::class, 'destroy']);
     });
 
     Route::middleware('role:super_admin,guru')->group(function () {

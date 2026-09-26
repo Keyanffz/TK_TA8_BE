@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 /**
  * Melengkapi respons error per operasi:
  * - kode dari konfigurasi route yang tidak terdeteksi Scramble dari isi controller: middleware
- *   `akun.aktif` (ACCOUNT_*), `role:` dan `signed` (FORBIDDEN), `throttle:` (TOO_MANY_REQUESTS),
+ *   `akun.aktif` (ACCOUNT_*), `role:`, `can:`, dan `signed` (FORBIDDEN), `throttle:` (TOO_MANY_REQUESTS),
  *   parameter path yang datanya bisa tidak ada (NOT_FOUND);
  * - beberapa exception dengan status sama (misal 422 VALIDATION_ERROR dan BUSINESS_RULE) digabung
  *   ke satu respons, karena OpenAPI hanya menyimpan satu respons per status.
@@ -39,7 +39,7 @@ class ResponsErrorRouteExtension extends OperationExtension
             }
         }
 
-        if ($diawali('role:') || $diawali('signed')) {
+        if ($diawali('role:') || $diawali('can:') || $diawali('signed')) {
             $kodePerStatus[403] = [KodeError::Forbidden, ...$kodePerStatus[403] ?? []];
         }
         if (in_array('akun.aktif', $middleware, true)) {

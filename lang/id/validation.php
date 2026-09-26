@@ -181,5 +181,8 @@ return [
         'penempatan.*.murid_id' => 'murid',
         'penempatan.*.kelas_tujuan_id' => 'kelas tujuan',
         'penempatan.*.status' => 'status kenaikan',
+        'murid_id' => 'murid',
+        'kelas_id' => 'kelas',
+        'jenis_tagihan_id' => 'jenis tagihan',
     ],
 ];
