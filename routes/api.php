@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\ProfilController;
 use App\Http\Controllers\Api\V1\Auth\RegistrasiGuruController;
 use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardController;
 use App\Http\Controllers\Api\V1\Galeri\GaleriController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -181,6 +182,8 @@ Route::middleware(['auth:sanctum', 'akun.aktif'])->group(function () {
     Route::get('/pembayaran/{id}', [PembayaranController::class, 'show']);
     Route::get('/pembayaran/{id}/bukti', [PembayaranController::class, 'bukti']);
     Route::get('/pembayaran/{id}/kwitansi', [PembayaranController::class, 'kwitansi']);
+
+    Route::get('/dashboard', DashboardController::class);
 
     Route::get('/kegiatan', [KegiatanKelasController::class, 'index']);
     Route::get('/kegiatan/{id}', [KegiatanKelasController::class, 'show']);
