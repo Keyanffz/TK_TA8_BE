@@ -44,6 +44,7 @@ final class ApiExceptionRenderer
             $e instanceof ValidationException => ApiResponse::error(self::PESAN_VALIDASI, KodeError::ValidationError, errors: $e->errors()),
             $e instanceof AuthenticationException => ApiResponse::error(self::PESAN_TIDAK_TERAUTENTIKASI, KodeError::Unauthenticated),
             $e instanceof BusinessRuleException => ApiResponse::error($e->getMessage(), KodeError::BusinessRule),
+            $e instanceof AksesAkunDitolakException => ApiResponse::error($e->getMessage(), $e->kode),
             $e instanceof InvalidSignatureException => ApiResponse::error(self::PESAN_TAUTAN_FILE_TIDAK_BERLAKU, KodeError::Forbidden),
             $e instanceof HttpExceptionInterface => $this->dariHttpException($e, $request),
             default => ApiResponse::error(self::PESAN_SERVER, KodeError::ServerError),

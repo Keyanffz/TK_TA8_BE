@@ -14,6 +14,11 @@ return [
     |
     */
 
+    'google' => [
+        // Client ID OAuth Google yang juga dipakai FE; `aud` di ID token harus sama dengan nilai ini.
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
