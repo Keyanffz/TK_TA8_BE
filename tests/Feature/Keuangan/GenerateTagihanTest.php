@@ -20,6 +20,7 @@ use App\Models\WaliMurid;
 use App\Notifications\TagihanBaruNotification;
 use App\Notifications\TagihanTertundaNotification;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
@@ -81,6 +82,32 @@ it('tidak membuat tagihan ganda saat generate diulang untuk periode yang sama', 
         ->assertJsonPath('data', ['dibuat' => 0, 'dilewati' => 2]);
 
     expect(Tagihan::query()->count())->toBe(2);
+});
+
+it('membuat ulang tagihan bulanan yang dibatalkan untuk periode yang sama', function () {
+    $this->actingAs($this->kepsek)->postJson('/api/v1/tagihan/generate', ['periode' => '2026-10'])->assertOk();
+    $lama = tagihanSpp($this->aisyah);
+    $this->patchJson("/api/v1/tagihan/{$lama?->id}/batalkan", ['alasan' => 'Nominal salah, dibuat ulang.'])->assertOk();
+
+    $this->postJson('/api/v1/tagihan/generate', ['periode' => '2026-10'])
+        ->assertOk()
+        ->assertJsonPath('data', ['dibuat' => 1, 'dilewati' => 1]);
+    $this->postJson('/api/v1/tagihan/generate', ['periode' => '2026-10'])
+        ->assertJsonPath('data', ['dibuat' => 0, 'dilewati' => 2]);
+
+    $tagihanAisyah = Tagihan::query()->where('murid_id', $this->aisyah->id)->orderBy('id')->get();
+    expect($tagihanAisyah->pluck('status')->all())->toBe([StatusTagihan::Dibatalkan, StatusTagihan::BelumBayar])
+        ->and($tagihanAisyah->last()->kode)->toBe('INV-202610-00003');
+});
+
+it('menolak dua tagihan aktif untuk murid, jenis, dan periode yang sama di tingkat database', function () {
+    $lama = Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01', 'status' => StatusTagihan::Dibatalkan]);
+    Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01']);
+
+    expect(fn () => Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01', 'status' => StatusTagihan::Lunas]))
+        ->toThrow(UniqueConstraintViolationException::class)
+        ->and(fn () => $lama->update(['status' => StatusTagihan::BelumBayar]))
+        ->toThrow(UniqueConstraintViolationException::class);
 });
 
 it('hanya membuat tagihan untuk murid yang belum punya, saat murid baru masuk di tengah bulan', function () {

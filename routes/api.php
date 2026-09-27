@@ -136,6 +136,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
         Route::delete('/keringanan/{id}', [KeringananController::class, 'destroy']);
 
         Route::post('/tagihan', [TagihanController::class, 'store']);
+        Route::put('/tagihan/{id}', [TagihanController::class, 'update']);
         Route::post('/pembayaran/{id}/terima', [PembayaranController::class, 'terima']);
         Route::post('/pembayaran/{id}/tolak', [PembayaranController::class, 'tolak']);
 

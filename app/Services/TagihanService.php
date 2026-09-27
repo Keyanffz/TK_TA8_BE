@@ -19,11 +19,13 @@ use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Notifications\TagihanBaruNotification;
 use App\Support\NomorUrut;
+use App\Support\Rupiah;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Pembuatan tagihan (B6.1). Kode `INV-YYYYMM-XXXXX` berurutan per bulan: bulan periode untuk tagihan
@@ -60,7 +62,8 @@ class TagihanService
     /**
      * Tagihan bulanan untuk semua murid aktif yang punya kelas di tahun ajaran aktif, dari setiap jenis
      * tagihan bulanan yang aktif dan sesuai tingkat kelasnya (A6). Idempoten: murid yang sudah punya
-     * tagihan jenis itu di periode yang sama dilewati, dan unique index menjadi penjaga terakhir.
+     * tagihan jenis itu di periode yang sama (selain yang dibatalkan) dilewati, dan unique index
+     * (murid, jenis, `periode_aktif`) menjadi penjaga terakhir. Tagihan yang dibatalkan dibuat ulang.
      * `$pelaku` null berarti dijalankan scheduler; `dibuat_oleh` tagihan ikut null (sistem).
      *
      * @return array{dibuat: int, dilewati: int}
@@ -148,16 +151,7 @@ class TagihanService
     {
         $tagihan = DB::transaction(function () use ($tagihan, $alasan): Tagihan {
             $tagihan = Tagihan::query()->lockForUpdate()->findOrFail($tagihan->id);
-
-            $alasanTolak = match (true) {
-                $tagihan->status === StatusTagihan::Dibatalkan => 'Tagihan ini sudah dibatalkan.',
-                $tagihan->status === StatusTagihan::Lunas => 'Tagihan yang sudah lunas tidak bisa dibatalkan.',
-                $tagihan->pembayaran()->where('status', StatusPembayaran::Menunggu)->exists() => 'Masih ada bukti transfer yang menunggu verifikasi. Terima atau tolak pembayaran itu terlebih dahulu.',
-                default => null,
-            };
-            if ($alasanTolak !== null) {
-                throw new BusinessRuleException($alasanTolak);
-            }
+            $this->pastikanBisaDiubah($tagihan, 'dibatalkan');
 
             $tagihan->update(['status' => StatusTagihan::Dibatalkan, 'catatan' => $alasan]);
 
@@ -167,6 +161,61 @@ class TagihanService
         activity('tagihan')->causedBy($pelaku)->performedOn($tagihan)->event('dibatalkan')
             ->withProperties(['alasan' => $alasan])
             ->log("Membatalkan tagihan {$tagihan->kode}");
+
+        return $tagihan;
+    }
+
+    /**
+     * Mengubah jatuh tempo, potongan, atau catatan tagihan yang belum dibayar; `total` dihitung ulang dari
+     * nominal. Jatuh tempo baru tidak boleh sudah lewat. Tagihan terlambat yang jatuh temponya dimundurkan
+     * kembali `belum_bayar`; potongan sebesar nominal membuat tagihan langsung lunas, sama seperti keringanan
+     * penuh saat generate.
+     *
+     * @param  array{jatuh_tempo?: string, potongan?: int, catatan?: string|null}  $data
+     *
+     * @throws BusinessRuleException
+     * @throws ValidationException
+     */
+    public function perbarui(Tagihan $tagihan, array $data, User $pelaku): Tagihan
+    {
+        [$tagihan, $sebelum] = DB::transaction(function () use ($tagihan, $data): array {
+            $tagihan = Tagihan::query()->lockForUpdate()->findOrFail($tagihan->id);
+            $this->pastikanBisaDiubah($tagihan);
+            $sebelum = $tagihan->only(['jatuh_tempo', 'potongan', 'total', 'status']);
+
+            $potongan = $data['potongan'] ?? $tagihan->potongan;
+            if ($potongan > $tagihan->nominal) {
+                throw ValidationException::withMessages(['potongan' => 'Potongan tidak boleh melebihi nominal tagihan ('.Rupiah::format($tagihan->nominal).').']);
+            }
+
+            $jatuhTempo = isset($data['jatuh_tempo']) ? Carbon::parse($data['jatuh_tempo']) : $tagihan->jatuh_tempo;
+            if (! $jatuhTempo->isSameDay($tagihan->jatuh_tempo) && $jatuhTempo->lt(today())) {
+                throw ValidationException::withMessages(['jatuh_tempo' => 'Jatuh tempo baru tidak boleh sebelum hari ini.']);
+            }
+
+            $total = $tagihan->nominal - $potongan;
+            $tagihan->fill([
+                'jatuh_tempo' => $jatuhTempo->toDateString(),
+                'potongan' => $potongan,
+                'total' => $total,
+                'catatan' => array_key_exists('catatan', $data) ? $data['catatan'] : $tagihan->catatan,
+                'status' => match (true) {
+                    $total === 0 => StatusTagihan::Lunas,
+                    $tagihan->status === StatusTagihan::Terlambat && $jatuhTempo->gte(today()) => StatusTagihan::BelumBayar,
+                    default => $tagihan->status,
+                },
+                'lunas_at' => $total === 0 ? now() : null,
+            ])->save();
+
+            return [$tagihan, $sebelum];
+        });
+
+        activity('tagihan')->causedBy($pelaku)->performedOn($tagihan)->event('diubah')
+            ->withProperties([
+                'sebelum' => [...$sebelum, 'jatuh_tempo' => $sebelum['jatuh_tempo']->toDateString(), 'status' => $sebelum['status']->value],
+                'sesudah' => ['jatuh_tempo' => $tagihan->jatuh_tempo->toDateString(), 'potongan' => $tagihan->potongan, 'total' => $tagihan->total, 'status' => $tagihan->status->value],
+            ])
+            ->log("Mengubah tagihan {$tagihan->kode}");
 
         return $tagihan;
     }
@@ -190,6 +239,26 @@ class TagihanService
     }
 
     /**
+     * Tagihan yang sudah lunas, sudah dibatalkan, atau punya bukti transfer yang menunggu verifikasi tidak
+     * bisa diubah maupun dibatalkan.
+     *
+     * @throws BusinessRuleException
+     */
+    private function pastikanBisaDiubah(Tagihan $tagihan, string $aksi = 'diubah'): void
+    {
+        $alasanTolak = match (true) {
+            $tagihan->status === StatusTagihan::Dibatalkan => 'Tagihan ini sudah dibatalkan.',
+            $tagihan->status === StatusTagihan::Lunas => "Tagihan yang sudah lunas tidak bisa {$aksi}.",
+            $tagihan->pembayaran()->where('status', StatusPembayaran::Menunggu)->exists() => 'Masih ada bukti transfer yang menunggu verifikasi. Terima atau tolak pembayaran itu terlebih dahulu.',
+            default => null,
+        };
+
+        if ($alasanTolak !== null) {
+            throw new BusinessRuleException($alasanTolak);
+        }
+    }
+
+    /**
      * Kode dikunci lebih dulu (`NomorUrut`), baru tagihan yang sudah ada dibaca, supaya dua generate
      * bersamaan untuk periode yang sama tidak membuat tagihan ganda. Dalam simulasi tidak ada yang disimpan;
      * yang dihitung hanya tagihan yang akan dibuat.
@@ -204,6 +273,7 @@ class TagihanService
 
         $nomor = NomorUrut::berikutnya(Tagihan::query(), 'kode', self::awalanKode($periode), self::DIGIT_KODE);
         $sudahAda = Tagihan::query()->whereDate('periode', $periode)->whereIn('jenis_tagihan_id', $jenisTagihan->modelKeys())
+            ->where('status', '!=', StatusTagihan::Dibatalkan)
             ->get(['murid_id', 'jenis_tagihan_id'])
             ->mapWithKeys(fn (Tagihan $tagihan): array => ["{$tagihan->jenis_tagihan_id}-{$tagihan->murid_id}" => true]);
         $dibuat = new Collection;

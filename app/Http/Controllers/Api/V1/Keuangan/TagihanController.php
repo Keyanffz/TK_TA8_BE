@@ -7,6 +7,7 @@ use App\Http\Requests\AlasanRequest;
 use App\Http\Requests\Tagihan\BuatTagihanSekaliRequest;
 use App\Http\Requests\Tagihan\DaftarTagihanRequest;
 use App\Http\Requests\Tagihan\GenerateTagihanRequest;
+use App\Http\Requests\Tagihan\PerbaruiTagihanRequest;
 use App\Http\Resources\TagihanResource;
 use App\Models\JenisTagihan;
 use App\Models\Tagihan;
@@ -99,6 +100,19 @@ class TagihanController extends Controller
         $hasil = $tagihanService->generateBulanan($request->periode(), $user);
 
         return ApiResponse::success($hasil, "Tagihan {$request->periode()->translatedFormat('F Y')}: {$hasil['dibuat']} dibuat, {$hasil['dilewati']} sudah ada.");
+    }
+
+    /**
+     * Mengubah jatuh tempo, potongan, atau catatan tagihan; `total` dihitung ulang dari nominal dikurangi
+     * potongan. Ditolak untuk tagihan yang lunas, dibatalkan, atau punya bukti transfer yang menunggu
+     * verifikasi. Tagihan terlambat yang jatuh temponya dimundurkan kembali berstatus belum bayar.
+     */
+    public function update(PerbaruiTagihanRequest $request, int $id, TagihanService $tagihanService, #[CurrentUser] User $user): JsonResponse
+    {
+        $tagihan = $tagihanService->perbarui(Tagihan::query()->findOrFail($id), $request->dataTagihan(), $user);
+        $tagihan->load(['murid.kelasAktif', 'jenisTagihan']);
+
+        return ApiResponse::success(new TagihanResource($tagihan), "Tagihan {$tagihan->kode} tersimpan.");
     }
 
     /**
