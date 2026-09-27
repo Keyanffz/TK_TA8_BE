@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\Hubungan;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
@@ -135,6 +136,45 @@ class MuridService
         activity('wali')->causedBy($kepalaSekolah)->performedOn($murid)->event('dilepas')
             ->withProperties(['wali_murid_id' => $wali->id, 'hubungan' => $tautan->hubungan->value])
             ->log("Melepas tautan {$wali->user->name} dari {$murid->nama_lengkap}");
+    }
+
+    /**
+     * Mengubah hubungan atau kontak utama satu wali. Setiap murid punya tepat satu kontak utama: menjadikan wali
+     * ini kontak utama melepas status itu dari wali lain, sedangkan kontak utama tidak bisa dilepas begitu saja
+     * (pilih wali lain sebagai kontak utama).
+     *
+     * @throws BusinessRuleException
+     */
+    public function ubahTautanWali(Murid $murid, int $waliMuridId, ?Hubungan $hubungan, ?bool $kontakUtama, User $kepalaSekolah): void
+    {
+        $wali = DB::transaction(function () use ($murid, $waliMuridId, $hubungan, $kontakUtama) {
+            Murid::query()->lockForUpdate()->findOrFail($murid->id);
+            $wali = $murid->waliMurid()->with('user')->findOrFail($waliMuridId);
+            /** @var MuridWali $tautan */
+            $tautan = $wali->getRelation('pivot');
+
+            if ($kontakUtama === false && $tautan->is_kontak_utama) {
+                throw new BusinessRuleException("{$wali->user->name} adalah kontak utama {$murid->nama_panggilan}. Jadikan wali lain sebagai kontak utama terlebih dahulu.");
+            }
+            if ($kontakUtama === true && ! $tautan->is_kontak_utama) {
+                $murid->waliMurid()->newPivotStatement()->where('murid_id', $murid->id)->update(['is_kontak_utama' => false]);
+            }
+
+            $murid->waliMurid()->updateExistingPivot($wali->id, array_filter([
+                'hubungan' => $hubungan,
+                'is_kontak_utama' => $kontakUtama,
+            ], fn (mixed $nilai): bool => $nilai !== null));
+
+            return $wali;
+        });
+
+        activity('wali')->causedBy($kepalaSekolah)->performedOn($murid)->event('diubah')
+            ->withProperties(array_filter([
+                'wali_murid_id' => $wali->id,
+                'hubungan' => $hubungan?->value,
+                'is_kontak_utama' => $kontakUtama,
+            ], fn (mixed $nilai): bool => $nilai !== null))
+            ->log("Mengubah tautan {$wali->user->name} dengan {$murid->nama_lengkap}");
     }
 
     /**

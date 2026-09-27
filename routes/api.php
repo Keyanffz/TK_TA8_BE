@@ -88,6 +88,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
         Route::put('/murid/{id}', [MuridController::class, 'update']);
         Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
         Route::post('/murid/{id}/kode-tautan', [MuridController::class, 'kodeTautan']);
+        Route::patch('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'ubahWali']);
         Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
 
         Route::post('/jenis-tagihan', [JenisTagihanController::class, 'store']);

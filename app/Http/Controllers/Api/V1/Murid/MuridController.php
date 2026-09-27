@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Murid;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Murid\DaftarMuridRequest;
 use App\Http\Requests\Murid\SimpanMuridRequest;
+use App\Http\Requests\Murid\UbahTautanWaliRequest;
 use App\Http\Resources\MuridResource;
 use App\Models\Murid;
 use App\Models\User;
@@ -108,6 +109,18 @@ class MuridController extends Controller
             ['kode' => $murid->kode_tautan, 'expired_at' => $murid->kode_tautan_expired_at],
             "Kode tautan untuk {$murid->nama_panggilan} berlaku sampai {$murid->kode_tautan_expired_at?->translatedFormat('j F Y')}.",
         );
+    }
+
+    /**
+     * Mengubah hubungan (`ayah` | `ibu` | `wali`) atau kontak utama wali yang tertaut. Menjadikan wali ini kontak
+     * utama melepas status itu dari wali lain; kontak utama tidak bisa dilepas tanpa memilih penggantinya.
+     */
+    public function ubahWali(UbahTautanWaliRequest $request, int $id, int $wali_murid_id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    {
+        $murid = Murid::query()->findOrFail($id);
+        $this->muridService->ubahTautanWali($murid, $wali_murid_id, $request->hubungan(), $request->kontakUtama(), $kepalaSekolah);
+
+        return ApiResponse::success(new MuridResource($murid->load(['kelasAktif', 'waliMurid.user'])), "Data wali {$murid->nama_panggilan} tersimpan.");
     }
 
     /**
