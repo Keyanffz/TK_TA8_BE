@@ -129,6 +129,7 @@ it('menyiapkan akun wali demo dengan username NIS sesuai dokumentasi', function 
         ->and($belumLogin->wajib_ganti_password)->toBeTrue()
         ->and($wali('TA20250004')->status)->toBe(StatusAkun::Nonaktif)
         ->and(Murid::query()->doesntHave('waliMurid')->exists())->toBeFalse()
+        ->and(User::query()->where('role', Role::WaliMurid)->count())->toBe(61)
         ->and(User::query()->where('role', Role::WaliMurid)->whereNotNull('email')->exists())->toBeFalse()
         ->and(User::query()->where('role', Role::WaliMurid)->where('status', StatusAkun::Nonaktif)->count())->toBe(7)
         ->and(User::query()->where('role', Role::WaliMurid)->where('status', StatusAkun::Aktif)->where('wajib_ganti_password', true)->count())->toBe(10);

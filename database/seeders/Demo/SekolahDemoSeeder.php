@@ -246,7 +246,8 @@ class SekolahDemoSeeder extends Seeder
      */
     private function pakaiAkun(WaliMurid $wali, Hubungan $hubungan, string $passwordWali, bool $profilLengkap): void
     {
-        $contoh = $profilLengkap ? WaliMurid::factory()->make() : WaliMurid::factory()->profilBelumLengkap()->make();
+        // user_id diisi supaya factory tidak membuat akun baru untuk relasi user-nya.
+        $contoh = ($profilLengkap ? WaliMurid::factory() : WaliMurid::factory()->profilBelumLengkap())->make(['user_id' => $wali->user_id]);
 
         $wali->user->forceFill([
             'name' => $hubungan === Hubungan::Ayah ? fake()->firstNameMale().' '.fake()->lastName() : fake()->firstNameFemale().' '.fake()->lastName(),
