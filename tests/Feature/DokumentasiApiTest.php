@@ -155,7 +155,9 @@ it('mendokumentasikan endpoint publik tanpa auth dan dashboard sebagai gabungan 
     expect($dashboard['anyOf'])->toHaveCount(3)
         ->and($dashboard['anyOf'][0]['required'])->toContain('statistik', 'grafik_pemasukan', 'tertunda')
         ->and($dashboard['anyOf'][1]['required'])->toContain('kelas_saya', 'progres_rapor', 'pembayaran_menunggu')
-        ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'rapor_terbaru')
+        ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'rapor_terbaru', 'info_sekolah')
+        ->and($dashboard['anyOf'][2]['properties']['info_sekolah']['type'])->toBe(['object', 'null'])
+        ->and($dashboard['anyOf'][2]['properties']['info_sekolah']['properties']['nada'])->toBe(['$ref' => '#/components/schemas/NadaInfo'])
         ->and($dokumen['paths']['/public/ppdb']['get']['responses'][200]['content']['application/json']['schema']['properties']['data']['properties']['dibuka'])->toBe(['type' => 'boolean']);
 });
 

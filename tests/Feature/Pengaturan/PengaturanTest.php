@@ -26,7 +26,7 @@ function unggahGambarPengaturan(object $test): string
 it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan url gambar', function () {
     $data = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(25)
+    expect($data)->toHaveCount(26)
         ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyathul Athfal 8')
         ->and($data)->toHaveKey('profil.logo', null)
         ->and($data)->toHaveKey('profil.logo_url', null)
@@ -88,7 +88,28 @@ it('memvalidasi nilai per kunci dan menolak kunci yang tidak dikenal', function 
     'dibuka bukan boolean' => [['ppdb.dibuka' => 'ya'], 'ppdb.dibuka'],
     'gambar belum diunggah' => [['profil.logo' => 'pengaturan/tidak-ada.jpg'], 'profil.logo'],
     'tahun ajaran PPDB tidak ada' => [['ppdb.tahun_ajaran_id' => 999], 'ppdb.tahun_ajaran_id'],
+    'info wali aktif tanpa judul' => [['beranda.info_wali' => ['aktif' => true, 'judul' => '', 'isi' => 'Libur.', 'nada' => 'info', 'berlaku_sampai' => null]], 'beranda.info_wali.judul'],
+    'nada info wali asing' => [['beranda.info_wali' => ['aktif' => false, 'nada' => 'darurat']], 'beranda.info_wali.nada'],
+    'field info wali asing' => [['beranda.info_wali' => ['aktif' => false, 'nada' => 'info', 'warna' => 'merah']], 'beranda.info_wali'],
+    'berlaku sampai bukan tanggal' => [['beranda.info_wali' => ['aktif' => false, 'nada' => 'info', 'berlaku_sampai' => '31/10/2026']], 'beranda.info_wali.berlaku_sampai'],
 ]);
+
+it('menyimpan banner info wali dan menampilkannya di grup beranda', function () {
+    $info = ['aktif' => true, 'judul' => 'Libur Maulid Nabi', 'isi' => 'Sekolah libur Senin, 26 Oktober 2026.', 'nada' => 'penting', 'berlaku_sampai' => '2026-10-26'];
+
+    $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => ['beranda.info_wali' => $info]])->assertOk();
+
+    $this->getJson('/api/v1/pengaturan?grup=beranda')
+        ->assertOk()
+        ->assertExactJson(['success' => true, 'message' => 'Berhasil', 'data' => ['beranda.info_wali' => $info], 'meta' => null]);
+    $this->getJson('/api/v1/public/profil')->assertJsonMissingPath('data.beranda.info_wali');
+});
+
+it('menerima banner info wali nonaktif tanpa judul dan isi', function () {
+    $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => ['beranda.info_wali' => [
+        'aktif' => false, 'judul' => null, 'isi' => null, 'nada' => 'info', 'berlaku_sampai' => null,
+    ]]])->assertOk();
+});
 
 it('memakai nama field yang mudah dibaca di pesan validasi', function () {
     $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => ['profil.nama_sekolah' => '']])

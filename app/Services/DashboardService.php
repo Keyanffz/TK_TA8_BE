@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\NadaInfo;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Enums\StatusKelasMurid;
@@ -44,7 +45,10 @@ class DashboardService
 
     private const STATUS_TAGIHAN_AKTIF = [StatusTagihan::BelumBayar, StatusTagihan::MenungguVerifikasi, StatusTagihan::Terlambat];
 
-    public function __construct(private readonly LaporanKeuanganService $laporan) {}
+    public function __construct(
+        private readonly LaporanKeuanganService $laporan,
+        private readonly PengaturanService $pengaturan,
+    ) {}
 
     /**
      * @return array{
@@ -140,7 +144,8 @@ class DashboardService
     /**
      * Beranda untuk satu anak: anak pilihan `murid_id` (harus anaknya sendiri), atau anak pertama menurut nama
      * panggilan. Wali yang belum punya anak tertaut mendapat `anak: null` dan daftar anak yang kosong.
-     * `total_belum_bayar` tidak menghitung tagihan yang menunggu verifikasi.
+     * `total_belum_bayar` tidak menghitung tagihan yang menunggu verifikasi. `info_sekolah` = banner dari
+     * pengaturan `beranda.info_wali`, null kalau tidak aktif atau sudah lewat masa berlakunya.
      *
      * @return array{
      *     anak: AnakWaliResource|null,
@@ -149,7 +154,8 @@ class DashboardService
      *     kegiatan_terbaru: AnonymousResourceCollection,
      *     pengumuman_terbaru: AnonymousResourceCollection,
      *     agenda_mendatang: AnonymousResourceCollection,
-     *     rapor_terbaru: RaporResource|null
+     *     rapor_terbaru: RaporResource|null,
+     *     info_sekolah: array{judul: string, isi: string, nada: NadaInfo, berlaku_sampai: string|null}|null
      * }
      */
     public function waliMurid(User $user, ?int $muridId): array
@@ -175,6 +181,7 @@ class DashboardService
             'agenda_mendatang' => $this->agendaMendatang(),
             /** @var RaporResource|null */
             'rapor_terbaru' => $rapor === null ? null : new RaporResource($rapor),
+            'info_sekolah' => $this->pengaturan->infoWali(),
         ];
     }
 

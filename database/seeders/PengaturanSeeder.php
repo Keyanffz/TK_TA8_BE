@@ -72,6 +72,13 @@ class PengaturanSeeder extends Seeder
             'ppdb.tahun_ajaran_id' => null,
             'ppdb.kuota' => 0,
             'ppdb.info' => '',
+            'beranda.info_wali' => [
+                'aktif' => false,
+                'judul' => null,
+                'isi' => null,
+                'nada' => 'info',
+                'berlaku_sampai' => null,
+            ],
         ];
     }
 }

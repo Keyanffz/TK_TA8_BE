@@ -18,6 +18,7 @@ use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pembayaran;
 use App\Models\Pendaftaran;
+use App\Models\Pengaturan;
 use App\Models\Pengumuman;
 use App\Models\Rapor;
 use App\Models\Tagihan;
@@ -133,6 +134,31 @@ it('mengisi beranda wali untuk anak pertama atau anak yang dipilih', function ()
         ->assertJsonPath('data.tagihan_aktif.0.id', $this->sppBima->id)
         ->assertJsonPath('data.total_belum_bayar', 300000)
         ->assertJsonPath('data.rapor_terbaru.status', 'terbit');
+});
+
+it('mengirim banner info sekolah ke beranda wali selama aktif dan belum lewat masa berlakunya', function (array $info, ?array $harapan) {
+    Pengaturan::query()->create(['kunci' => 'beranda.info_wali', 'nilai' => $info, 'grup' => 'beranda']);
+
+    $this->actingAs($this->ibu->user)->getJson('/api/v1/dashboard')
+        ->assertOk()
+        ->assertJsonPath('data.info_sekolah', $harapan);
+})->with([
+    'aktif sampai hari ini' => [
+        ['aktif' => true, 'judul' => 'Pengambilan rapor', 'isi' => 'Rapor dibagikan Sabtu pukul 08.00.', 'nada' => 'penting', 'berlaku_sampai' => '2026-10-15'],
+        ['judul' => 'Pengambilan rapor', 'isi' => 'Rapor dibagikan Sabtu pukul 08.00.', 'nada' => 'penting', 'berlaku_sampai' => '2026-10-15'],
+    ],
+    'aktif tanpa batas' => [
+        ['aktif' => true, 'judul' => 'Seragam baru', 'isi' => 'Seragam batik dipakai tiap Kamis.', 'nada' => 'info', 'berlaku_sampai' => null],
+        ['judul' => 'Seragam baru', 'isi' => 'Seragam batik dipakai tiap Kamis.', 'nada' => 'info', 'berlaku_sampai' => null],
+    ],
+    'sudah lewat' => [['aktif' => true, 'judul' => 'Libur', 'isi' => 'Libur kemarin.', 'nada' => 'info', 'berlaku_sampai' => '2026-10-14'], null],
+    'tidak aktif' => [['aktif' => false, 'judul' => 'Libur', 'isi' => 'Libur.', 'nada' => 'peringatan', 'berlaku_sampai' => null], null],
+]);
+
+it('mengirim info sekolah null ke beranda wali kalau banner belum pernah diatur, dan tidak ke role lain', function () {
+    $this->actingAs($this->ibu->user)->getJson('/api/v1/dashboard')->assertJsonPath('data.info_sekolah', null);
+    $this->actingAs($this->kepsek)->getJson('/api/v1/dashboard')->assertJsonMissingPath('data.info_sekolah');
+    $this->actingAs($this->buAini->user)->getJson('/api/v1/dashboard')->assertJsonMissingPath('data.info_sekolah');
 });
 
 it('membalas 404 saat wali memilih anak orang lain di beranda', function () {

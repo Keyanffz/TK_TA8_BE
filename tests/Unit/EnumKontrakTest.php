@@ -7,6 +7,7 @@ use App\Enums\JenisKelamin;
 use App\Enums\JenisNotifikasi;
 use App\Enums\KodeError;
 use App\Enums\MetodeBayar;
+use App\Enums\NadaInfo;
 use App\Enums\PeriodeTagihan;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
@@ -39,6 +40,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'StatusRapor' => [StatusRapor::class, ['draft', 'diajukan', 'revisi', 'terbit']],
     'StatusPendaftaran' => [StatusPendaftaran::class, ['diajukan', 'diverifikasi', 'diterima', 'ditolak']],
     'JenisDokumen' => [JenisDokumen::class, ['akta_kelahiran', 'kartu_keluarga', 'pas_foto', 'lainnya']],
+    'NadaInfo' => [NadaInfo::class, ['info', 'penting', 'peringatan']],
     'JenisKelamin (A4)' => [JenisKelamin::class, ['L', 'P']],
     'JenisNotifikasi (A7)' => [JenisNotifikasi::class, [
         'tagihan_baru', 'tagihan_tertunda', 'pengingat_tagihan', 'tagihan_terlambat', 'pembayaran_masuk',
@@ -60,4 +62,5 @@ it('memberi label bahasa Indonesia untuk setiap nilai enum', function (string $e
     StatusKelasMurid::class, PeriodeTagihan::class, TipeKeringanan::class, StatusTagihan::class,
     MetodeBayar::class, StatusPembayaran::class, TargetPengumuman::class, JenisAgenda::class,
     StatusRapor::class, StatusPendaftaran::class, JenisDokumen::class, JenisKelamin::class, JenisNotifikasi::class,
+    NadaInfo::class,
 ]);

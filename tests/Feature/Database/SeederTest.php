@@ -41,7 +41,7 @@ it('membuat satu Kepala Sekolah beserta profil gurunya, elemen penilaian, dan pe
         ->and(Hash::check('kepsek2026', (string) $kepsek->password))->toBeTrue()
         ->and($kepsek->guru?->jabatan)->toBe(Guru::JABATAN_KEPALA_SEKOLAH)
         ->and(ElemenPenilaian::query()->orderBy('urutan')->pluck('kode')->all())->toBe(['NAB', 'JD', 'LITERASI_STEAM'])
-        ->and(Pengaturan::query()->count())->toBe(24)
+        ->and(Pengaturan::query()->count())->toBe(25)
         ->and(Pengaturan::query()->where('kunci', 'keuangan.tanggal_jatuh_tempo')->value('nilai'))->toBe(10)
         ->and(Pengaturan::query()->where('kunci', 'ppdb.dibuka')->value('nilai'))->toBeFalse();
 });
@@ -102,7 +102,8 @@ it('mengisi data demo sesuai B8', function () {
         ->and(Pendaftaran::query()->count())->toBe(5)
         ->and(Pendaftaran::query()->where('status', StatusPendaftaran::Diterima)->sole()->murid?->waliMurid)->toHaveCount(1)
         ->and(GaleriAlbum::query()->where('is_publik', true)->count())->toBe(2)
-        ->and(Pengaturan::query()->where('kunci', 'ppdb.dibuka')->value('nilai'))->toBeTrue();
+        ->and(Pengaturan::query()->where('kunci', 'ppdb.dibuka')->value('nilai'))->toBeTrue()
+        ->and(Pengaturan::query()->where('kunci', 'beranda.info_wali')->value('nilai')['aktif'])->toBeTrue();
 
     Storage::disk('local')->assertExists(KegiatanFoto::query()->value('path'));
     Storage::disk('public')->assertExists(GaleriAlbum::query()->value('cover_path'));

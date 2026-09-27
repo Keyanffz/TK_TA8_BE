@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\NadaInfo;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Pengaturan;
 use App\Models\TahunAjaran;
@@ -123,6 +124,34 @@ class PengaturanService
     }
 
     /**
+     * Banner info sekolah untuk beranda wali murid, atau null kalau tidak aktif atau sudah lewat
+     * `berlaku_sampai` (tanggal itu sendiri masih tampil).
+     *
+     * @return array{judul: string, isi: string, nada: NadaInfo, berlaku_sampai: string|null}|null
+     */
+    public function infoWali(): ?array
+    {
+        $info = $this->nilai('beranda.info_wali');
+
+        if (! is_array($info) || ($info['aktif'] ?? false) !== true) {
+            return null;
+        }
+
+        $berlakuSampai = $info['berlaku_sampai'] ?? null;
+        if (is_string($berlakuSampai) && $berlakuSampai < today()->toDateString()) {
+            return null;
+        }
+
+        return [
+            'judul' => (string) ($info['judul'] ?? ''),
+            'isi' => (string) ($info['isi'] ?? ''),
+            /** @var NadaInfo */
+            'nada' => NadaInfo::tryFrom((string) ($info['nada'] ?? '')) ?? NadaInfo::Info,
+            'berlaku_sampai' => is_string($berlakuSampai) ? $berlakuSampai : null,
+        ];
+    }
+
+    /**
      * Kop dokumen PDF (kwitansi, rapor) dari pengaturan profil sekolah. `logo` berupa path file lokal supaya
      * bisa dibaca dompdf tanpa akses jaringan; null kalau belum diunggah.
      *
@@ -199,6 +228,12 @@ class PengaturanService
             'ppdb.tahun_ajaran_id' => ['nullable', 'integer', Rule::exists('tahun_ajaran', 'id')],
             'ppdb.kuota' => ['integer', 'between:0,1000'],
             'ppdb.info' => ['nullable', 'string', 'max:50000'],
+            'beranda.info_wali' => ['array:aktif,judul,isi,nada,berlaku_sampai'],
+            'beranda.info_wali.aktif' => ['required', 'boolean:strict'],
+            'beranda.info_wali.judul' => ['nullable', 'required_if_accepted:beranda.info_wali.aktif', 'string', 'max:100'],
+            'beranda.info_wali.isi' => ['nullable', 'required_if_accepted:beranda.info_wali.aktif', 'string', 'max:1000'],
+            'beranda.info_wali.nada' => ['required', Rule::enum(NadaInfo::class)],
+            'beranda.info_wali.berlaku_sampai' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 
