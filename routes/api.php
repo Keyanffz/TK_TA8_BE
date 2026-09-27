@@ -229,4 +229,6 @@ Route::prefix('public')->middleware('throttle:api')->group(function () {
     Route::get('/galeri/{slug}', [PublikController::class, 'detailGaleri']);
     Route::get('/guru', [PublikController::class, 'guru']);
     Route::get('/ppdb', [PublikController::class, 'ppdb']);
+    Route::post('/pendaftaran', [PendaftaranController::class, 'storePublik'])->middleware('throttle:pendaftaran-publik');
+    Route::get('/pendaftaran/status', [PendaftaranController::class, 'statusPublik'])->middleware('throttle:status-pendaftaran');
 });

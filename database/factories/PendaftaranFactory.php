@@ -55,4 +55,12 @@ class PendaftaranFactory extends Factory
             'murid_id' => null,
         ];
     }
+
+    /**
+     * Pendaftaran yang dikirim tanpa login, belum punya wali.
+     */
+    public function publik(): static
+    {
+        return $this->state(fn (): array => ['wali_murid_id' => null]);
+    }
 }

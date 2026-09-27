@@ -25,10 +25,15 @@ class PendaftaranDetailResource extends PendaftaranResource
 
         return [
             ...parent::toArray($request),
-            'wali' => [
+            /**
+             * Wali pendaftar; null untuk pendaftaran tanpa login yang belum diterima.
+             *
+             * @var array{id: int, nama: string, username: string|null, no_hp: string|null}|null
+             */
+            'wali' => $this->waliMurid === null ? null : [
                 'id' => $this->waliMurid->id,
                 'nama' => $this->waliMurid->user->name,
-                'email' => $this->waliMurid->user->email,
+                'username' => $this->waliMurid->user->username,
                 'no_hp' => $this->waliMurid->user->no_hp,
             ],
             'dokumen' => $this->dokumen->map(fn (PendaftaranDokumen $dokumen): array => [

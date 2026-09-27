@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AlasanRequest;
 use App\Http\Requests\Pendaftaran\BuatPendaftaranRequest;
 use App\Http\Requests\Pendaftaran\DaftarPendaftaranRequest;
+use App\Http\Requests\Pendaftaran\StatusPendaftaranPublikRequest;
 use App\Http\Requests\Pendaftaran\TerimaPendaftaranRequest;
 use App\Http\Resources\PendaftaranDetailResource;
+use App\Http\Resources\PendaftaranPublikResource;
 use App\Http\Resources\PendaftaranResource;
 use App\Models\Pendaftaran;
 use App\Models\User;
@@ -16,6 +18,7 @@ use App\Support\ApiResponse;
 use App\Support\Jangkauan;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\AllowedSort;
@@ -63,8 +66,9 @@ class PendaftaranController extends Controller
     }
 
     /**
-     * Mendaftarkan anak baru (`multipart/form-data`) untuk tahun ajaran PPDB di pengaturan. Ditolak kalau PPDB
-     * ditutup, kuota penuh, atau NIK anak sudah terdaftar di tahun ajaran itu.
+     * Wali yang sudah login mendaftarkan kakak/adik (`multipart/form-data`) untuk tahun ajaran PPDB di pengaturan.
+     * Ditolak kalau PPDB ditutup, kuota penuh, atau NIK anak sudah punya pendaftaran selain ditolak atau sudah
+     * menjadi murid. Anak yang diterima ditautkan ke akun ini.
      */
     public function store(BuatPendaftaranRequest $request, #[CurrentUser] User $user): JsonResponse
     {
@@ -75,6 +79,34 @@ class PendaftaranController extends Controller
             "Pendaftaran {$pendaftaran->nama_panggilan} terkirim dengan kode {$pendaftaran->kode}. Pantau statusnya di menu PPDB.",
             status: 201,
         );
+    }
+
+    /**
+     * Pendaftaran PPDB tanpa login (`multipart/form-data`), dengan isian dan aturan yang sama seperti
+     * `POST /pendaftaran`. Dibatasi 3 pendaftaran per jam per IP. Simpan `kode` untuk mengecek status lewat
+     * `GET /public/pendaftaran/status`. Kalau diterima, sekolah membuatkan akun wali dengan username NIS anak.
+     */
+    public function storePublik(BuatPendaftaranRequest $request): JsonResponse
+    {
+        $pendaftaran = $this->pendaftaranService->daftar(null, $request->dataPendaftaran(), $request->dokumen());
+
+        return ApiResponse::success(
+            new PendaftaranPublikResource($pendaftaran->load('tahunAjaran')),
+            "Pendaftaran {$pendaftaran->nama_panggilan} terkirim dengan kode {$pendaftaran->kode}. Simpan kode ini untuk mengecek status pendaftaran.",
+            status: 201,
+        );
+    }
+
+    /**
+     * Status pendaftaran tanpa login dari kode pendaftaran dan tanggal lahir anak. Kode atau tanggal lahir yang
+     * tidak cocok dibalas 404. Dibatasi 10 percobaan per menit per IP.
+     */
+    public function statusPublik(StatusPendaftaranPublikRequest $request): JsonResponse
+    {
+        $pendaftaran = $this->pendaftaranService->cariUntukPublik($request->string('kode')->toString(), $request->tanggalLahir())
+            ?? throw new ModelNotFoundException;
+
+        return ApiResponse::success(new PendaftaranPublikResource($pendaftaran));
     }
 
     /**

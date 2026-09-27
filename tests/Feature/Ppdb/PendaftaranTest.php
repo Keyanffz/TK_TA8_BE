@@ -151,7 +151,7 @@ it('menolak anak yang NIK-nya sudah terdaftar sebagai murid', function () {
 
     $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
         ->assertStatus(422)
-        ->assertJsonPath('message', 'Anak dengan NIK ini sudah terdaftar sebagai murid. Hubungi sekolah untuk mendapatkan kode tautan.');
+        ->assertJsonPath('message', 'Anak dengan NIK ini sudah terdaftar sebagai murid. Wali yang sudah punya akun bisa menambahkannya lewat menu Tambah Anak; kalau belum, minta kartu akun ke sekolah.');
 });
 
 it('membolehkan pendaftar yang pernah ditolak mendaftar ulang', function () {
@@ -199,7 +199,8 @@ it('menjalankan alur verifikasi lalu terima: membuat murid, menautkan wali, meny
         ->and($murid->waliMurid->sole()->pivot->hubungan->value)->toBe('ibu')
         ->and($murid->waliMurid->sole()->pivot->is_kontak_utama)->toBeTrue()
         ->and($murid->kelas->sole()->id)->toBe($kelas->id)
-        ->and($murid->kelas->sole()->pivot->status)->toBe(StatusKelasMurid::Aktif);
+        ->and($murid->kelas->sole()->pivot->status)->toBe(StatusKelasMurid::Aktif)
+        ->and(User::query()->where('username', 'TA20270001')->exists())->toBeFalse();
     Storage::disk('local')->assertExists((string) $murid->foto_path);
 
     Notification::assertSentTo($this->ibuSari->user, PendaftaranDiprosesNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibuSari->user)['pesan']
@@ -281,4 +282,128 @@ it('menutup PPDB untuk guru dan menolak wali memproses pendaftaran', function ()
     $this->actingAs($guru)->post('/api/v1/pendaftaran', dataPendaftaran())->assertForbidden();
     $this->actingAs($this->ibuSari->user)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertForbidden();
     $this->actingAs(User::factory()->superAdmin()->create())->post('/api/v1/pendaftaran', dataPendaftaran())->assertForbidden();
+});
+
+function daftarPpdbPublik(object $test, array $timpa = []): Pendaftaran
+{
+    $kode = $test->post('/api/v1/public/pendaftaran', dataPendaftaran($timpa))->assertCreated()->json('data.kode');
+
+    return Pendaftaran::query()->where('kode', $kode)->sole();
+}
+
+it('menerima pendaftaran tanpa login dan membalas kode pendaftaran', function () {
+    $this->post('/api/v1/public/pendaftaran', dataPendaftaran())
+        ->assertCreated()
+        ->assertJsonPath('message', 'Pendaftaran Nadia terkirim dengan kode PPDB-2027-0001. Simpan kode ini untuk mengecek status pendaftaran.')
+        ->assertJsonPath('data', [
+            'kode' => 'PPDB-2027-0001',
+            'status' => 'diajukan',
+            'nama_panggilan' => 'Nadia',
+            'tingkat_tujuan' => 'A',
+            'tahun_ajaran' => ['id' => $this->tujuan->id, 'nama' => '2027/2028'],
+            'catatan' => null,
+            'diproses_at' => null,
+            'created_at' => '2026-10-05T10:00:00+07:00',
+        ]);
+
+    $pendaftaran = Pendaftaran::query()->with('dokumen')->sole();
+    expect($pendaftaran->wali_murid_id)->toBeNull()
+        ->and($pendaftaran->hubungan->value)->toBe('ibu')
+        ->and($pendaftaran->dokumen)->toHaveCount(3);
+    Notification::assertSentTo($this->kepsek, PendaftaranBaruNotification::class);
+
+    $this->actingAs($this->kepsek)->getJson("/api/v1/pendaftaran/{$pendaftaran->id}")
+        ->assertOk()
+        ->assertJsonPath('data.wali', null);
+});
+
+it('menerapkan aturan jadwal, kuota, dan NIK dobel pada pendaftaran tanpa login', function () {
+    daftarPpdbPublik($this);
+
+    $this->post('/api/v1/public/pendaftaran', dataPendaftaran())
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', 'Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
+
+    aturPpdb(['ppdb.dibuka' => false]);
+    $this->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230002']))
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'PPDB sedang ditutup. Lihat jadwal pendaftaran di halaman PPDB.');
+});
+
+it('membatasi pendaftaran tanpa login 3 kali per jam per IP', function () {
+    aturPpdb(['ppdb.kuota' => 10]);
+
+    foreach (['3374015402230001', '3374015402230002', '3374015402230003'] as $nik) {
+        $this->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => $nik]))->assertCreated();
+    }
+
+    $this->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230004']))
+        ->assertTooManyRequests()
+        ->assertJsonPath('code', 'TOO_MANY_REQUESTS');
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])
+        ->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230004']))
+        ->assertCreated();
+});
+
+it('menampilkan status pendaftaran dari kode dan tanggal lahir anak tanpa login', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+    $pendaftaran->update(['status' => StatusPendaftaran::Ditolak, 'catatan' => 'Usia anak belum 4 tahun pada 1 Juli 2027.', 'diproses_at' => now()]);
+
+    $this->getJson('/api/v1/public/pendaftaran/status?kode=ppdb-2027-0001&tanggal_lahir=2023-02-14')
+        ->assertOk()
+        ->assertJsonPath('data.kode', 'PPDB-2027-0001')
+        ->assertJsonPath('data.status', 'ditolak')
+        ->assertJsonPath('data.catatan', 'Usia anak belum 4 tahun pada 1 Juli 2027.')
+        ->assertJsonMissingPath('data.nik')
+        ->assertJsonMissingPath('data.dokumen');
+
+    $this->getJson('/api/v1/public/pendaftaran/status?kode=PPDB-2027-0001&tanggal_lahir=2023-02-15')
+        ->assertNotFound()
+        ->assertJsonPath('code', 'NOT_FOUND');
+    $this->getJson('/api/v1/public/pendaftaran/status?kode=PPDB-2027-0001')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['tanggal_lahir']);
+});
+
+it('membatasi cek status pendaftaran 10 kali per menit per IP', function () {
+    foreach (range(1, 10) as $_) {
+        $this->getJson('/api/v1/public/pendaftaran/status?kode=PPDB-2027-0009&tanggal_lahir=2023-02-14')->assertNotFound();
+    }
+
+    $this->getJson('/api/v1/public/pendaftaran/status?kode=PPDB-2027-0009&tanggal_lahir=2023-02-14')->assertTooManyRequests();
+});
+
+it('membuat akun wali saat pendaftaran tanpa login diterima dan baru memberi notifikasi setelah akun ada', function () {
+    $pendaftaran = daftarPpdbPublik($this, ['hubungan' => 'ayah']);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertOk();
+    Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima")
+        ->assertOk()
+        ->assertJsonPath('data.wali.username', 'TA20270001')
+        ->assertJsonPath('data.wali.no_hp', '081234567890');
+
+    $akun = User::query()->where('username', 'TA20270001')->sole();
+    $murid = Murid::query()->with('waliMurid')->where('nis', 'TA20270001')->sole();
+    expect($akun->wajib_ganti_password)->toBeTrue()
+        ->and($akun->name)->toBe('Wali Nadia')
+        ->and($pendaftaran->fresh()?->wali_murid_id)->toBe($akun->waliMurid?->id)
+        ->and($murid->waliMurid->sole()->pivot->hubungan->value)->toBe('ayah')
+        ->and($murid->waliMurid->sole()->pivot->is_kontak_utama)->toBeTrue();
+
+    Notification::assertSentTo($akun, PendaftaranDiprosesNotification::class);
+
+    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20270001', 'password' => '14022023'])->assertOk();
+});
+
+it('tidak mengirim notifikasi saat pendaftaran tanpa login ditolak', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/tolak", ['alasan' => 'Dokumen tidak terbaca.'])->assertOk();
+
+    Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
+    expect(User::query()->where('role', 'wali_murid')->where('username', '!=', $this->ibuSari->user->username)->exists())->toBeFalse();
 });

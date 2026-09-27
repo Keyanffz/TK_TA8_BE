@@ -23,7 +23,8 @@ use Throwable;
 /**
  * PPDB (A6, B6.11). Pendaftaran selalu untuk tahun ajaran `ppdb.tahun_ajaran_id`. Kuota dihitung dari
  * pendaftaran selain yang ditolak di tahun ajaran itu. Alur: diajukan → diverifikasi → diterima, dan
- * diajukan/diverifikasi → ditolak. Menerima pendaftar membuat data murid dalam satu transaksi.
+ * diajukan/diverifikasi → ditolak. Menerima pendaftar membuat data murid dalam satu transaksi. Pendaftaran
+ * tanpa login belum punya wali; akun walinya dibuat saat diterima.
  */
 class PendaftaranService
 {
@@ -36,6 +37,7 @@ class PendaftaranService
         private readonly MediaService $media,
         private readonly MuridService $muridService,
         private readonly KelasService $kelasService,
+        private readonly WaliMuridService $waliMuridService,
     ) {}
 
     /**
@@ -70,12 +72,13 @@ class PendaftaranService
     }
 
     /**
+     * @param  WaliMurid|null  $wali  null untuk pendaftaran tanpa login
      * @param  array<string, mixed>  $data
      * @param  array<string, UploadedFile|list<UploadedFile>>  $dokumen  per jenis dokumen; `lainnya` berupa daftar
      *
      * @throws BusinessRuleException
      */
-    public function daftar(WaliMurid $wali, array $data, array $dokumen): Pendaftaran
+    public function daftar(?WaliMurid $wali, array $data, array $dokumen): Pendaftaran
     {
         $tahunAjaran = $this->pastikanBisaMendaftar($data['nik']);
         $path = $this->simpanDokumen($dokumen);
@@ -91,7 +94,7 @@ class PendaftaranService
                 $pendaftaran = Pendaftaran::query()->create([
                     ...$data,
                     'kode' => NomorUrut::format($awalan, NomorUrut::berikutnya(Pendaftaran::query(), 'kode', $awalan, self::DIGIT_KODE), self::DIGIT_KODE),
-                    'wali_murid_id' => $wali->id,
+                    'wali_murid_id' => $wali?->id,
                     'tahun_ajaran_id' => $tahunAjaran->id,
                     'status' => StatusPendaftaran::Diajukan,
                 ]);
@@ -132,7 +135,8 @@ class PendaftaranService
     /**
      * Membuat murid (NIS dari tanggal mulai tahun ajaran tujuan), menautkan wali pendaftar sebagai kontak utama
      * dengan hubungan dari pendaftaran, menyalin pas foto menjadi foto murid, dan menempatkan murid di kelas
-     * kalau dipilih (kelas harus di tahun ajaran tujuan, dengan cek kapasitas).
+     * kalau dipilih (kelas harus di tahun ajaran tujuan, dengan cek kapasitas). Pendaftaran tanpa login
+     * dibuatkan akun wali otomatis (nomor HP dari formulir), lalu akun itu dicatat sebagai wali pendaftar.
      *
      * @throws BusinessRuleException
      */
@@ -161,7 +165,12 @@ class PendaftaranService
                     'alamat' => $pendaftaran->alamat,
                     'tanggal_masuk' => $pendaftaran->tahunAjaran->tanggal_mulai->toDateString(),
                 ], $foto);
-                $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
+                if ($pendaftaran->wali_murid_id === null) {
+                    $wali = $this->waliMuridService->buatAkunOtomatis($murid, $pendaftaran->hubungan, $pendaftaran->no_hp, $kepalaSekolah);
+                    $pendaftaran->wali_murid_id = $wali->id;
+                } else {
+                    $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
+                }
 
                 if ($kelas !== null) {
                     $this->kelasService->tempatkanMurid($kelas, [$murid->id]);
@@ -213,7 +222,7 @@ class PendaftaranService
         // Pendaftar yang pernah ditolak boleh mendaftar ulang; pendaftaran lain dengan NIK yang sama (sedang
         // diproses atau sudah diterima) dan murid ber-NIK sama menandakan anak ini sudah tercatat.
         if (Murid::query()->where('nik', $nik)->exists()) {
-            throw new BusinessRuleException('Anak dengan NIK ini sudah terdaftar sebagai murid. Hubungi sekolah untuk mendapatkan kode tautan.');
+            throw new BusinessRuleException('Anak dengan NIK ini sudah terdaftar sebagai murid. Wali yang sudah punya akun bisa menambahkannya lewat menu Tambah Anak; kalau belum, minta kartu akun ke sekolah.');
         }
         if (Pendaftaran::query()->where('nik', $nik)->where('status', '!=', StatusPendaftaran::Ditolak)->exists()) {
             throw new BusinessRuleException('Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
@@ -272,6 +281,9 @@ class PendaftaranService
     }
 
     /**
+     * Pendaftar tanpa login belum punya akun sampai diterima, jadi verifikasi dan penolakannya tidak dikirimi
+     * notifikasi; statusnya dicek lewat `GET /public/pendaftaran/status`.
+     *
      * @param  array<string, mixed>  $properti
      */
     private function selesaikan(Pendaftaran $pendaftaran, User $kepalaSekolah, string $event, string $pesanLog, array $properti = []): Pendaftaran
@@ -279,9 +291,17 @@ class PendaftaranService
         activity('ppdb')->causedBy($kepalaSekolah)->performedOn($pendaftaran)->event($event)->withProperties($properti)->log($pesanLog);
 
         $pendaftaran->load(['waliMurid.user', 'murid.kelas']);
-        $pendaftaran->waliMurid->user->notify(new PendaftaranDiprosesNotification($pendaftaran));
+        $pendaftaran->waliMurid?->user->notify(new PendaftaranDiprosesNotification($pendaftaran));
 
         return $pendaftaran;
+    }
+
+    /**
+     * Pendaftaran dengan kode dan tanggal lahir anak yang cocok, untuk cek status tanpa login.
+     */
+    public function cariUntukPublik(string $kode, Carbon $tanggalLahir): ?Pendaftaran
+    {
+        return Pendaftaran::query()->with('tahunAjaran')->where('kode', $kode)->whereDate('tanggal_lahir', $tanggalLahir)->first();
     }
 
     private function tahunAjaranTujuan(): ?TahunAjaran

@@ -26,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
 
     private const BATAS_API_PER_MENIT = 120;
 
+    private const BATAS_PENDAFTARAN_PUBLIK_PER_JAM = 3;
+
+    private const BATAS_CEK_STATUS_PENDAFTARAN_PER_MENIT = 10;
+
     private const PANJANG_MINIMAL_PASSWORD = 8;
 
     public function boot(): void
@@ -68,6 +72,13 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(self::BATAS_API_PER_MENIT)
             ->by($request->user() === null ? 'ip:'.$request->ip() : 'user:'.$request->user()->getAuthIdentifier()));
+
+        RateLimiter::for('pendaftaran-publik', fn (Request $request) => Limit::perHour(self::BATAS_PENDAFTARAN_PUBLIK_PER_JAM)
+            ->by((string) $request->ip()));
+
+        // Kode pendaftaran berurutan dan tanggal lahir anak hanya berkisar satu-dua tahun, jadi percobaan dibatasi.
+        RateLimiter::for('status-pendaftaran', fn (Request $request) => Limit::perMinute(self::BATAS_CEK_STATUS_PENDAFTARAN_PER_MENIT)
+            ->by((string) $request->ip()));
 
         RateLimiter::for('tambah-anak', fn (Request $request) => Limit::perMinute(self::BATAS_TAMBAH_ANAK_PER_MENIT)
             ->by((string) $request->user()?->getAuthIdentifier()));
