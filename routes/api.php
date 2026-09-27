@@ -155,6 +155,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
         Route::put('/kegiatan/{id}', [KegiatanKelasController::class, 'update']);
         Route::delete('/kegiatan/{id}', [KegiatanKelasController::class, 'destroy']);
         Route::post('/kegiatan/{id}/foto', [KegiatanKelasController::class, 'tambahFoto']);
+        Route::put('/kegiatan-foto/{id}', [KegiatanKelasController::class, 'perbaruiFoto']);
         Route::delete('/kegiatan-foto/{id}', [KegiatanKelasController::class, 'hapusFoto']);
 
         Route::post('/rapor', [RaporController::class, 'store']);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Kegiatan;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Kegiatan\DaftarKegiatanRequest;
+use App\Http\Requests\Kegiatan\PerbaruiFotoKegiatanRequest;
 use App\Http\Requests\Kegiatan\SimpanKegiatanRequest;
 use App\Http\Requests\Kegiatan\TambahFotoKegiatanRequest;
 use App\Http\Resources\KegiatanKelasResource;
@@ -103,6 +104,23 @@ class KegiatanKelasController extends Controller
         $this->kegiatanService->tambahFoto($kegiatan, $request->foto());
 
         return ApiResponse::success(new KegiatanKelasResource($kegiatan->load(self::RELASI)), count($request->foto()).' foto ditambahkan.', status: 201);
+    }
+
+    /**
+     * Mengubah keterangan (`caption`) dan urutan satu foto kegiatan. Hanya guru pembuat kegiatan dan Kepala
+     * Sekolah.
+     */
+    public function perbaruiFoto(PerbaruiFotoKegiatanRequest $request, int $id): JsonResponse
+    {
+        $foto = KegiatanFoto::query()->with('kegiatan')->findOrFail($id);
+        Gate::authorize('kelola', $foto->kegiatan);
+        $foto->update($request->validated());
+
+        return ApiResponse::success([
+            'id' => $foto->id,
+            'caption' => $foto->caption,
+            'urutan' => $foto->urutan,
+        ], 'Foto tersimpan.');
     }
 
     /**

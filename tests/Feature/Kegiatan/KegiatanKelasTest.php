@@ -160,6 +160,36 @@ it('menambah foto dengan urutan lanjutan dan menghapus satu foto', function () {
     expect(KegiatanFoto::query()->count())->toBe(2);
 });
 
+it('mengubah caption dan urutan foto kegiatan oleh guru pembuat dan Kepala Sekolah', function () {
+    $kegiatan = KegiatanKelas::factory()->for($this->kelasA1)->create(['guru_id' => $this->buAini->id]);
+    [$pertama, $kedua] = KegiatanFoto::factory()->count(2)->for($kegiatan, 'kegiatan')->sequence(['urutan' => 1], ['urutan' => 2])->create();
+
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/kegiatan-foto/{$kedua->id}", ['caption' => 'Menyiram bibit bersama', 'urutan' => 0])
+        ->assertOk()
+        ->assertExactJson(['success' => true, 'message' => 'Foto tersimpan.', 'data' => ['id' => $kedua->id, 'caption' => 'Menyiram bibit bersama', 'urutan' => 0], 'meta' => null]);
+    $this->actingAs($this->kepsek)->putJson("/api/v1/kegiatan-foto/{$pertama->id}", ['caption' => 'Menanam biji'])
+        ->assertOk()
+        ->assertJsonPath('data.urutan', 1);
+
+    $this->actingAs($this->ibu->user)->getJson("/api/v1/kegiatan/{$kegiatan->id}")
+        ->assertJsonPath('data.foto.0.caption', 'Menyiram bibit bersama')
+        ->assertJsonPath('data.foto.1.caption', 'Menanam biji');
+});
+
+it('menolak perubahan foto kegiatan oleh guru lain dan memvalidasi urutan', function () {
+    $kegiatan = KegiatanKelas::factory()->for($this->kelasA1)->create(['guru_id' => $this->buAini->id]);
+    $foto = KegiatanFoto::factory()->for($kegiatan, 'kegiatan')->create(['caption' => 'Asli']);
+
+    $this->actingAs($this->buRina->user)->putJson("/api/v1/kegiatan-foto/{$foto->id}", ['caption' => 'Diubah'])->assertForbidden();
+    $this->actingAs($this->buDwi->user)->putJson("/api/v1/kegiatan-foto/{$foto->id}", ['caption' => 'Diubah'])->assertNotFound();
+    $this->actingAs($this->ibu->user)->putJson("/api/v1/kegiatan-foto/{$foto->id}", ['caption' => 'Diubah'])->assertForbidden();
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/kegiatan-foto/{$foto->id}", ['urutan' => -1])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('urutan');
+
+    expect($foto->fresh()?->caption)->toBe('Asli');
+});
+
 it('menolak foto yang melewati batas 30 per kegiatan tanpa meninggalkan file', function () {
     $kegiatan = KegiatanKelas::factory()->for($this->kelasA1)->create(['guru_id' => $this->buAini->id]);
     KegiatanFoto::factory()->count(25)->for($kegiatan, 'kegiatan')->create();
