@@ -90,7 +90,6 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/murid', [MuridController::class, 'store']);
         Route::put('/murid/{id}', [MuridController::class, 'update']);
         Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
-        Route::post('/murid/{id}/kode-tautan', [MuridController::class, 'kodeTautan']);
         Route::patch('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'ubahWali']);
         Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
 
@@ -213,7 +212,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
 
     Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
         Route::put('/profil', ProfilWaliController::class);
-        Route::post('/tautkan-anak', [AnakController::class, 'tautkan'])->middleware('throttle:tautkan-anak');
+        Route::post('/tambah-anak', [AnakController::class, 'tambah'])->middleware('throttle:tambah-anak');
         Route::get('/anak', [AnakController::class, 'index']);
     });
 });

@@ -89,8 +89,7 @@ it('mengisi data demo sesuai B8', function () {
         ->and(Murid::query()->has('kelas')->count())->toBe(60)
         ->and(WaliMurid::query()->count())->toBeGreaterThanOrEqual(40)
         ->and(WaliMurid::query()->has('murid', '>=', 2)->exists())->toBeTrue()
-        ->and(Murid::query()->has('waliMurid', '>=', 2)->exists())->toBeTrue()
-        ->and(Murid::query()->whereNotNull('kode_tautan')->doesntHave('waliMurid')->exists())->toBeTrue();
+        ->and(Murid::query()->has('waliMurid', '>=', 2)->exists())->toBeTrue();
 
     expect(Tagihan::query()->whereNotNull('periode')->distinct()->pluck('periode')->map->toDateString()->sort()->values()->all())
         ->toBe(['2026-07-01', '2026-08-01', '2026-09-01'])

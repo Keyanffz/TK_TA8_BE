@@ -27,7 +27,7 @@ beforeEach(function () {
         'nama_lengkap' => 'Aisyah Putri Ramadhani', 'nis' => 'TA20260002', 'catatan_khusus' => 'Alergi udang.',
     ]);
     $this->bima = Murid::factory()->create(['nama_lengkap' => 'Bima Saputra', 'nis' => 'TA20250001']);
-    $this->citra = Murid::factory()->denganKodeTautan()->create(['nama_lengkap' => 'Citra Maharani', 'nis' => 'TA20250007']);
+    $this->citra = Murid::factory()->create(['nama_lengkap' => 'Citra Maharani', 'nis' => 'TA20250007']);
     $this->kelasA1->murid()->attach($this->aisyah);
     $this->kelasB1->murid()->attach($this->bima);
     $kelasLama->murid()->attach($this->citra);
@@ -44,7 +44,6 @@ it('menampilkan semua murid ke Kepala Sekolah, urut nama', function () {
         ->assertJsonPath('data.0.kelas', ['id' => $this->kelasA1->id, 'nama' => 'TK A1', 'tingkat' => 'A'])
         ->assertJsonPath('data.2.nama_lengkap', 'Citra Maharani')
         ->assertJsonPath('data.2.kelas', null)
-        ->assertJsonPath('data.2.kode_tautan', $this->citra->kode_tautan)
         ->assertJsonMissingPath('data.0.wali');
 });
 
@@ -52,8 +51,7 @@ it('menampilkan ke guru hanya murid di kelas yang dia ampu pada tahun ajaran akt
     $this->actingAs($this->buAini->user)->getJson('/api/v1/murid')
         ->assertOk()
         ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.id', $this->aisyah->id)
-        ->assertJsonMissingPath('data.0.kode_tautan');
+        ->assertJsonPath('data.0.id', $this->aisyah->id);
 });
 
 it('menampilkan ke wali murid hanya anaknya sendiri', function () {
@@ -94,8 +92,7 @@ it('menampilkan detail anak ke walinya, termasuk catatan khusus dan wali yang te
         ->assertJsonPath('data.kelas.nama', 'TK A1')
         ->assertJsonPath('data.wali.0.id', $this->ibuAisyah->id)
         ->assertJsonPath('data.wali.0.hubungan', 'ibu')
-        ->assertJsonPath('data.wali.0.is_kontak_utama', true)
-        ->assertJsonMissingPath('data.kode_tautan');
+        ->assertJsonPath('data.wali.0.is_kontak_utama', true);
 });
 
 it('menampilkan detail murid dan kontak wali ke guru pengampu', function () {

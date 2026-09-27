@@ -13,8 +13,6 @@ use App\Models\Murid;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
-use App\Services\KodeTautanService;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 
 /**
@@ -179,8 +177,6 @@ class SekolahDemoSeeder extends Seeder
 
         foreach ($keluarga as $indeks => $anak) {
             if ($indeks >= $batasTertaut) {
-                $this->beriKodeTautan(new Collection($anak));
-
                 continue;
             }
 
@@ -208,14 +204,5 @@ class SekolahDemoSeeder extends Seeder
         ]));
 
         return ($profilLengkap ? $factory : $factory->profilBelumLengkap())->create();
-    }
-
-    /**
-     * @param  Collection<int, Murid>  $anak
-     */
-    private function beriKodeTautan(Collection $anak): void
-    {
-        $kodeTautan = app(KodeTautanService::class);
-        $anak->each(fn (Murid $murid) => $kodeTautan->buat($murid));
     }
 }

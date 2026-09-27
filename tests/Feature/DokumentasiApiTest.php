@@ -55,7 +55,7 @@ it('mendokumentasikan respons 403 dari middleware role dan status akun', functio
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login-wali']['post'], 403))
         ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login-wali']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/wali/tautkan-anak']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/wali/tambah-anak']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/media/{token}']['get'], 403))->toBe(['FORBIDDEN']);
 });
 
@@ -150,7 +150,7 @@ it('mewajibkan field relasi yang selalu dikirim dan membiarkan opsional hanya fi
         ->and($skema['WaliMuridDetailResource']['required'])->toContain('user', 'jumlah_anak', 'anak')
         ->and($skema['RaporResource']['required'])->toContain('murid', 'kelas', 'tahun_ajaran', 'pembuat')
         ->and($skema['RaporDetailResource']['required'])->toContain('detail')
-        ->and($opsional('MuridDetailResource'))->toBe(['kode_tautan', 'kode_tautan_expired_at'])
+        ->and($opsional('MuridDetailResource'))->toBe([])
         ->and($opsional('RaporResource'))->toBe(['catatan_revisi'])
         ->and($opsional('PengumumanResource'))->toBe(['kelas', 'murid'])
         ->and($opsional('GuruResource'))->toBe(['password_awal']);

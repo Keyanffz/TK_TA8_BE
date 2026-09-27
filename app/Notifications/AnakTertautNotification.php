@@ -7,8 +7,9 @@ use App\Enums\Role;
 use App\Models\User;
 
 /**
- * Dikirim ke Kepala Sekolah dan wali lain yang sudah tertaut ke anak yang sama, supaya penautan
- * yang tidak dikenal (misalnya kode tautan jatuh ke orang lain) cepat ketahuan.
+ * Dikirim ke Kepala Sekolah dan wali lain yang sudah tertaut ke anak yang sama saat wali menambahkan anak ke
+ * akunnya, supaya penautan oleh orang yang tidak dikenal (misalnya NIS dan tanggal lahir diketahui orang lain)
+ * cepat ketahuan.
  */
 class AnakTertautNotification extends NotifikasiDatabase
 {

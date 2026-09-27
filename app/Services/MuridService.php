@@ -116,7 +116,6 @@ class MuridService
         DB::transaction(function () use ($murid, $kepalaSekolah): void {
             $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $kepalaSekolah);
             $murid->kelasMurid()->delete();
-            $murid->update(['kode_tautan' => null, 'kode_tautan_expired_at' => null]);
             $murid->delete();
         });
     }

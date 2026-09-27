@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\Role;
 use App\Enums\Tingkat;
 use App\Models\Murid;
 use App\Services\MediaService;
@@ -11,8 +10,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Murid hanya sampai ke pengguna yang lolos `Murid::visibleTo` (Kepala Sekolah, guru pengampu, wali anak
- * itu), sehingga `catatan_khusus` aman ditampilkan (B4). Kode tautan hanya untuk Kepala Sekolah.
- * Wali yang tertaut ada di `MuridDetailResource`.
+ * itu), sehingga `catatan_khusus` aman ditampilkan (B4). Wali yang tertaut ada di `MuridDetailResource`.
  *
  * @mixin Murid
  */
@@ -24,7 +22,6 @@ class MuridResource extends JsonResource
     public function toArray(Request $request): array
     {
         $kelas = $this->relationLoaded('kelasAktif') ? $this->kelasAktif->first() : null;
-        $kepalaSekolah = $request->user()?->role === Role::SuperAdmin;
 
         return [
             'id' => $this->id,
@@ -47,10 +44,6 @@ class MuridResource extends JsonResource
             'tanggal_keluar' => $this->tanggal_keluar?->toDateString(),
             /** @var array{id: int, nama: string, tingkat: Tingkat}|null */
             'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama, 'tingkat' => $kelas->tingkat],
-            /** Hanya untuk Kepala Sekolah. */
-            'kode_tautan' => $this->when($kepalaSekolah, fn () => $this->kode_tautan),
-            /** Hanya untuk Kepala Sekolah. */
-            'kode_tautan_expired_at' => $this->when($kepalaSekolah, fn () => $this->kode_tautan_expired_at),
             'created_at' => $this->created_at,
         ];
     }

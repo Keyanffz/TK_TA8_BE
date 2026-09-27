@@ -3,20 +3,17 @@
 namespace App\Http\Requests\Wali;
 
 use App\Enums\Hubungan;
-use App\Models\Murid;
+use App\Http\Requests\Auth\LoginWaliRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
-class TautkanAnakRequest extends FormRequest
+class TambahAnakRequest extends FormRequest
 {
-    /**
-     * Kode sering diketik dengan huruf kecil atau spasi/tanda hubung dari pesan WhatsApp.
-     */
     protected function prepareForValidation(): void
     {
-        if (is_string($this->input('kode'))) {
-            $this->merge(['kode' => strtoupper((string) preg_replace('/[\s-]+/', '', $this->input('kode')))]);
+        if (is_string($this->input('nis'))) {
+            $this->merge(['nis' => LoginWaliRequest::normalkanUsername($this->input('nis'))]);
         }
     }
 
@@ -26,10 +23,18 @@ class TautkanAnakRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kode' => ['required', 'string', 'size:'.Murid::PANJANG_KODE_TAUTAN],
+            'nis' => ['required', 'string', 'max:20'],
             'tanggal_lahir' => ['required', 'date_format:Y-m-d'],
             'hubungan' => ['required', Rule::enum(Hubungan::class)],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return ['nis' => 'NIS'];
     }
 
     public function tanggalLahir(): Carbon

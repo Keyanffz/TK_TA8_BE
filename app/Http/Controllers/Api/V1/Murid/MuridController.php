@@ -10,7 +10,6 @@ use App\Http\Resources\MuridDetailResource;
 use App\Http\Resources\MuridResource;
 use App\Models\Murid;
 use App\Models\User;
-use App\Services\KodeTautanService;
 use App\Services\MuridService;
 use App\Support\ApiResponse;
 use App\Support\Jangkauan;
@@ -101,19 +100,6 @@ class MuridController extends Controller
         $this->muridService->hapus($murid, $kepalaSekolah);
 
         return ApiResponse::success(null, "Data {$murid->nama_lengkap} dihapus.");
-    }
-
-    /**
-     * Membuat kode tautan baru (berlaku 14 hari) untuk diberikan ke wali murid. Kode lama tidak berlaku lagi.
-     */
-    public function kodeTautan(int $id, KodeTautanService $kodeTautan): JsonResponse
-    {
-        $murid = $kodeTautan->buat(Murid::query()->findOrFail($id));
-
-        return ApiResponse::success(
-            ['kode' => $murid->kode_tautan, 'expired_at' => $murid->kode_tautan_expired_at],
-            "Kode tautan untuk {$murid->nama_panggilan} berlaku sampai {$murid->kode_tautan_expired_at?->translatedFormat('j F Y')}.",
-        );
     }
 
     /**

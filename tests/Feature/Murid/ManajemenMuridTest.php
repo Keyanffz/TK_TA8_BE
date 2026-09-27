@@ -137,13 +137,12 @@ it('mengganti foto murid dan menghapus foto lama', function () {
 
 it('menghapus murid yang salah input beserta penempatannya', function () {
     $kelas = Kelas::factory()->for(TahunAjaran::factory()->aktif())->create();
-    $murid = Murid::factory()->denganKodeTautan()->create();
+    $murid = Murid::factory()->create();
     $kelas->murid()->attach($murid);
 
     $this->actingAs($this->kepsek)->deleteJson("/api/v1/murid/{$murid->id}")->assertOk();
 
     expect(Murid::query()->find($murid->id))->toBeNull()
-        ->and(Murid::withTrashed()->find($murid->id)?->kode_tautan)->toBeNull()
         ->and($kelas->kelasMurid()->count())->toBe(0);
 });
 

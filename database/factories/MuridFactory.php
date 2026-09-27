@@ -41,16 +41,6 @@ class MuridFactory extends Factory
             'status' => StatusMurid::Aktif,
             'tanggal_masuk' => '2026-07-13',
             'tanggal_keluar' => null,
-            'kode_tautan' => null,
-            'kode_tautan_expired_at' => null,
         ];
-    }
-
-    public function denganKodeTautan(): static
-    {
-        return $this->state(fn (): array => [
-            'kode_tautan' => fake()->unique()->regexify('['.Murid::KARAKTER_KODE_TAUTAN.']{'.Murid::PANJANG_KODE_TAUTAN.'}'),
-            'kode_tautan_expired_at' => now()->addDays(14),
-        ]);
     }
 }

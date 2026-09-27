@@ -5,11 +5,16 @@ namespace App\Services;
 use App\Enums\Hubungan;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
+use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Murid;
 use App\Models\User;
 use App\Models\WaliMurid;
+use App\Notifications\AnakTertautNotification;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 class WaliMuridService
 {
@@ -39,6 +44,51 @@ class WaliMuridService
 
             return $wali->setRelation('user', $user);
         });
+    }
+
+    /**
+     * Wali yang sudah login menautkan kakak/adik ke akunnya dengan NIS dan tanggal lahir anak. Batas percobaan
+     * diatur rate limiter `tambah-anak` di route. Akun otomatis anak itu yang belum pernah dipakai dinonaktifkan;
+     * kalau sudah dipakai, anak tertaut ke kedua akun. Wali ini menjadi kontak utama kalau anak tidak punya wali
+     * lain.
+     *
+     * @throws BusinessRuleException
+     */
+    public function tambahAnak(WaliMurid $wali, string $nis, Carbon $tanggalLahir, Hubungan $hubungan): Murid
+    {
+        $murid = Murid::query()->where('nis', $nis)->first();
+
+        // Satu pesan untuk NIS dan tanggal lahir, supaya percobaan tidak bisa memastikan NIS mana yang terdaftar.
+        if ($murid === null || ! $murid->tanggal_lahir->isSameDay($tanggalLahir)) {
+            throw ValidationException::withMessages(['nis' => ['NIS atau tanggal lahir anak tidak cocok. Periksa kembali NIS di kartu akun dari sekolah.']]);
+        }
+        if ($murid->status !== StatusMurid::Aktif) {
+            throw new BusinessRuleException("{$murid->nama_panggilan} tidak lagi berstatus aktif di sekolah sehingga tidak bisa ditambahkan. Hubungi pihak sekolah.");
+        }
+        if ($murid->waliMurid()->whereKey($wali->id)->exists()) {
+            throw new BusinessRuleException("{$murid->nama_panggilan} sudah tertaut ke akun Anda.");
+        }
+
+        $waliLain = DB::transaction(function () use ($wali, $murid, $hubungan) {
+            Murid::query()->lockForUpdate()->findOrFail($murid->id);
+            $this->lepasAkunOtomatisBelumDipakai($murid, $wali->user);
+            $waliLain = $murid->waliMurid()->with('user')->get();
+
+            $murid->waliMurid()->attach($wali, ['hubungan' => $hubungan, 'is_kontak_utama' => $waliLain->isEmpty()]);
+
+            activity('wali')->causedBy($wali->user)->performedOn($murid)->event('tertaut')
+                ->withProperties(['wali_murid_id' => $wali->id, 'hubungan' => $hubungan->value])
+                ->log("{$wali->user->name} menambahkan {$murid->nama_lengkap} ke akunnya");
+
+            return $waliLain;
+        });
+
+        Notification::send(
+            User::query()->kepalaSekolahAktif()->get()->merge($waliLain->pluck('user')),
+            new AnakTertautNotification($murid->id, $murid->nama_panggilan, $wali->user->name, $hubungan->label()),
+        );
+
+        return $murid;
     }
 
     /**

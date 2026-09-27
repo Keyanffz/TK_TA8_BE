@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
 
     private const BATAS_LOGIN_WALI_PER_MENIT = 5;
 
-    private const BATAS_TAUTKAN_ANAK_PER_MENIT = 5;
+    private const BATAS_TAMBAH_ANAK_PER_MENIT = 5;
 
     private const BATAS_API_PER_MENIT = 120;
 
@@ -69,7 +69,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(self::BATAS_API_PER_MENIT)
             ->by($request->user() === null ? 'ip:'.$request->ip() : 'user:'.$request->user()->getAuthIdentifier()));
 
-        RateLimiter::for('tautkan-anak', fn (Request $request) => Limit::perMinute(self::BATAS_TAUTKAN_ANAK_PER_MENIT)
+        RateLimiter::for('tambah-anak', fn (Request $request) => Limit::perMinute(self::BATAS_TAMBAH_ANAK_PER_MENIT)
             ->by((string) $request->user()?->getAuthIdentifier()));
     }
 }

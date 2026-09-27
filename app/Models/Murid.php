@@ -18,17 +18,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'nis', 'nisn', 'nik', 'nama_lengkap', 'nama_panggilan', 'jenis_kelamin', 'tempat_lahir',
     'tanggal_lahir', 'agama', 'alamat', 'anak_ke', 'foto_path', 'catatan_khusus', 'status',
-    'tanggal_masuk', 'tanggal_keluar', 'kode_tautan', 'kode_tautan_expired_at',
+    'tanggal_masuk', 'tanggal_keluar',
 ])]
 class Murid extends Model
 {
     /** @use HasFactory<MuridFactory> */
     use HasFactory, SoftDeletes;
-
-    /** Huruf besar dan angka tanpa karakter yang mudah tertukar (0 O 1 I L), sesuai B6.6. */
-    public const KARAKTER_KODE_TAUTAN = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-
-    public const PANJANG_KODE_TAUTAN = 8;
 
     protected $table = 'murid';
 
@@ -44,7 +39,6 @@ class Murid extends Model
             'status' => StatusMurid::class,
             'tanggal_masuk' => 'date',
             'tanggal_keluar' => 'date',
-            'kode_tautan_expired_at' => 'datetime',
         ];
     }
 
