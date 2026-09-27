@@ -10,12 +10,15 @@ use App\Http\Resources\MuridDetailResource;
 use App\Http\Resources\MuridResource;
 use App\Models\Murid;
 use App\Models\User;
+use App\Services\KartuAkunService;
 use App\Services\MuridService;
 use App\Support\ApiResponse;
 use App\Support\Jangkauan;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response as HttpResponse;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\AllowedSort;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -100,6 +103,19 @@ class MuridController extends Controller
         $this->muridService->hapus($murid, $kepalaSekolah);
 
         return ApiResponse::success(null, "Data {$murid->nama_lengkap} dihapus.");
+    }
+
+    /**
+     * Kartu akun wali murid (PDF A6) untuk dicetak dan dibagikan: nama anak, kelas, NIS sebagai username, keterangan
+     * password awal, dan alamat website. Password tidak ditulis. Ditolak 422 `BUSINESS_RULE` kalau tidak ada akun
+     * wali aktif dengan username NIS ini.
+     */
+    #[Response(200, 'Kartu akun PDF', mediaType: 'application/pdf', type: 'string', format: 'binary')]
+    public function kartuAkun(int $id, KartuAkunService $kartuAkun): HttpResponse
+    {
+        $murid = Murid::query()->findOrFail($id);
+
+        return $kartuAkun->buat($murid)->download($kartuAkun->namaFile($murid));
     }
 
     /**

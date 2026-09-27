@@ -91,6 +91,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/murid', [MuridController::class, 'store']);
         Route::put('/murid/{id}', [MuridController::class, 'update']);
         Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
+        Route::get('/murid/{id}/kartu-akun', [MuridController::class, 'kartuAkun']);
         Route::patch('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'ubahWali']);
         Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
 
