@@ -94,5 +94,5 @@ it('tidak mereset password akun wali murid', function () {
         'password_confirmation' => 'passwordBaru2026',
     ])->assertStatus(422);
 
-    expect($wali->fresh()?->password)->toBeNull();
+    expect(Hash::check('passwordBaru2026', (string) $wali->fresh()?->password))->toBeFalse();
 });

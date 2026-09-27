@@ -49,7 +49,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     ]],
     'KodeError' => [KodeError::class, [
         'UNAUTHENTICATED', 'FORBIDDEN', 'ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE',
-        'NOT_FOUND', 'VALIDATION_ERROR', 'BUSINESS_RULE', 'TOO_MANY_REQUESTS', 'SERVER_ERROR',
+        'PASSWORD_WAJIB_DIGANTI', 'NOT_FOUND', 'VALIDATION_ERROR', 'BUSINESS_RULE', 'TOO_MANY_REQUESTS', 'SERVER_ERROR',
     ]],
 ]);
 

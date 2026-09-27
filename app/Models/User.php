@@ -17,12 +17,21 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use LogicException;
 
-#[Fillable(['name', 'email', 'password', 'google_id', 'role', 'status', 'no_hp', 'avatar_path', 'email_verified_at', 'last_login_at'])]
+#[Fillable(['name', 'email', 'username', 'password', 'wajib_ganti_password', 'google_id', 'role', 'status', 'no_hp', 'avatar_path', 'email_verified_at', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+
+    /**
+     * Nilai bawaan kolom yang sama dengan database, supaya model yang baru dibuat langsung punya nilainya.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'wajib_ganti_password' => false,
+    ];
 
     /**
      * @return array<string, string>
@@ -33,6 +42,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'wajib_ganti_password' => 'boolean',
             'role' => Role::class,
             'status' => StatusAkun::class,
         ];
@@ -83,11 +93,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Akun wali murid selalu punya profil wali (dibuat bersamaan saat login Google pertama).
+     * Akun wali murid selalu punya profil wali (dibuat bersamaan dengan akunnya).
      */
     public function profilWaliMurid(): WaliMurid
     {
-        return $this->waliMurid ?? throw new LogicException("Akun {$this->email} tidak punya profil wali murid.");
+        return $this->waliMurid ?? throw new LogicException("Akun #{$this->id} tidak punya profil wali murid.");
     }
 
     /**
@@ -95,7 +105,7 @@ class User extends Authenticatable
      */
     public function profilGuru(): Guru
     {
-        return $this->guru ?? throw new LogicException("Akun {$this->email} tidak punya profil guru.");
+        return $this->guru ?? throw new LogicException("Akun #{$this->id} tidak punya profil guru.");
     }
 
     /**

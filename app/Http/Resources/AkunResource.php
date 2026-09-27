@@ -22,9 +22,13 @@ class AkunResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            /** Kosong untuk wali murid. */
             'email' => $this->email,
+            /** NIS anak untuk login wali murid; kosong untuk guru. */
+            'username' => $this->username,
             'role' => $this->role,
             'status' => $this->status,
+            'wajib_ganti_password' => $this->wajib_ganti_password,
             'no_hp' => $this->no_hp,
             /** @var string|null */
             'avatar_url' => app(MediaService::class)->urlPublik($this->avatar_path),

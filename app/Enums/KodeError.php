@@ -12,6 +12,7 @@ enum KodeError: string
     case AccountPending = 'ACCOUNT_PENDING';
     case AccountRejected = 'ACCOUNT_REJECTED';
     case AccountInactive = 'ACCOUNT_INACTIVE';
+    case PasswordWajibDiganti = 'PASSWORD_WAJIB_DIGANTI';
     case NotFound = 'NOT_FOUND';
     case ValidationError = 'VALIDATION_ERROR';
     case BusinessRule = 'BUSINESS_RULE';
@@ -22,7 +23,7 @@ enum KodeError: string
     {
         return match ($this) {
             self::Unauthenticated => 401,
-            self::Forbidden, self::AccountPending, self::AccountRejected, self::AccountInactive => 403,
+            self::Forbidden, self::AccountPending, self::AccountRejected, self::AccountInactive, self::PasswordWajibDiganti => 403,
             self::NotFound => 404,
             self::ValidationError, self::BusinessRule => 422,
             self::TooManyRequests => 429,

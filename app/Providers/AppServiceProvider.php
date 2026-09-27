@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Requests\Auth\LoginWaliRequest;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -18,6 +19,8 @@ use Illuminate\Validation\Rules\Password;
 class AppServiceProvider extends ServiceProvider
 {
     private const BATAS_LOGIN_PER_MENIT = 5;
+
+    private const BATAS_LOGIN_WALI_PER_MENIT = 5;
 
     private const BATAS_LOGIN_GOOGLE_PER_MENIT = 10;
 
@@ -61,6 +64,9 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_PER_MENIT)
             ->by(Str::lower((string) $request->input('email')).'|'.$request->ip()));
+
+        RateLimiter::for('login-wali', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_WALI_PER_MENIT)
+            ->by(LoginWaliRequest::normalkanUsername((string) $request->input('username')).'|'.$request->ip()));
 
         RateLimiter::for('login-google', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_GOOGLE_PER_MENIT)
             ->by((string) $request->ip()));

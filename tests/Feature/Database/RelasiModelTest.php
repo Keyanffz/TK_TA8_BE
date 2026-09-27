@@ -24,7 +24,6 @@ use App\Models\Pengumuman;
 use App\Models\Rapor;
 use App\Models\RaporDetail;
 use App\Models\Tagihan;
-use App\Models\User;
 use App\Models\WaliMurid;
 use Illuminate\Database\QueryException;
 
@@ -33,8 +32,7 @@ it('menghubungkan profil guru dan wali murid ke akunnya', function () {
     $wali = WaliMurid::factory()->create();
 
     expect($guru->user->guru->is($guru))->toBeTrue()
-        ->and($wali->user->waliMurid->is($wali))->toBeTrue()
-        ->and(User::query()->findOrFail($wali->user_id)->password)->toBeNull();
+        ->and($wali->user->waliMurid->is($wali))->toBeTrue();
 });
 
 it('mencatat hubungan dan kontak utama saat murid punya ayah dan ibu sebagai wali', function () {

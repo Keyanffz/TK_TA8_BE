@@ -28,6 +28,9 @@ class ProfilController extends Controller
 
     /**
      * Mengganti password. Sesi login di perangkat lain dicabut; sesi ini tetap berlaku.
+     *
+     * Untuk wali murid, password baru tidak boleh sama dengan tanggal lahir anak (DDMMYYYY), dan
+     * `wajib_ganti_password` menjadi `false` setelah berhasil.
      */
     public function gantiPassword(GantiPasswordRequest $request, #[CurrentUser] User $user): JsonResponse
     {

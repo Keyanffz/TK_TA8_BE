@@ -45,19 +45,22 @@ Route::get('/media/{token}', MediaController::class)->middleware('signed:relativ
 
 Route::prefix('auth')->middleware('throttle:api')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/login-wali', [AuthController::class, 'loginWali'])->middleware('throttle:login-wali');
     Route::post('/google', [AuthController::class, 'google'])->middleware('throttle:login-google');
     Route::post('/register-guru', RegistrasiGuruController::class);
     Route::post('/forgot-password', [ResetPasswordController::class, 'kirimTautan']);
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
 });
 
-Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(function () {
-    Route::prefix('auth')->group(function () {
-        Route::get('/me', [AuthController::class, 'me']);
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::put('/profil', [ProfilController::class, 'perbarui']);
-        Route::put('/password', [ProfilController::class, 'gantiPassword'])->middleware('role:super_admin,guru');
-    });
+// Tiga route ini tetap terbuka untuk wali yang masih wajib mengganti password awalnya.
+Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->prefix('auth')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::put('/password', [ProfilController::class, 'gantiPassword']);
+});
+
+Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:api'])->group(function () {
+    Route::put('/auth/profil', [ProfilController::class, 'perbarui']);
 
     Route::middleware('role:super_admin')->group(function () {
         Route::get('/guru', [GuruController::class, 'index']);

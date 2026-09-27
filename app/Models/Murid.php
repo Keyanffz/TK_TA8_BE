@@ -49,6 +49,14 @@ class Murid extends Model
     }
 
     /**
+     * Password awal akun wali murid: tanggal lahir anak dengan format DDMMYYYY.
+     */
+    public function passwordAwalWali(): string
+    {
+        return $this->tanggal_lahir->format('dmY');
+    }
+
+    /**
      * Kepala Sekolah: semua murid. Guru: murid di kelas yang diampu pada tahun ajaran aktif.
      * Wali murid: anaknya sendiri.
      *

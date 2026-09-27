@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Bentuk `user` di respons auth (A7): login, login Google, `/auth/me`, dan pembaruan profil.
+ * Bentuk `user` di respons auth (A7): login, login wali, `/auth/me`, dan pembaruan profil.
  *
  * @mixin User
  */
@@ -27,9 +27,14 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            /** Kosong untuk wali murid. */
             'email' => $this->email,
+            /** NIS anak untuk login wali murid; kosong untuk Kepala Sekolah dan guru. */
+            'username' => $this->username,
             'role' => $this->role,
             'status' => $this->status,
+            /** Wali murid yang masih memakai password awal wajib menggantinya sebelum memakai endpoint lain. */
+            'wajib_ganti_password' => $this->wajib_ganti_password,
             'no_hp' => $this->no_hp,
             /** @var string|null */
             'avatar_url' => $media->urlPublik($this->avatar_path),

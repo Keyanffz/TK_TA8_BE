@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\StatusAkun;
-use App\Models\User;
 use App\Models\WaliMurid;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -119,12 +118,4 @@ it('memakai istilah password di pesan password lama yang salah', function () {
     $this->withToken($guru->user->createToken('web')->plainTextToken)
         ->putJson('/api/v1/auth/password', ['current_password' => 'bukanItu99', 'password' => 'rahasiaBaru456', 'password_confirmation' => 'rahasiaBaru456'])
         ->assertJsonPath('errors.current_password', ['Password salah.']);
-});
-
-it('tidak menyediakan ganti password untuk wali murid', function () {
-    $wali = User::factory()->waliMurid()->create();
-
-    $this->actingAs($wali)->putJson('/api/v1/auth/password', [])
-        ->assertForbidden()
-        ->assertJsonPath('code', 'FORBIDDEN');
 });

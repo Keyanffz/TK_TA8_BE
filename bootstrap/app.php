@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\EnsurePasswordDiganti;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\ForceJsonResponse;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'akun.aktif' => EnsureAccountActive::class,
+            'password.diganti' => EnsurePasswordDiganti::class,
             'role' => EnsureRole::class,
         ]);
     })

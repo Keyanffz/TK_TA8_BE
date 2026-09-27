@@ -19,8 +19,10 @@ it('memberi token dan data user sesuai kontrak A7 saat guru login', function () 
             'id' => $guru->user_id,
             'name' => $guru->user->name,
             'email' => $guru->user->email,
+            'username' => null,
             'role' => 'guru',
             'status' => 'aktif',
+            'wajib_ganti_password' => false,
             'no_hp' => $guru->user->no_hp,
             'avatar_url' => null,
             'guru' => [
@@ -70,7 +72,7 @@ it('menolak email atau password yang salah tanpa membedakan penyebabnya', functi
 })->with([
     'password salah' => [fn (User $user) => ['email' => $user->email, 'password' => 'bukanpassword1']],
     'email tidak terdaftar' => [fn (User $user) => ['email' => 'tidak.ada@tkta8.test', 'password' => 'rahasia123']],
-    'akun wali murid (login Google saja)' => [fn (User $user) => ['email' => User::factory()->waliMurid()->create()->email, 'password' => 'rahasia123']],
+    'akun wali murid' => [fn (User $user) => ['email' => User::factory()->waliMurid()->create(['password' => 'rahasia123'])->email, 'password' => 'rahasia123']],
 ]);
 
 it('menolak login akun yang belum atau tidak lagi aktif dengan kode yang sesuai', function (StatusAkun $status, string $kode, string $pesan) {

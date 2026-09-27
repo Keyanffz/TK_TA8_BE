@@ -42,6 +42,27 @@ class AuthService
     }
 
     /**
+     * Login wali murid dengan NIS anak sebagai username. Akun yang masih memakai password awal tetap mendapat
+     * token, tetapi hanya bisa mengganti password sampai `wajib_ganti_password` bernilai false.
+     *
+     * @return array{token: string, user: User}
+     *
+     * @throws AksesAkunDitolakException
+     */
+    public function loginWali(string $username, string $password, Perangkat $perangkat): array
+    {
+        $user = User::query()->where('username', $username)->where('role', Role::WaliMurid)->first();
+
+        if ($user === null || $user->password === null || ! Hash::check($password, $user->password)) {
+            throw ValidationException::withMessages(['username' => ['NIS atau password salah.']]);
+        }
+
+        $this->pastikanAktif($user);
+
+        return ['token' => $this->buatToken($user, $perangkat), 'user' => $user];
+    }
+
+    /**
      * @throws AksesAkunDitolakException
      */
     public function pastikanAktif(User $user): void
@@ -64,8 +85,8 @@ class AuthService
     }
 
     /**
-     * Wali murid tidak punya password (login Google), jadi hanya akun Kepala Sekolah dan guru yang
-     * dikirimi tautan. Hasilnya tidak dibedakan ke klien supaya keberadaan email tidak bocor.
+     * Hanya akun Kepala Sekolah dan guru yang dikirimi tautan; wali murid tidak punya email dan meminta reset
+     * password ke sekolah. Hasilnya tidak dibedakan ke klien supaya keberadaan email tidak bocor.
      */
     public function kirimTautanResetPassword(string $email): void
     {
@@ -125,7 +146,7 @@ class AuthService
      */
     public function gantiPassword(User $user, string $passwordBaru): void
     {
-        $user->forceFill(['password' => $passwordBaru])->save();
+        $user->forceFill(['password' => $passwordBaru, 'wajib_ganti_password' => false])->save();
 
         $user->tokens()->whereKeyNot($user->currentAccessToken()->getKey())->delete();
     }

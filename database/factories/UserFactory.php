@@ -47,9 +47,17 @@ class UserFactory extends Factory
         return $this->state(fn (): array => [
             'role' => Role::WaliMurid,
             'email' => fake()->unique()->userName().'@wali.tkta8.test',
-            'password' => null,
+            'username' => 'TA'.fake()->unique()->numerify('2026####'),
             'google_id' => (string) fake()->unique()->numerify('1##################'),
         ]);
+    }
+
+    /**
+     * Akun wali yang masih memakai password awal (tanggal lahir anak).
+     */
+    public function wajibGantiPassword(): static
+    {
+        return $this->state(fn (): array => ['wajib_ganti_password' => true]);
     }
 
     public function status(StatusAkun $status): static
