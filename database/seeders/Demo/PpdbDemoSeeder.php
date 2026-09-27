@@ -14,12 +14,14 @@ use App\Models\Pengaturan;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
+use App\Services\WaliMuridService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * PPDB tahun ajaran 2027/2028 yang sedang dibuka dengan 5 pendaftar: dua kakak-adik dari wali yang
- * sudah ada, tiga dari wali baru. Status: diajukan, diajukan, diverifikasi, ditolak, diterima.
+ * PPDB tahun ajaran 2027/2028 yang sedang dibuka dengan 5 pendaftar: dua adik dari wali yang sudah punya akun,
+ * tiga dari pendaftar tanpa login. Status: diajukan, diajukan, diverifikasi, ditolak, diterima. Pendaftar tanpa
+ * login yang diterima dibuatkan akun wali otomatis.
  */
 class PpdbDemoSeeder extends Seeder
 {
@@ -38,15 +40,19 @@ class PpdbDemoSeeder extends Seeder
         $this->bukaPpdb($tahunAjaranTujuan);
 
         $kepalaSekolah = User::query()->where('role', Role::SuperAdmin)->firstOrFail();
-        $waliLama = WaliMurid::query()->has('murid')->where('profil_lengkap', true)->orderBy('id')->limit(2)->get();
-        $pendaftar = [
-            ...$waliLama->all(),
-            ...WaliMurid::factory()->count(3)->create()->all(),
-        ];
+        $waliLama = WaliMurid::query()
+            ->has('murid')
+            ->where('profil_lengkap', true)
+            ->whereHas('user', fn ($user) => $user->where('wajib_ganti_password', false))
+            ->orderBy('id')
+            ->limit(2)
+            ->get();
+        $pendaftar = [...$waliLama->all(), null, null, null];
         $status = [StatusPendaftaran::Diajukan, StatusPendaftaran::Diajukan, StatusPendaftaran::Diverifikasi, StatusPendaftaran::Ditolak, StatusPendaftaran::Diterima];
 
         foreach ($pendaftar as $urutan => $wali) {
-            $pendaftaran = Pendaftaran::factory()->for($wali)->for($tahunAjaranTujuan)->create([
+            $pendaftaran = Pendaftaran::factory()->for($tahunAjaranTujuan)->create([
+                'wali_murid_id' => $wali?->id,
                 'kode' => sprintf('PPDB-2027-%04d', $urutan + 1),
                 'hubungan' => $urutan % 3 === 0 ? Hubungan::Ayah : Hubungan::Ibu,
                 'tingkat_tujuan' => $urutan === 2 ? Tingkat::B : Tingkat::A,
@@ -67,7 +73,7 @@ class PpdbDemoSeeder extends Seeder
             }
 
             if ($pendaftaran->status === StatusPendaftaran::Diterima) {
-                $this->jadikanMurid($pendaftaran);
+                $this->jadikanMurid($pendaftaran, $kepalaSekolah);
             }
         }
     }
@@ -81,7 +87,7 @@ class PpdbDemoSeeder extends Seeder
             'ppdb.tahun_ajaran_id' => $tahunAjaranTujuan->id,
             'ppdb.kuota' => self::KUOTA,
             'ppdb.info' => '<p><strong>Syarat:</strong> usia minimal 4 tahun (Kelompok A) atau 5 tahun (Kelompok B) pada 1 Juli 2027, fotokopi akta kelahiran, fotokopi Kartu Keluarga, dan pas foto 3x4.</p>'
-                .'<p><strong>Alur:</strong> isi formulir di menu PPDB, unggah dokumen, tunggu verifikasi dari sekolah, lalu hasil diumumkan lewat notifikasi.</p>',
+                .'<p><strong>Alur:</strong> isi formulir di halaman PPDB, unggah dokumen, simpan kode pendaftaran, lalu cek status pendaftaran dengan kode itu dan tanggal lahir anak. Anak yang diterima mendapat kartu akun wali murid dari sekolah.</p>',
         ];
 
         foreach ($nilai as $kunci => $isi) {
@@ -89,7 +95,7 @@ class PpdbDemoSeeder extends Seeder
         }
     }
 
-    private function jadikanMurid(Pendaftaran $pendaftaran): void
+    private function jadikanMurid(Pendaftaran $pendaftaran, User $kepalaSekolah): void
     {
         $pasFoto = $pendaftaran->dokumen()->where('jenis', JenisDokumen::PasFoto)->firstOrFail();
         $fotoMurid = 'murid/'.basename($pasFoto->path);
@@ -110,7 +116,7 @@ class PpdbDemoSeeder extends Seeder
             'tanggal_masuk' => '2027-07-12',
         ]);
 
-        $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
-        $pendaftaran->update(['murid_id' => $murid->id]);
+        $wali = app(WaliMuridService::class)->buatAkunOtomatis($murid, $pendaftaran->hubungan, $pendaftaran->no_hp, $kepalaSekolah);
+        $pendaftaran->update(['murid_id' => $murid->id, 'wali_murid_id' => $wali->id]);
     }
 }

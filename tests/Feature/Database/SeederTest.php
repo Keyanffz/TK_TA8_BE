@@ -20,6 +20,7 @@ use App\Models\Tagihan;
 use App\Models\User;
 use App\Models\WaliMurid;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\Demo\SekolahDemoSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -107,6 +108,32 @@ it('mengisi data demo sesuai B8', function () {
 
     Storage::disk('local')->assertExists(KegiatanFoto::query()->value('path'));
     Storage::disk('public')->assertExists(GaleriAlbum::query()->value('cover_path'));
+});
+
+it('menyiapkan akun wali demo dengan username NIS sesuai dokumentasi', function () {
+    Storage::fake('local');
+    Storage::fake('public');
+
+    $this->seed(DemoSeeder::class);
+
+    $wali = fn (string $username) => User::query()->with('waliMurid.murid')->where('username', $username)->sole();
+    $ayah = $wali('TA20260001');
+    $ibu = $wali('TA20250001');
+    $belumLogin = $wali('TA20250030');
+
+    expect(Hash::check(SekolahDemoSeeder::PASSWORD_WALI, (string) $ayah->password))->toBeTrue()
+        ->and($ayah->wajib_ganti_password)->toBeFalse()
+        ->and($ayah->waliMurid?->murid->pluck('nis')->sort()->values()->all())->toBe(['TA20250001', 'TA20260001'])
+        ->and($ibu->waliMurid?->murid->pluck('nis')->sort()->values()->all())->toBe(['TA20250001', 'TA20260001'])
+        ->and(Hash::check('05112021', (string) $belumLogin->password))->toBeTrue()
+        ->and($belumLogin->wajib_ganti_password)->toBeTrue()
+        ->and($wali('TA20250004')->status)->toBe(StatusAkun::Nonaktif)
+        ->and(Murid::query()->doesntHave('waliMurid')->exists())->toBeFalse()
+        ->and(User::query()->where('role', Role::WaliMurid)->whereNotNull('email')->exists())->toBeFalse()
+        ->and(User::query()->where('role', Role::WaliMurid)->where('status', StatusAkun::Nonaktif)->count())->toBe(7)
+        ->and(User::query()->where('role', Role::WaliMurid)->where('status', StatusAkun::Aktif)->where('wajib_ganti_password', true)->count())->toBe(10);
+
+    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260001', 'password' => SekolahDemoSeeder::PASSWORD_WALI])->assertOk();
 });
 
 it('menolak menjalankan data demo di production', function () {

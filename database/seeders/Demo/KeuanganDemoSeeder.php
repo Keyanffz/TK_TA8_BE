@@ -64,7 +64,10 @@ class KeuanganDemoSeeder extends Seeder
             'is_aktif' => true,
         ]);
 
-        $murid = Murid::query()->with('waliMurid.user')->orderBy('id')->get();
+        $murid = Murid::query()
+            ->with(['waliMurid' => fn ($wali) => $wali->whereHas('user', fn ($user) => $user->where('wajib_ganti_password', false)), 'waliMurid.user'])
+            ->orderBy('id')
+            ->get();
         $keringananSpp = $this->buatKeringanan($murid, $spp, $kepalaSekolah);
 
         foreach (self::PERIODE_SPP as $bulanKe => $periode) {
@@ -185,7 +188,8 @@ class KeuanganDemoSeeder extends Seeder
     }
 
     /**
-     * Murid yang belum tertaut ke wali tidak bisa mengunggah bukti, jadi pembayarannya selalu tunai.
+     * Wali yang belum pernah login (masih memakai password awal) tidak bisa mengunggah bukti, jadi pembayaran
+     * anaknya selalu tunai. Relasi `waliMurid` di sini hanya berisi akun yang sudah dipakai.
      */
     private function bayar(Tagihan $tagihan, Murid $murid, Carbon $tanggal, StatusPembayaran $status, bool $tunai = false): void
     {

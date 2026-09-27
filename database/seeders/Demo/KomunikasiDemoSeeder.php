@@ -33,7 +33,7 @@ class KomunikasiDemoSeeder extends Seeder
     {
         $this->pengumuman($kepalaSekolah, TargetPengumuman::Semua, '2026-09-01 08:00:00',
             'Pendaftaran murid baru tahun ajaran 2027/2028 dibuka',
-            'Pendaftaran murid baru untuk Kelompok A dan Kelompok B dibuka mulai 1 September 2026 sampai 31 Maret 2027. Wali murid bisa mendaftar lewat menu PPDB di dashboard setelah masuk dengan akun Google.',
+            'Pendaftaran murid baru untuk Kelompok A dan Kelompok B dibuka mulai 1 September 2026 sampai 31 Maret 2027. Orang tua bisa mendaftar lewat halaman PPDB di website tanpa akun; wali murid yang sudah punya akun bisa mendaftarkan adik lewat menu PPDB di dashboard.',
             publik: true, pinned: true);
         $this->pengumuman($kepalaSekolah, TargetPengumuman::Semua, '2026-08-20 10:00:00',
             'Libur peringatan Maulid Nabi Muhammad SAW',
