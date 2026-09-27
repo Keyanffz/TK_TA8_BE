@@ -1964,17 +1964,7 @@
                                                         "pengumuman_terbaru": {
                                                             "type": "array",
                                                             "items": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "$ref": "#/components/schemas/PengumumanResource"
-                                                                    },
-                                                                    {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "penulis"
-                                                                        ]
-                                                                    }
-                                                                ]
+                                                                "$ref": "#/components/schemas/PengumumanResource"
                                                             }
                                                         },
                                                         "agenda_mendatang": {
@@ -2048,35 +2038,13 @@
                                                         "kegiatan_terbaru": {
                                                             "type": "array",
                                                             "items": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                                    },
-                                                                    {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "kelas",
-                                                                            "guru",
-                                                                            "foto"
-                                                                        ]
-                                                                    }
-                                                                ]
+                                                                "$ref": "#/components/schemas/KegiatanKelasResource"
                                                             }
                                                         },
                                                         "pengumuman_terbaru": {
                                                             "type": "array",
                                                             "items": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "$ref": "#/components/schemas/PengumumanResource"
-                                                                    },
-                                                                    {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "penulis"
-                                                                        ]
-                                                                    }
-                                                                ]
+                                                                "$ref": "#/components/schemas/PengumumanResource"
                                                             }
                                                         },
                                                         "agenda_mendatang": {
@@ -2135,18 +2103,7 @@
                                                         "tagihan_aktif": {
                                                             "type": "array",
                                                             "items": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "$ref": "#/components/schemas/TagihanResource"
-                                                                    },
-                                                                    {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "murid",
-                                                                            "jenis_tagihan"
-                                                                        ]
-                                                                    }
-                                                                ]
+                                                                "$ref": "#/components/schemas/TagihanResource"
                                                             }
                                                         },
                                                         "total_belum_bayar": {
@@ -2155,35 +2112,13 @@
                                                         "kegiatan_terbaru": {
                                                             "type": "array",
                                                             "items": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                                    },
-                                                                    {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "kelas",
-                                                                            "guru",
-                                                                            "foto"
-                                                                        ]
-                                                                    }
-                                                                ]
+                                                                "$ref": "#/components/schemas/KegiatanKelasResource"
                                                             }
                                                         },
                                                         "pengumuman_terbaru": {
                                                             "type": "array",
                                                             "items": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "$ref": "#/components/schemas/PengumumanResource"
-                                                                    },
-                                                                    {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "penulis"
-                                                                        ]
-                                                                    }
-                                                                ]
+                                                                "$ref": "#/components/schemas/PengumumanResource"
                                                             }
                                                         },
                                                         "agenda_mendatang": {
@@ -2201,6 +2136,35 @@
                                                                     "type": "null"
                                                                 }
                                                             ]
+                                                        },
+                                                        "info_sekolah": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "judul": {
+                                                                    "type": "string"
+                                                                },
+                                                                "isi": {
+                                                                    "type": "string"
+                                                                },
+                                                                "nada": {
+                                                                    "$ref": "#/components/schemas/NadaInfo"
+                                                                },
+                                                                "berlaku_sampai": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "judul",
+                                                                "isi",
+                                                                "nada",
+                                                                "berlaku_sampai"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
@@ -2210,7 +2174,8 @@
                                                         "kegiatan_terbaru",
                                                         "pengumuman_terbaru",
                                                         "agenda_mendatang",
-                                                        "rapor_terbaru"
+                                                        "rapor_terbaru",
+                                                        "info_sekolah"
                                                     ]
                                                 }
                                             ]
@@ -3481,17 +3446,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GaleriAlbumResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GaleriAlbumResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -3684,17 +3639,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GaleriAlbumResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GaleriAlbumResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -3888,17 +3833,7 @@
                                             "const": "Album tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GaleriAlbumResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GaleriAlbumResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -4317,17 +4252,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GaleriAlbumResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GaleriAlbumResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -5034,17 +4959,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/GuruResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "user"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/GuruResource"
                                             }
                                         },
                                         "meta": {
@@ -5257,17 +5172,7 @@
                                             "const": "Akun guru dibuat. Sampaikan password awal ke guru; password ini hanya ditampilkan sekali."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GuruResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "user"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GuruResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -5460,17 +5365,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GuruResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "user"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GuruResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -5891,17 +5786,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GuruResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "user"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GuruResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -6130,17 +6015,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GuruResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "user"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GuruResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -6657,17 +6532,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/JenisTagihanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/JenisTagihanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -6914,17 +6779,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/JenisTagihanResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "tahun_ajaran"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/JenisTagihanResource"
                                             }
                                         },
                                         "meta": {
@@ -7148,17 +7003,7 @@
                                             "const": "Jenis tagihan tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/JenisTagihanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/JenisTagihanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -7601,19 +7446,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "kelas",
-                                                        "guru",
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/KegiatanKelasResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -7847,19 +7680,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "kelas",
-                                                            "guru",
-                                                            "foto"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/KegiatanKelasResource"
                                             }
                                         },
                                         "meta": {
@@ -8082,19 +7903,7 @@
                                             "const": "Kegiatan tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "kelas",
-                                                        "guru",
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/KegiatanKelasResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -8501,19 +8310,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "kelas",
-                                                        "guru",
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/KegiatanKelasResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -8708,19 +8505,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/KegiatanKelasResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "kelas",
-                                                        "guru",
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/KegiatanKelasResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -8915,6 +8700,258 @@
             }
         },
         "/kegiatan-foto/{id}": {
+            "put": {
+                "operationId": "kegiatanKelas.perbaruiFoto",
+                "summary": "Mengubah keterangan (`caption`) dan urutan satu foto kegiatan. Hanya guru pembuat kegiatan dan Kepala\nSekolah",
+                "tags": [
+                    "KegiatanKelas"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PerbaruiFotoKegiatanRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Foto tersimpan."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "caption": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "urutan": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "caption",
+                                                "urutan"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_PENDING",
+                                                "ACCOUNT_REJECTED",
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "operationId": "kegiatanKelas.hapusFoto",
                 "summary": "Menghapus satu foto kegiatan. Hanya guru pembuat kegiatan dan Kepala Sekolah",
@@ -9366,19 +9403,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/KelasResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "tahun_ajaran",
-                                                            "wali_kelas",
-                                                            "guru_pendamping"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/KelasResource"
                                             }
                                         },
                                         "meta": {
@@ -10280,19 +10305,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/KeringananResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "murid",
-                                                            "jenis_tagihan",
-                                                            "dibuat_oleh"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/KeringananResource"
                                             }
                                         },
                                         "meta": {
@@ -10504,19 +10517,7 @@
                                             "const": "Keringanan tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/KeringananResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "jenis_tagihan",
-                                                        "dibuat_oleh"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/KeringananResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -10719,19 +10720,7 @@
                                             "const": "Keringanan tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/KeringananResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "jenis_tagihan",
-                                                        "dibuat_oleh"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/KeringananResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -12341,17 +12330,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/MuridResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "wali"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/MuridResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -12825,17 +12804,7 @@
                                             "const": "Data murid tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/MuridResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "wali"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/MuridResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -13277,17 +13246,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/MuridResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "wali"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/MuridResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -13679,6 +13638,247 @@
             }
         },
         "/murid/{id}/wali/{wali_murid_id}": {
+            "patch": {
+                "operationId": "murid.ubahWali",
+                "summary": "Mengubah hubungan (`ayah` | `ibu` | `wali`) atau kontak utama wali yang tertaut. Menjadikan wali ini kontak\nutama melepas status itu dari wali lain; kontak utama tidak bisa dilepas tanpa memilih penggantinya",
+                "tags": [
+                    "Murid"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "wali_murid_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UbahTautanWaliRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/MuridResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_PENDING",
+                                                "ACCOUNT_REJECTED",
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "operationId": "murid.lepasWali",
                 "summary": "Melepas tautan wali murid dari murid ini",
@@ -13875,7 +14075,7 @@
         "/notifikasi": {
             "get": {
                 "operationId": "notifikasi.index",
-                "summary": "Notifikasi milik pengguna yang sedang masuk, terbaru lebih dulu. `filter[dibaca]=0` hanya yang belum dibaca",
+                "summary": "Notifikasi milik pengguna yang sedang masuk, terbaru lebih dulu. `filter[dibaca]=0` atau `false` hanya yang belum dibaca",
                 "tags": [
                     "Notifikasi"
                 ],
@@ -14624,19 +14824,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PembayaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tagihan",
-                                                        "dibayar_oleh",
-                                                        "diverifikasi_oleh"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PembayaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -14865,19 +15053,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PembayaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tagihan",
-                                                        "dibayar_oleh",
-                                                        "diverifikasi_oleh"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PembayaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -15113,19 +15289,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PembayaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tagihan",
-                                                        "dibayar_oleh",
-                                                        "diverifikasi_oleh"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PembayaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -15410,19 +15574,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/PembayaranResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "tagihan",
-                                                            "dibayar_oleh",
-                                                            "diverifikasi_oleh"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/PembayaranResource"
                                             }
                                         },
                                         "meta": {
@@ -15636,19 +15788,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PembayaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tagihan",
-                                                        "dibayar_oleh",
-                                                        "diverifikasi_oleh"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PembayaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16201,20 +16341,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PendaftaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran",
-                                                        "wali",
-                                                        "dokumen",
-                                                        "murid"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PendaftaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16442,20 +16569,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PendaftaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran",
-                                                        "wali",
-                                                        "dokumen",
-                                                        "murid"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PendaftaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16690,20 +16804,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PendaftaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran",
-                                                        "wali",
-                                                        "dokumen",
-                                                        "murid"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PendaftaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16987,18 +17088,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/PendaftaranResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "tahun_ajaran",
-                                                            "murid"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/PendaftaranResource"
                                             }
                                         },
                                         "meta": {
@@ -17209,20 +17299,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PendaftaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran",
-                                                        "wali",
-                                                        "dokumen",
-                                                        "murid"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PendaftaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -17416,20 +17493,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PendaftaranResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "tahun_ajaran",
-                                                        "wali",
-                                                        "dokumen",
-                                                        "murid"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PendaftaranResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -18485,7 +18549,7 @@
             },
             "get": {
                 "operationId": "pengaturan.index",
-                "summary": "Pengaturan sebagai objek datar berkunci lengkap (`\"profil.visi\": \u2026`), bisa dibatasi per `grup`\n(`profil` | `landing` | `keuangan` | `ppdb`). Field gambar disertai pasangan `*_url`. Guru berizin\nkeuangan hanya boleh membaca `grup=keuangan`",
+                "summary": "Pengaturan sebagai objek datar berkunci lengkap (`\"profil.visi\": \u2026`), bisa dibatasi per `grup`\n(`profil` | `landing` | `keuangan` | `ppdb` | `beranda`). Field gambar disertai pasangan `*_url`. Guru berizin\nkeuangan hanya boleh membaca `grup=keuangan`",
                 "tags": [
                     "Pengaturan"
                 ],
@@ -18499,7 +18563,8 @@
                                 "profil",
                                 "landing",
                                 "keuangan",
-                                "ppdb"
+                                "ppdb",
+                                "beranda"
                             ]
                         }
                     }
@@ -18922,17 +18987,7 @@
                                             ]
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PengumumanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "penulis"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PengumumanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -19093,7 +19148,7 @@
             },
             "get": {
                 "operationId": "pengumuman.index",
-                "description": "Filter `filter[target]`, `filter[terbit]` (`0` = draft). `search` mencari judul.",
+                "description": "Filter `filter[target]`, `filter[terbit]` (`0` atau `false` = draft). `search` mencari judul.",
                 "summary": "Feed pengumuman untuk pengguna: target semua, target sesuai role, kelas yang diampu / kelas anak, dan\nmurid di kelasnya / anaknya, ditambah tulisannya sendiri (termasuk draft). Kepala Sekolah melihat semua.\nYang disematkan lebih dulu, lalu terbaru",
                 "tags": [
                     "Pengumuman"
@@ -19160,17 +19215,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/PengumumanResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "penulis"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/PengumumanResource"
                                             }
                                         },
                                         "meta": {
@@ -19393,17 +19438,7 @@
                                             "const": "Pengumuman tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PengumumanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "penulis"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PengumumanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -19810,17 +19845,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/PengumumanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "penulis"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/PengumumanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -20361,12 +20386,11 @@
         "/wali/profil": {
             "put": {
                 "operationId": "wali.profilWali",
-                "summary": "Onboarding wali murid: melengkapi nomor HP, alamat, pekerjaan, dan NIK (opsional).\nSetelah berhasil, `wali_murid.profil_lengkap` bernilai `true`",
+                "summary": "Onboarding dan ubah profil wali murid: nomor HP, alamat, pekerjaan, dan NIK (opsional). Boleh sebagian;\nfield yang tidak dikirim tidak berubah. `wali_murid.profil_lengkap` bernilai `true` setelah nomor HP,\nalamat, dan pekerjaan terisi",
                 "tags": [
                     "ProfilWali"
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -21423,17 +21447,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/GaleriAlbumResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "foto"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/GaleriAlbumResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -21759,21 +21773,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22003,21 +22003,243 @@
                                             "const": "Rapor dikembalikan ke guru untuk direvisi."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
+                                            "$ref": "#/components/schemas/RaporResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
                                             ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_PENDING",
+                                                "ACCOUNT_REJECTED",
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/rapor/{id}/tarik": {
+            "post": {
+                "operationId": "rapor.tarik",
+                "summary": "Menarik rapor yang sudah terbit kembali ke revisi, dengan catatan untuk guru pembuat. Wali murid tidak\nbisa melihat rapor itu lagi sampai diterbitkan ulang",
+                "tags": [
+                    "Rapor"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CatatanRevisiRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22243,21 +22465,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22526,20 +22734,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/RaporResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "murid",
-                                                            "kelas",
-                                                            "tahun_ajaran",
-                                                            "pembuat"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/RaporResource"
                                             }
                                         },
                                         "meta": {
@@ -22722,7 +22917,7 @@
         "/rapor/{id}": {
             "put": {
                 "operationId": "rapor.update",
-                "summary": "Mengisi rapor (hanya guru pembuat, saat status draft atau revisi). Elemen yang tidak dikirim di `detail`\ntidak berubah",
+                "summary": "Mengisi rapor: guru pembuat saat status draft atau revisi, atau Kepala Sekolah saat status diajukan\n(memperbaiki isi sebelum terbit; statusnya tetap diajukan). Elemen yang tidak dikirim di `detail` tidak\nberubah",
                 "tags": [
                     "Rapor"
                 ],
@@ -22761,21 +22956,7 @@
                                             "const": "Rapor tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -23000,21 +23181,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -23218,21 +23385,7 @@
                                             "const": "Foto tersimpan."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -23459,21 +23612,7 @@
                                             "const": "Rapor diajukan ke Kepala Sekolah."
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/RaporResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "kelas",
-                                                        "tahun_ajaran",
-                                                        "pembuat",
-                                                        "detail"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/RaporResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -24450,18 +24589,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/TagihanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "jenis_tagihan"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/TagihanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -24997,18 +25125,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/TagihanResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "murid",
-                                                            "jenis_tagihan"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/TagihanResource"
                                             }
                                         },
                                         "meta": {
@@ -25189,6 +25306,239 @@
             }
         },
         "/tagihan/{id}": {
+            "put": {
+                "operationId": "tagihan.update",
+                "summary": "Mengubah jatuh tempo, potongan, atau catatan tagihan; `total` dihitung ulang dari nominal dikurangi\npotongan. Ditolak untuk tagihan yang lunas, dibatalkan, atau punya bukti transfer yang menunggu\nverifikasi. Tagihan terlambat yang jatuh temponya dimundurkan kembali berstatus belum bayar",
+                "tags": [
+                    "Tagihan"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PerbaruiTagihanRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/TagihanResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_PENDING",
+                                                "ACCOUNT_REJECTED",
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "get": {
                 "operationId": "tagihan.show",
                 "summary": "Detail tagihan beserta riwayat pembayaran dan rekening sekolah untuk transfer",
@@ -25221,19 +25571,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/TagihanResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "murid",
-                                                        "jenis_tagihan",
-                                                        "pembayaran"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/TagihanResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -26532,17 +26870,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "allOf": [
-                                                    {
-                                                        "$ref": "#/components/schemas/WaliMuridResource"
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "required": [
-                                                            "user"
-                                                        ]
-                                                    }
-                                                ]
+                                                "$ref": "#/components/schemas/WaliMuridResource"
                                             }
                                         },
                                         "meta": {
@@ -26756,18 +27084,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/WaliMuridResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "user",
-                                                        "anak"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/WaliMuridResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -26919,6 +27236,238 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "operationId": "waliMurid.update",
+                "summary": "Mengubah data wali murid (nama, nomor HP, NIK, alamat, pekerjaan). Boleh sebagian; email tidak bisa diubah\nkarena dipakai login Google",
+                "tags": [
+                    "WaliMurid"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PerbaruiWaliMuridRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/WaliMuridResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_PENDING",
+                                                "ACCOUNT_REJECTED",
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/wali-murid/{id}/status": {
@@ -26963,17 +27512,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/WaliMuridResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "user"
-                                                    ]
-                                                }
-                                            ]
+                                            "$ref": "#/components/schemas/WaliMuridResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -28457,6 +28996,7 @@
             },
             "LengkapiProfilWaliRequest": {
                 "type": "object",
+                "description": "`PUT /wali/profil`: onboarding sekaligus ubah profil. Field yang tidak dikirim tidak berubah; nomor HP,\nalamat, dan pekerjaan tidak bisa dikosongkan, NIK bisa (`null`).",
                 "properties": {
                     "no_hp": {
                         "type": "string"
@@ -28476,11 +29016,6 @@
                         ]
                     }
                 },
-                "required": [
-                    "no_hp",
-                    "alamat",
-                    "pekerjaan"
-                ],
                 "title": "LengkapiProfilWaliRequest"
             },
             "LogAktivitasResource": {
@@ -28807,6 +29342,16 @@
                     "created_at"
                 ],
                 "title": "MuridResource"
+            },
+            "NadaInfo": {
+                "type": "string",
+                "description": "Nada banner info sekolah di beranda wali murid (`beranda.info_wali`), menentukan warnanya di FE.\n",
+                "enum": [
+                    "info",
+                    "penting",
+                    "peringatan"
+                ],
+                "title": "NadaInfo"
             },
             "NotifikasiResource": {
                 "type": "object",
@@ -29348,6 +29893,25 @@
                 },
                 "title": "PerbaruiFotoGaleriRequest"
             },
+            "PerbaruiFotoKegiatanRequest": {
+                "type": "object",
+                "description": "Sama dengan `PUT /galeri-foto/{id}`: field yang tidak dikirim tidak berubah.",
+                "properties": {
+                    "caption": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "urutan": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                    }
+                },
+                "title": "PerbaruiFotoKegiatanRequest"
+            },
             "PerbaruiProfilRequest": {
                 "type": "object",
                 "properties": {
@@ -29375,6 +29939,56 @@
                     "name"
                 ],
                 "title": "PerbaruiProfilRequest"
+            },
+            "PerbaruiTagihanRequest": {
+                "type": "object",
+                "description": "`PUT /tagihan/{id}`: field yang tidak dikirim tidak berubah. Potongan tidak boleh melebihi nominal tagihan,\ndan jatuh tempo yang diubah tidak boleh sebelum hari ini (keduanya dicek terhadap data tagihan di service).",
+                "properties": {
+                    "jatuh_tempo": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "potongan": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "catatan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 500
+                    }
+                },
+                "title": "PerbaruiTagihanRequest"
+            },
+            "PerbaruiWaliMuridRequest": {
+                "type": "object",
+                "description": "`PUT /wali-murid/{id}` oleh Kepala Sekolah, misalnya membetulkan nama atau nomor HP yang salah ketik.\nField yang tidak dikirim tidak berubah; email tidak bisa diubah karena dipakai login Google.",
+                "properties": {
+                    "nama": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "no_hp": {
+                        "type": "string"
+                    },
+                    "nik": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "alamat": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "pekerjaan": {
+                        "type": "string",
+                        "maxLength": 100
+                    }
+                },
+                "title": "PerbaruiWaliMuridRequest"
             },
             "PeriodeTagihan": {
                 "type": "string",
@@ -30604,6 +31218,19 @@
                 ],
                 "title": "UbahStatusAkunRequest"
             },
+            "UbahTautanWaliRequest": {
+                "type": "object",
+                "description": "`PATCH /murid/{id}/wali/{wali_murid_id}`: salah satu atau keduanya; field yang tidak dikirim tidak berubah.",
+                "properties": {
+                    "hubungan": {
+                        "$ref": "#/components/schemas/Hubungan"
+                    },
+                    "is_kontak_utama": {
+                        "type": "boolean"
+                    }
+                },
+                "title": "UbahTautanWaliRequest"
+            },
             "UnggahGambarPengaturanRequest": {
                 "type": "object",
                 "properties": {
@@ -30698,6 +31325,24 @@
                             "profil_lengkap": {
                                 "type": "boolean"
                             },
+                            "nik": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "alamat": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "pekerjaan": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
                             "anak": {
                                 "type": "array",
                                 "items": {
@@ -30734,6 +31379,9 @@
                         "required": [
                             "id",
                             "profil_lengkap",
+                            "nik",
+                            "alamat",
+                            "pekerjaan",
                             "anak"
                         ]
                     },

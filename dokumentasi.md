@@ -15,6 +15,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 6. Akademik & komunikasi | Selesai, disetujui (dengan revisi) |
 | 7. PPDB, CMS, dashboard | Selesai, disetujui (dengan revisi) |
 | 8. Hardening | Selesai, menunggu review |
+| Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -24,19 +25,19 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Auth publik | `POST /auth/login`, `POST /auth/google`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
 | Auth (login) | `GET /auth/me`, `POST /auth/logout`, `PUT /auth/profil`, `PUT /auth/password` (SA, G) |
 | Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, `PATCH /guru/{id}/status` |
-| Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PATCH /wali-murid/{id}/status` |
+| Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PUT /wali-murid/{id}`, `PATCH /wali-murid/{id}/status` |
 | Wali (W) | `PUT /wali/profil`, `POST /wali/tautkan-anak`, `GET /wali/anak` |
 | Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
 | Kelas | `GET /kelas`, `GET /kelas/{id}` (SA, G terbatas), `POST /kelas`, `PUT/DELETE /kelas/{id}`, `POST /kelas/{id}/murid`, `DELETE /kelas/{id}/murid/{murid_id}`, `POST /kelas/kenaikan` (SA) |
-| Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `POST /murid/{id}/kode-tautan`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
+| Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `POST /murid/{id}/kode-tautan`, `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
 | Jenis tagihan | `GET /jenis-tagihan` (K), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
 | Keringanan (K) | `GET/POST /keringanan`, `PUT/DELETE /keringanan/{id}` |
-| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan` (SA) |
+| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan` (SA) |
 | Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai atau transfer), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
 | Laporan (K) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
-| Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
+| Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
-| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}`, `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi` (SA) |
+| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
 | Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role), `POST /pengumuman` (SA, G), `PUT/DELETE /pengumuman/{id}` (penulis, SA) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
@@ -57,6 +58,20 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
 
+Revisi audit dashboard FE Fase 3 (kontraknya sudah ditulis ke Bagian A; yang di bawah ini detail yang dipilih sendiri):
+
+1. Tagihan dibatalkan: unique index diganti menjadi (murid_id, jenis_tagihan_id, `periode_aktif`). `periode_aktif` kolom virtual (`virtualAs`) berisi `periode`, atau NULL kalau status `dibatalkan`; NULL tidak dianggap sama oleh unique index di MySQL, MariaDB, dan SQLite. Diuji: dua tagihan aktif untuk periode yang sama ditolak database, begitu juga mengubah tagihan dibatalkan menjadi aktif kalau sudah ada penggantinya. Akibat yang perlu diketahui: tagihan bulanan yang dibatalkan akan dibuat lagi oleh generate berikutnya untuk periode itu (manual `POST /tagihan/generate` atau `--periode`); scheduler hanya menjalankan bulan berjalan pada tanggal 1. Kalau pembatalan dimaksudkan sebagai pembebasan, pakai keringanan 100% atau `PUT /tagihan/{id}` dengan potongan penuh. Rollback migration gagal kalau sudah ada tagihan pengganti untuk periode yang pernah dibatalkan.
+2. `PUT /tagihan/{id}`: field boleh sebagian. Potongan maksimal nominal; potongan sebesar nominal membuat tagihan langsung `lunas` (sama dengan keringanan penuh saat generate). Jatuh tempo yang tidak berubah boleh sudah lewat, jatuh tempo baru minimal hari ini. Tagihan `terlambat` yang jatuh temponya dimundurkan kembali `belum_bayar`; tagihan `belum_bayar` tidak diubah menjadi `terlambat` di sini (tetap tugas `tagihan:tandai-terlambat` yang sekaligus mengirim notifikasi). Wali tidak diberi notifikasi (tidak ada jenis notifikasi untuk perubahan tagihan). Log aktivitas `tagihan`/`diubah` menyimpan jatuh tempo, potongan, total, dan status sebelum dan sesudah. `catatan` kosong disimpan `null`.
+3. Banner info wali: enum baru `NadaInfo` (`info`, `penting`, `peringatan`; masuk A5). `info_sekolah` di dashboard tidak memuat `aktif` karena selalu aktif kalau tidak null. `isi` teks biasa, tidak disanitasi seperti kunci HTML, jadi FE menampilkannya sebagai teks. Kunci ini grup `beranda`, tidak ikut `GET /public/profil`. `PengaturanSeeder` menambahkannya nonaktif (sekarang 25 kunci); `DemoSeeder` mengaktifkannya sampai 10 Oktober 2026.
+4. `PUT /kegiatan-foto/{id}` memakai aturan dan bentuk respons yang sama dengan `PUT /galeri-foto/{id}`: `caption` maks 255 atau `null`, `urutan` 0–1000, balasan `{ id, caption, urutan }`.
+5. Rapor oleh Kepala Sekolah: perbaikan isi saat `diajukan` tercatat di log `rapor`/`diubah`. Kepala Sekolah yang bukan pembuat dan mengisi rapor `draft`/`revisi`/`terbit` sekarang mendapat 422 `BUSINESS_RULE` dengan pesan yang menjelaskan, bukan lagi 403 (test lama disesuaikan). Unggah foto elemen dan ajukan tetap hanya guru pembuat.
+6. Tarik rapor: `terbit_at` dan `disetujui_oleh` dikosongkan, `catatan_revisi` diganti catatan tarik. Notifikasi ke guru pembuat berjenis `rapor_revisi` (tidak menambah jenis baru) dengan judul "Rapor terbit ditarik untuk revisi". Wali murid tidak diberi tahu; notifikasi `rapor_terbit` yang sudah mereka terima tetap ada dan tautannya membalas 404 sampai rapor diterbitkan ulang. Log `rapor`/`ditarik` berisi catatan.
+7. `PATCH /murid/{id}/wali/{wali_murid_id}` membalas detail murid (bentuk `GET /murid/{id}`) supaya FE bisa langsung memperbarui daftar wali. Log `wali`/`diubah` berisi field yang dikirim.
+8. `PUT /wali-murid/{id}` dan `PUT /wali/profil` memakai logika simpan yang sama: `profil_lengkap` = nomor HP, alamat, dan pekerjaan terisi. Perubahan oleh Kepala Sekolah dicatat di log `akun`/`data_diubah` dengan nama field yang berubah saja (tanpa nilai, karena berisi NIK dan nomor HP). Nomor HP, alamat, dan pekerjaan tidak bisa dikosongkan lewat kedua endpoint; NIK bisa.
+9. Filter boolean (`filter[dibaca]`, `filter[terbit]`, `filter[is_publik]` galeri, `filter[is_aktif]` jenis tagihan): nilai `true`/`false` (tanpa membedakan huruf besar) diubah ke `1`/`0` di `prepareForValidation` (`MemvalidasiDaftar::normalkanFilterBoolean`) karena aturan `boolean` Laravel tidak menerima teks itu. Nilai lain tetap 422.
+10. OpenAPI: `Scramble::configure()->withoutEagerLoadAnalysis()` di `AppServiceProvider`. Scramble berhenti menambahkan `allOf: [$ref, { type: object, required: [...] }]` untuk Resource yang relasinya di-eager load; 60 tempat (item array dan objek tunggal) sekarang `$ref` langsung. Dibandingkan dengan skrip: hanya pembungkus itu yang berubah, skema `components` sama persis. Akibatnya field relasi Resource (misalnya `murid` di `TagihanResource`) tetap opsional di tipe TypeScript walau selalu dikirim di endpoint itu.
+11. Email factory: `UserFactory` memakai `@guru.tkta8.test`, `@wali.tkta8.test` (state `waliMurid`), dan `@tkta8.test` (state `superAdmin`); sebelumnya `freeEmail()` dipakai tiga wali pendaftar PPDB di data demo. Email Kepala Sekolah tetap dari `SUPERADMIN_EMAIL`. `check:slop` sekarang juga menolak faker email (`email()`, `safeEmail()`, `freeEmail()`, `companyEmail()`) di `database/` dan kata "kata sandi" di `app`, `database`, `lang`, `resources`, `routes`.
+
 Fase 8:
 
 1. Rate limit: limiter `api` 120 request per menit, dihitung per user untuk request yang sudah login dan per IP untuk endpoint publik serta endpoint auth tanpa login (keduanya berbagi kuota per IP). **Catatan review:** karena FE memakai pola BFF, IP yang dipakai semua limiter berbasis IP (`api`, `login`, `login-google`) adalah IP klien dari `X-Forwarded-For` kalau request datang dari proxy di `TRUSTED_PROXIES` (middleware `TrustProxies` bawaan Laravel berjalan sebelum limiter, jadi tidak perlu kode tambahan). Diuji di `tests/Feature/Hardening/RateLimitProxyTest.php`; syarat deploy ada di "Instalasi dan menjalankan". `GET /health` dan `GET /media/{token}` tidak dibatasi: health dipanggil pemantau, dan satu halaman kegiatan bisa memuat puluhan foto lewat signed URL dari satu IP sekolah. Limiter khusus (`login`, `login-google`, `tautkan-anak`) tetap berlaku di atasnya.
@@ -76,17 +91,17 @@ Fase 6:
 
 1. `be/fase-6-8` dibuat dari `main` (Fase 3); sebelum mulai, branch ini di-fast-forward ke `be/fase-4-5`.
 2. Enum `JenisNotifikasi` (15 nilai A7, termasuk `tagihan_tertunda`) dipakai semua kelas notifikasi dan terdokumentasi sebagai enum di OpenAPI. Tidak mengubah nilai.
-3. Notifikasi: `GET /notifikasi` berpaginasi, terbaru dulu, dengan `filter[dibaca]=0|1`. `POST /notifikasi/baca-semua` membalas `{ jumlah }` (yang baru ditandai). `{id}` notifikasi berupa UUID (id tabel `notifications`); id bukan UUID atau milik orang lain dibalas 404.
+3. Notifikasi: `GET /notifikasi` berpaginasi, terbaru dulu, dengan `filter[dibaca]=0|1` (mulai revisi audit juga `true|false`). `POST /notifikasi/baca-semua` membalas `{ jumlah }` (yang baru ditandai). `{id}` notifikasi berupa UUID (id tabel `notifications`); id bukan UUID atau milik orang lain dibalas 404.
 4. Agenda: `GET /agenda` tidak berpaginasi, `bulan` bawaan bulan ini, dan berisi agenda yang bersinggungan dengan bulan itu (agenda lintas bulan muncul di kedua bulan). Semua pengguna yang masuk melihat semua agenda, termasuk yang `is_publik = false`. `is_publik` bawaan `false`.
 5. Elemen penilaian: `GET` tidak berpaginasi dan memuat elemen nonaktif (ada `is_aktif`). `kode` diubah ke huruf besar dan hanya boleh huruf, angka, garis bawah. Tanpa `urutan`, elemen baru ditaruh paling akhir. Hapus ditolak `BUSINESS_RULE` kalau elemen sudah dipakai di rapor. Elemen baru atau yang dinonaktifkan tidak mengubah rapor yang sudah dibuat.
-6. Kegiatan kelas: guru hanya untuk kelas yang dia ampu di tahun ajaran aktif (selain itu 422 di `kelas_id`); Kepala Sekolah untuk kelas mana pun, tercatat atas profil gurunya. `tanggal` tidak boleh di masa depan. `PUT` hanya mengubah tanggal, tema, judul, deskripsi (`kelas_id` dan `foto` ditolak). Maksimal 10 foto per unggahan dan 30 per kegiatan. `caption` foto belum bisa diisi lewat API (A7 tidak punya field-nya), jadi `null` kecuali data demo. Guru pengampu lain di kelas yang sama bisa melihat tetapi mendapat 403 saat mengubah. Parameter daftar: `filter[kelas_id]`, `search` (judul, tema), `sort=tanggal|created_at` (bawaan `-tanggal`).
+6. Kegiatan kelas: guru hanya untuk kelas yang dia ampu di tahun ajaran aktif (selain itu 422 di `kelas_id`); Kepala Sekolah untuk kelas mana pun, tercatat atas profil gurunya. `tanggal` tidak boleh di masa depan. `PUT` hanya mengubah tanggal, tema, judul, deskripsi (`kelas_id` dan `foto` ditolak). Maksimal 10 foto per unggahan dan 30 per kegiatan. `caption` foto belum bisa diisi lewat API (A7 tidak punya field-nya), jadi `null` kecuali data demo (**sejak revisi audit** bisa lewat `PUT /kegiatan-foto/{id}`). Guru pengampu lain di kelas yang sama bisa melihat tetapi mendapat 403 saat mengubah. Parameter daftar: `filter[kelas_id]`, `search` (judul, tema), `sort=tanggal|created_at` (bawaan `-tanggal`).
 7. Rapor, pembuat: **Revisi:** Kepala Sekolah boleh `POST /rapor` hanya untuk murid di kelas yang dia ampu (wali kelas atau pendamping) di tahun ajaran aktif, sama seperti guru, tercatat atas profil gurunya. Mengisi, mengunggah foto, dan mengajukan hanya oleh guru pembuat (Kepala Sekolah yang bukan pembuat mendapat 403). Kelas rapor = kelas murid dengan penempatan `aktif` di tahun ajaran aktif; semester 1 atau 2 bebas dipilih.
 8. Rapor, isi: `tinggi_badan` 50–200 cm dan `berat_badan` 5–80 kg, satu desimal. `detail` di `PUT` boleh sebagian; elemen yang tidak ada di rapor ditolak 422. Mengajukan ditolak `BUSINESS_RULE` kalau ada elemen yang deskripsinya kosong; tinggi, berat, dan catatan guru tidak wajib. Foto per elemen menggantikan foto lama; tidak ada endpoint hapus foto rapor (tidak ada di A7).
-9. Rapor, review: `catatan_revisi` tetap tersimpan setelah diajukan ulang atau terbit, dan tidak dikirim ke wali murid. Rapor terbit tidak bisa diubah atau ditarik lagi. `GET /rapor/{id}/pdf` untuk Kepala Sekolah dan guru bisa dipakai sebelum terbit sebagai pratinjau (PDF bertanda "Pratinjau"). Nama file `rapor-{nis}-{tahun-ajaran}-semester-{n}.pdf`. Parameter daftar: `filter[kelas_id|semester|status|tahun_ajaran_id|murid_id]`, `search` (nama/NIS murid), `sort=updated_at|diajukan_at|created_at` (bawaan `-updated_at`).
+9. Rapor, review: `catatan_revisi` tetap tersimpan setelah diajukan ulang atau terbit, dan tidak dikirim ke wali murid. Rapor terbit tidak bisa diubah atau ditarik lagi (**sejak revisi audit** bisa ditarik Kepala Sekolah lewat `POST /rapor/{id}/tarik`). `GET /rapor/{id}/pdf` untuk Kepala Sekolah dan guru bisa dipakai sebelum terbit sebagai pratinjau (PDF bertanda "Pratinjau"). Nama file `rapor-{nis}-{tahun-ajaran}-semester-{n}.pdf`. Parameter daftar: `filter[kelas_id|semester|status|tahun_ajaran_id|murid_id]`, `search` (nama/NIS murid), `sort=updated_at|diajukan_at|created_at` (bawaan `-updated_at`).
 10. Notifikasi rapor: `rapor_diajukan` ke Kepala Sekolah aktif, `rapor_revisi` ke guru pembuat, `rapor_terbit` ke semua wali murid anak itu; semua ber-url `/dashboard/rapor/{id}`.
 11. Pengumuman, penerima notifikasi `pengumuman_baru` (akun aktif, selain penulis): `semua` = semua guru dan wali murid; `guru`; `wali_murid`; `kelas` = wali murid yang anaknya berpenempatan aktif di kelas itu ditambah wali kelas dan guru pendampingnya; `murid` = wali murid anak itu ditambah guru pengampu kelasnya di tahun ajaran aktif. Kepala Sekolah tidak dikirimi karena melihat semua pengumuman. Judul notifikasi = judul pengumuman, pesan = 140 karakter pertama isi tanpa HTML, url `/dashboard/pengumuman/{id}`.
 12. Pengumuman, terbit: notifikasi dikirim saat pengumuman berubah dari draft menjadi terbit (`published_at` kosong → terisi). Mengubah pengumuman yang sudah terbit tidak mengirim ulang dan `published_at` tetap. `publish: false` pada pengumuman terbit menariknya kembali jadi draft (`published_at` dikosongkan); kalau diterbitkan lagi, notifikasi terkirim lagi.
-13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran. `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1`, `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
+13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran. `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1` (juga `true|false`), `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
 14. Di OpenAPI, `GET /kegiatan/{id}`, `GET /rapor/{id}`, `GET /pengumuman/{id}`, dan `GET /rapor/{id}/pdf` masih mencantumkan 403 `FORBIDDEN`. **Selesai di Fase 8** (lihat keputusan Fase 8 nomor 2).
 
 Fase 7:
@@ -267,7 +282,7 @@ php artisan migrate --seed
 php artisan storage:link
 ```
 
-`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 24 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
+`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 25 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
 
 Data contoh untuk pengembangan lokal (ditolak di production dan di database yang sudah berisi tahun ajaran):
 
@@ -438,6 +453,17 @@ Setelah review Fase 6–7 (commit `3ecfee0` di BE, `a6a73e7` di FE, Bagian A tet
 19. `GET /galeri-album/{id}` (SA) untuk album beserta semua foto; `GET /galeri-album` berisi `cover_url` dan `jumlah_foto` tanpa daftar foto.
 20. `POST /pendaftaran` ditolak kalau NIK anak sudah punya pendaftaran selain `ditolak` atau sudah dipakai murid; pendaftar yang pernah ditolak boleh daftar ulang (A7, B6.11).
 
+Setelah audit dashboard FE Fase 3 (branch `be/revisi-audit`, Bagian A kedua file identik, di-push ke `main` repo FE):
+
+21. Kunci pengaturan `beranda.info_wali` (grup `beranda`) dan `info_sekolah` di dashboard wali; enum `NadaInfo` (A4, A5, A7).
+22. `PUT /tagihan/{id}` (K); unique tagihan hanya untuk tagihan yang belum dibatalkan (kolom virtual `periode_aktif`), dan generate membuat ulang tagihan yang dibatalkan (A2.4, A4, A6, A7, B6.1).
+23. `PUT /kegiatan-foto/{id}` (pembuat, SA).
+24. `PUT /rapor/{id}` untuk SA saat `diajukan`; `POST /rapor/{id}/tarik` (A2.8, A6, A7, B6.9, B7).
+25. `PATCH /murid/{id}/wali/{wali_murid_id}` dengan tepat satu kontak utama per murid.
+26. `nik`, `alamat`, `pekerjaan` di `wali_murid` `/auth/me`; `PUT /wali/profil` boleh sebagian; `PUT /wali-murid/{id}` (SA).
+27. Filter boolean menerima `true`/`false` (konvensi query A7).
+28. Istilah "Password" masuk glosarium C4 (hanya di `PROMPT_BE_TK.md`; Bagian C FE tidak disentuh).
+
 ## Keputusan teknis
 
 Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
@@ -533,7 +559,7 @@ Diambil selama Fase 3:
 - Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan.
 - Sudah dikerjakan di Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
 - Sudah dikerjakan di Fase 8: respons file, 403 di endpoint detail, dan tipe `*_url` nullable di OpenAPI.
-- Belum ada rencana lanjutan dari BE. Yang belum dibuat karena di luar desain saat ini: payment gateway, push notification (FCM), unggah lampiran pengumuman, dan `caption` foto kegiatan lewat API.
+- Belum ada rencana lanjutan dari BE. Yang belum dibuat karena di luar desain saat ini: payment gateway, push notification (FCM), dan unggah lampiran pengumuman.
 
 ## Akun seed
 
@@ -554,6 +580,35 @@ Diambil selama Fase 3:
 - Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
 
 ## Changelog
+
+### Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`)
+
+Laporan FE setelah Fase 3 (audit data dashboard). Kontrak ditulis ke Bagian A `PROMPT_BE_TK.md` dan disalin identik ke `PROMPT_FE_TK.md` (commit `5e1a44d` di `main` repo FE). Keputusan detail ada di "Keputusan menunggu review".
+
+File baru:
+
+- `database/migrations/2026_09_27_100000_ubah_unique_tagihan_periode_aktif.php`: kolom virtual `periode_aktif` dan unique (murid_id, jenis_tagihan_id, periode_aktif) menggantikan unique (murid_id, jenis_tagihan_id, periode). Unique baru dibuat sebelum yang lama dihapus karena MySQL/MariaDB memakainya untuk foreign key `murid_id`. Dicoba `migrate`, `migrate:rollback --step=1`, dan `migrate` lagi di MariaDB 12.3.3 dan SQLite.
+- `app/Enums/NadaInfo.php`.
+- `app/Http/Requests/Tagihan/PerbaruiTagihanRequest.php`, `Kegiatan/PerbaruiFotoKegiatanRequest.php`, `Murid/UbahTautanWaliRequest.php`, `WaliMurid/PerbaruiWaliMuridRequest.php`.
+- `app/Notifications/RaporDitarikNotification.php`.
+- Test: `tests/Feature/Keuangan/UbahTagihanTest.php`, `tests/Feature/FilterBooleanTest.php`.
+
+File yang diubah:
+
+- `app/Services/TagihanService.php`: `perbarui()`; generate tidak menghitung tagihan yang dibatalkan sebagai sudah ada; pemeriksaan lunas/dibatalkan/menunggu dipakai bersama dengan pembatalan (`pastikanBisaDiubah()`). `Keuangan/TagihanController` (`update`).
+- `app/Services/PengaturanService.php`: aturan `beranda.info_wali`, `infoWali()`. `DashboardService`: `info_sekolah` untuk wali. `DaftarPengaturanRequest`, `PengaturanController`: grup `beranda`.
+- `app/Services/RaporService.php`: `isi()` menerima pengubah (guru pembuat atau Kepala Sekolah), `tarik()`. `RaporPolicy::isi()`, `RaporController` (`update`, `tarik`), `RaporRevisiNotification` (`catatanTanpaTitik()` dipakai bersama).
+- `app/Services/MuridService.php` (`ubahTautanWali()`), `MuridController` (`ubahWali`).
+- `app/Services/WaliMuridService.php` (`perbarui()`, simpan sebagian), `WaliMuridController` (`update`), `ProfilWaliController`, `LengkapiProfilWaliRequest` (semua field `sometimes`), `UserResource` (`nik`, `alamat`, `pekerjaan`).
+- `KegiatanKelasController` (`perbaruiFoto`).
+- `app/Http/Requests/Concerns/MemvalidasiDaftar.php` (`normalkanFilterBoolean()`), dipakai `DaftarNotifikasiRequest`, `DaftarPengumumanRequest`, `DaftarGaleriRequest`, `DaftarJenisTagihanRequest`; keterangan filter di `NotifikasiController` dan `PengumumanController`.
+- `app/Providers/AppServiceProvider.php`: `Scramble::configure()->withoutEagerLoadAnalysis()`.
+- `routes/api.php`: lima route baru.
+- `database/factories/UserFactory.php`, `database/seeders/PengaturanSeeder.php` (`beranda.info_wali`), `database/seeders/Demo/WebsiteDemoSeeder.php` (banner demo), `lang/id/validation.php` (`current_password`: "Password salah."), `scripts/check-slop.sh` (faker email dan "kata sandi").
+- Test yang ditambah atau disesuaikan: `DokumentasiApiTest` (tidak ada `allOf` berisi objek kosong, item array `$ref` langsung, `info_sekolah`), `Dashboard/DashboardTest`, `Pengaturan/PengaturanTest`, `Database/SeederTest` (25 kunci, banner demo, semua email `.test`), `Keuangan/GenerateTagihanTest` (generate ulang dan unique di database), `Kegiatan/KegiatanKelasTest`, `Rapor/AlurRaporTest` (Kepala Sekolah mengisi draft kini 422, perbaikan saat diajukan, tarik), `Murid/KodeTautanDanWaliTest`, `Wali/ProfilDanAnakWaliTest` (onboarding sebagian menggantikan test "mewajibkan semua field"), `WaliMurid/ManajemenWaliMuridTest`, `Auth/SesiDanProfilTest`, `Unit/EnumKontrakTest`.
+- `PROMPT_BE_TK.md` (Bagian A; B6.1, B6.9, B7; glosarium C4), `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 624 test lulus di SQLite (`php artisan test --parallel`) dan di MariaDB 12.3.3 (`DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test`); Pint, PHPStan (`composer phpstan`), dan `check:slop` tanpa temuan. Test baru untuk poin 8 dan pengecekan `check:slop` baru dicoba gagal dulu tanpa perbaikannya. Data demo diisi ulang (`migrate:fresh --seed` + `DemoSeeder`) di MariaDB; semua email demo berdomain `.test` kecuali akun Kepala Sekolah dari `.env`. `api.json` diekspor ulang.
 
 ### Perbaikan OpenAPI (branch `be/fix-openapi`)
 
