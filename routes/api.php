@@ -97,6 +97,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
         Route::delete('/jenis-tagihan/{id}', [JenisTagihanController::class, 'destroy']);
         Route::post('/tagihan/generate', [TagihanController::class, 'generate']);
         Route::patch('/tagihan/{id}/batalkan', [TagihanController::class, 'batalkan']);
+        Route::post('/tagihan/{id}/aktifkan', [TagihanController::class, 'aktifkan']);
 
         Route::post('/rapor/{id}/terbitkan', [RaporController::class, 'terbitkan']);
         Route::post('/rapor/{id}/revisi', [RaporController::class, 'revisi']);

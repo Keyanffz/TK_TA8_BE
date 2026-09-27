@@ -93,7 +93,8 @@ class TagihanController extends Controller
     }
 
     /**
-     * Membuat tagihan bulanan untuk satu periode secara manual. Aman diulang: tagihan yang sudah ada dilewati.
+     * Membuat tagihan bulanan untuk satu periode secara manual. Aman diulang: tagihan yang sudah ada dilewati,
+     * termasuk yang dibatalkan.
      */
     public function generate(GenerateTagihanRequest $request, TagihanService $tagihanService, #[CurrentUser] User $user): JsonResponse
     {
@@ -113,6 +114,20 @@ class TagihanController extends Controller
         $tagihan->load(['murid.kelasAktif', 'jenisTagihan']);
 
         return ApiResponse::success(new TagihanResource($tagihan), "Tagihan {$tagihan->kode} tersimpan.");
+    }
+
+    /**
+     * Mengaktifkan kembali tagihan yang dibatalkan: status menjadi belum bayar, atau terlambat kalau jatuh
+     * temponya sudah lewat. Ditolak kalau murid sudah punya tagihan aktif lain untuk jenis dan periode yang sama.
+     * Generate tagihan bulanan tidak membuat ulang tagihan yang dibatalkan, jadi ini satu-satunya cara
+     * memulihkannya.
+     */
+    public function aktifkan(int $id, TagihanService $tagihanService, #[CurrentUser] User $user): JsonResponse
+    {
+        $tagihan = $tagihanService->aktifkan(Tagihan::query()->findOrFail($id), $user);
+        $tagihan->load(['murid.kelasAktif', 'jenisTagihan']);
+
+        return ApiResponse::success(new TagihanResource($tagihan), "Tagihan {$tagihan->kode} aktif kembali.");
     }
 
     /**

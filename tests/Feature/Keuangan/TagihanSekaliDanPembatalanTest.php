@@ -162,3 +162,59 @@ it('hanya Kepala Sekolah yang bisa membatalkan tagihan', function () {
     $this->actingAs($this->bendahara)->patchJson("/api/v1/tagihan/{$tagihan->id}/batalkan", ['alasan' => 'Salah input.'])
         ->assertForbidden();
 });
+
+it('mengaktifkan kembali tagihan yang dibatalkan sebagai belum bayar dan mencatatnya', function () {
+    $tagihan = Tagihan::factory()->for($this->aisyah)->for($this->spp)->create([
+        'periode' => '2026-10-01', 'jatuh_tempo' => '2026-10-10', 'status' => StatusTagihan::Dibatalkan, 'catatan' => 'Salah pilih murid.',
+    ]);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/tagihan/{$tagihan->id}/aktifkan")
+        ->assertOk()
+        ->assertJsonPath('message', "Tagihan {$tagihan->kode} aktif kembali.")
+        ->assertJsonPath('data.status', 'belum_bayar')
+        ->assertJsonPath('data.murid.id', $this->aisyah->id);
+
+    $log = Activity::query()->where('log_name', 'tagihan')->where('event', 'diaktifkan')->sole();
+    expect($log->causer_id)->toBe($this->kepsek->id)
+        ->and($log->subject_id)->toBe($tagihan->id)
+        ->and($log->properties['status'])->toBe('belum_bayar');
+});
+
+it('mengaktifkan kembali tagihan yang jatuh temponya sudah lewat sebagai terlambat', function () {
+    $tagihan = Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['jatuh_tempo' => '2026-09-10', 'status' => StatusTagihan::Dibatalkan]);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/tagihan/{$tagihan->id}/aktifkan")
+        ->assertOk()
+        ->assertJsonPath('data.status', 'terlambat');
+});
+
+it('menolak mengaktifkan tagihan kalau sudah ada tagihan aktif lain untuk murid, jenis, dan periode yang sama', function () {
+    $dibatalkan = Tagihan::factory()->for($this->aisyah)->for($this->seragam)->create(['periode' => null, 'status' => StatusTagihan::Dibatalkan]);
+    $pengganti = Tagihan::factory()->for($this->aisyah)->for($this->seragam)->create(['periode' => null]);
+    $milikBima = Tagihan::factory()->for($this->bima)->for($this->seragam)->create(['periode' => null, 'status' => StatusTagihan::Dibatalkan]);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/tagihan/{$dibatalkan->id}/aktifkan")
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', "Murid ini sudah punya tagihan Seragam lain yang aktif ({$pengganti->kode}). Batalkan tagihan itu dulu kalau tagihan ini yang ingin dipakai.");
+    $this->postJson("/api/v1/tagihan/{$milikBima->id}/aktifkan")->assertOk();
+
+    expect($dibatalkan->fresh()?->status)->toBe(StatusTagihan::Dibatalkan);
+});
+
+it('menolak mengaktifkan tagihan yang tidak dibatalkan', function (StatusTagihan $status) {
+    $tagihan = Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['status' => $status]);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/tagihan/{$tagihan->id}/aktifkan")
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+
+    expect($tagihan->fresh()?->status)->toBe($status);
+})->with([StatusTagihan::BelumBayar, StatusTagihan::Lunas, StatusTagihan::Terlambat]);
+
+it('hanya Kepala Sekolah yang bisa mengaktifkan kembali tagihan', function () {
+    $tagihan = Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['status' => StatusTagihan::Dibatalkan]);
+
+    $this->actingAs($this->bendahara)->postJson("/api/v1/tagihan/{$tagihan->id}/aktifkan")->assertForbidden();
+    $this->actingAs($this->ibuAisyah->user)->postJson("/api/v1/tagihan/{$tagihan->id}/aktifkan")->assertForbidden();
+});

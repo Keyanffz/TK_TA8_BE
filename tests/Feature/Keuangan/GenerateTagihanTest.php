@@ -84,29 +84,23 @@ it('tidak membuat tagihan ganda saat generate diulang untuk periode yang sama', 
     expect(Tagihan::query()->count())->toBe(2);
 });
 
-it('membuat ulang tagihan bulanan yang dibatalkan untuk periode yang sama', function () {
+it('melewati tagihan yang dibatalkan saat generate diulang, lewat API maupun command', function () {
     $this->actingAs($this->kepsek)->postJson('/api/v1/tagihan/generate', ['periode' => '2026-10'])->assertOk();
     $lama = tagihanSpp($this->aisyah);
-    $this->patchJson("/api/v1/tagihan/{$lama?->id}/batalkan", ['alasan' => 'Nominal salah, dibuat ulang.'])->assertOk();
+    $this->patchJson("/api/v1/tagihan/{$lama?->id}/batalkan", ['alasan' => 'Aisyah dibebaskan bulan ini.'])->assertOk();
 
     $this->postJson('/api/v1/tagihan/generate', ['periode' => '2026-10'])
         ->assertOk()
-        ->assertJsonPath('data', ['dibuat' => 1, 'dilewati' => 1]);
-    $this->postJson('/api/v1/tagihan/generate', ['periode' => '2026-10'])
         ->assertJsonPath('data', ['dibuat' => 0, 'dilewati' => 2]);
+    $this->artisan('tagihan:generate')->assertSuccessful();
 
-    $tagihanAisyah = Tagihan::query()->where('murid_id', $this->aisyah->id)->orderBy('id')->get();
-    expect($tagihanAisyah->pluck('status')->all())->toBe([StatusTagihan::Dibatalkan, StatusTagihan::BelumBayar])
-        ->and($tagihanAisyah->last()->kode)->toBe('INV-202610-00003');
+    expect(Tagihan::query()->where('murid_id', $this->aisyah->id)->pluck('status')->all())->toBe([StatusTagihan::Dibatalkan]);
 });
 
-it('menolak dua tagihan aktif untuk murid, jenis, dan periode yang sama di tingkat database', function () {
-    $lama = Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01', 'status' => StatusTagihan::Dibatalkan]);
-    Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01']);
+it('menolak tagihan kedua untuk murid, jenis, dan periode yang sama di database, termasuk kalau yang lama dibatalkan', function () {
+    Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01', 'status' => StatusTagihan::Dibatalkan]);
 
-    expect(fn () => Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01', 'status' => StatusTagihan::Lunas]))
-        ->toThrow(UniqueConstraintViolationException::class)
-        ->and(fn () => $lama->update(['status' => StatusTagihan::BelumBayar]))
+    expect(fn () => Tagihan::factory()->for($this->aisyah)->for($this->spp)->create(['periode' => '2026-10-01']))
         ->toThrow(UniqueConstraintViolationException::class);
 });
 

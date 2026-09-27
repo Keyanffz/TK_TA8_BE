@@ -62,8 +62,8 @@ class TagihanService
     /**
      * Tagihan bulanan untuk semua murid aktif yang punya kelas di tahun ajaran aktif, dari setiap jenis
      * tagihan bulanan yang aktif dan sesuai tingkat kelasnya (A6). Idempoten: murid yang sudah punya
-     * tagihan jenis itu di periode yang sama (selain yang dibatalkan) dilewati, dan unique index
-     * (murid, jenis, `periode_aktif`) menjadi penjaga terakhir. Tagihan yang dibatalkan dibuat ulang.
+     * tagihan jenis itu di periode yang sama dilewati, termasuk yang dibatalkan (pembatalan dihormati;
+     * tagihannya dipulihkan lewat `aktifkan()`), dan unique index menjadi penjaga terakhir.
      * `$pelaku` null berarti dijalankan scheduler; `dibuat_oleh` tagihan ikut null (sistem).
      *
      * @return array{dibuat: int, dilewati: int}
@@ -221,6 +221,44 @@ class TagihanService
     }
 
     /**
+     * Mengembalikan tagihan yang dibatalkan menjadi `belum_bayar`, atau `terlambat` kalau jatuh temponya sudah
+     * lewat. Ditolak kalau murid sudah punya tagihan aktif lain untuk jenis dan periode yang sama (untuk tagihan
+     * sekali bayar, tagihan pengganti bisa sudah dibuat lewat `POST /tagihan`). Wali tidak diberi notifikasi.
+     *
+     * @throws BusinessRuleException
+     */
+    public function aktifkan(Tagihan $tagihan, User $kepalaSekolah): Tagihan
+    {
+        $tagihan = DB::transaction(function () use ($tagihan): Tagihan {
+            $tagihan = Tagihan::query()->with('jenisTagihan')->lockForUpdate()->findOrFail($tagihan->id);
+
+            if ($tagihan->status !== StatusTagihan::Dibatalkan) {
+                throw new BusinessRuleException("Tagihan berstatus {$tagihan->status->label()} tidak perlu diaktifkan. Hanya tagihan yang dibatalkan yang bisa diaktifkan kembali.");
+            }
+
+            $pengganti = Tagihan::query()->whereKeyNot($tagihan->id)
+                ->where('murid_id', $tagihan->murid_id)
+                ->where('jenis_tagihan_id', $tagihan->jenis_tagihan_id)
+                ->when($tagihan->periode === null, fn (Builder $query) => $query->whereNull('periode'), fn (Builder $query) => $query->whereDate('periode', $tagihan->periode))
+                ->where('status', '!=', StatusTagihan::Dibatalkan)
+                ->value('kode');
+            if ($pengganti !== null) {
+                throw new BusinessRuleException("Murid ini sudah punya tagihan {$tagihan->label()} lain yang aktif ({$pengganti}). Batalkan tagihan itu dulu kalau tagihan ini yang ingin dipakai.");
+            }
+
+            $tagihan->update(['status' => $tagihan->jatuh_tempo->lt(today()) ? StatusTagihan::Terlambat : StatusTagihan::BelumBayar]);
+
+            return $tagihan;
+        });
+
+        activity('tagihan')->causedBy($kepalaSekolah)->performedOn($tagihan)->event('diaktifkan')
+            ->withProperties(['status' => $tagihan->status->value])
+            ->log("Mengaktifkan kembali tagihan {$tagihan->kode}");
+
+        return $tagihan;
+    }
+
+    /**
      * @throws PeriodeDiLuarTahunAjaranException
      */
     private function tahunAjaranUntuk(Carbon $periode): TahunAjaran
@@ -273,7 +311,6 @@ class TagihanService
 
         $nomor = NomorUrut::berikutnya(Tagihan::query(), 'kode', self::awalanKode($periode), self::DIGIT_KODE);
         $sudahAda = Tagihan::query()->whereDate('periode', $periode)->whereIn('jenis_tagihan_id', $jenisTagihan->modelKeys())
-            ->where('status', '!=', StatusTagihan::Dibatalkan)
             ->get(['murid_id', 'jenis_tagihan_id'])
             ->mapWithKeys(fn (Tagihan $tagihan): array => ["{$tagihan->jenis_tagihan_id}-{$tagihan->murid_id}" => true]);
         $dibuat = new Collection;
