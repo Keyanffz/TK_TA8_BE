@@ -43,6 +43,9 @@ class UserResource extends JsonResource
             'wali_murid' => $this->waliMurid === null ? null : [
                 'id' => $this->waliMurid->id,
                 'profil_lengkap' => $this->waliMurid->profil_lengkap,
+                'nik' => $this->waliMurid->nik,
+                'alamat' => $this->waliMurid->alamat,
+                'pekerjaan' => $this->waliMurid->pekerjaan,
                 'anak' => $this->waliMurid->murid
                     ->map(fn (Murid $anak): array => [
                         'id' => $anak->id,

@@ -14,12 +14,13 @@ use Illuminate\Http\JsonResponse;
 class ProfilWaliController extends Controller
 {
     /**
-     * Onboarding wali murid: melengkapi nomor HP, alamat, pekerjaan, dan NIK (opsional).
-     * Setelah berhasil, `wali_murid.profil_lengkap` bernilai `true`.
+     * Onboarding dan ubah profil wali murid: nomor HP, alamat, pekerjaan, dan NIK (opsional). Boleh sebagian;
+     * field yang tidak dikirim tidak berubah. `wali_murid.profil_lengkap` bernilai `true` setelah nomor HP,
+     * alamat, dan pekerjaan terisi.
      */
     public function __invoke(LengkapiProfilWaliRequest $request, #[CurrentUser] User $user, WaliMuridService $service): JsonResponse
     {
-        $service->lengkapiProfil($user, $request->validated());
+        $service->lengkapiProfil($user, $request->dataWali());
 
         return ApiResponse::success(new UserResource($user), 'Profil tersimpan.');
     }

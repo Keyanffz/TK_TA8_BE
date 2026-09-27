@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
 
         Route::get('/wali-murid', [WaliMuridController::class, 'index']);
         Route::get('/wali-murid/{id}', [WaliMuridController::class, 'show']);
+        Route::put('/wali-murid/{id}', [WaliMuridController::class, 'update']);
         Route::patch('/wali-murid/{id}/status', [WaliMuridController::class, 'ubahStatus']);
 
         Route::post('/tahun-ajaran', [TahunAjaranController::class, 'store']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\WaliMurid;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UbahStatusAkunRequest;
 use App\Http\Requests\WaliMurid\DaftarWaliMuridRequest;
+use App\Http\Requests\WaliMurid\PerbaruiWaliMuridRequest;
 use App\Http\Resources\WaliMuridResource;
 use App\Models\User;
 use App\Models\WaliMurid;
@@ -47,6 +48,18 @@ class WaliMuridController extends Controller
         $waliMurid = WaliMurid::query()->with(['user', 'murid.kelasAktif'])->withCount('murid')->findOrFail($id);
 
         return ApiResponse::success(new WaliMuridResource($waliMurid));
+    }
+
+    /**
+     * Mengubah data wali murid (nama, nomor HP, NIK, alamat, pekerjaan). Boleh sebagian; email tidak bisa diubah
+     * karena dipakai login Google.
+     */
+    public function update(PerbaruiWaliMuridRequest $request, int $id, WaliMuridService $service, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    {
+        $waliMurid = $service->perbarui(WaliMurid::query()->with('user')->findOrFail($id), $request->dataWali(), $kepalaSekolah);
+        $waliMurid->load('murid.kelasAktif')->loadCount('murid');
+
+        return ApiResponse::success(new WaliMuridResource($waliMurid), "Data {$waliMurid->user->name} tersimpan.");
     }
 
     /**

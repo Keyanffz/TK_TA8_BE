@@ -39,14 +39,50 @@ it('membolehkan NIK dikosongkan saat onboarding', function () {
     expect($wali->fresh()?->nik)->toBeNull();
 });
 
-it('mewajibkan nomor HP, alamat, dan pekerjaan saat onboarding', function () {
+it('menyimpan profil sebagian dan baru menandai lengkap setelah nomor HP, alamat, dan pekerjaan terisi', function () {
     $wali = WaliMurid::factory()->profilBelumLengkap()->create();
 
-    $this->actingAs($wali->user)->putJson('/api/v1/wali/profil', ['nik' => '123'])
+    $this->actingAs($wali->user)->putJson('/api/v1/wali/profil', ['alamat' => 'Jl. Pandanaran No. 12, Semarang Tengah'])
+        ->assertOk()
+        ->assertJsonPath('data.wali_murid.alamat', 'Jl. Pandanaran No. 12, Semarang Tengah')
+        ->assertJsonPath('data.wali_murid.profil_lengkap', false);
+
+    $this->putJson('/api/v1/wali/profil', ['no_hp' => '082134567890', 'pekerjaan' => 'Perawat'])
+        ->assertOk()
+        ->assertJsonPath('data.wali_murid.pekerjaan', 'Perawat')
+        ->assertJsonPath('data.wali_murid.alamat', 'Jl. Pandanaran No. 12, Semarang Tengah')
+        ->assertJsonPath('data.wali_murid.profil_lengkap', true);
+});
+
+it('mengubah sebagian profil wali yang sudah lengkap tanpa mengosongkan field lain', function () {
+    $wali = WaliMurid::factory()->create(['pekerjaan' => 'Guru', 'nik' => '3374011203880002']);
+
+    $this->actingAs($wali->user)->putJson('/api/v1/wali/profil', ['pekerjaan' => 'Wiraswasta', 'nik' => null])
+        ->assertOk()
+        ->assertJsonPath('data.wali_murid.pekerjaan', 'Wiraswasta')
+        ->assertJsonPath('data.wali_murid.nik', null)
+        ->assertJsonPath('data.wali_murid.alamat', $wali->alamat)
+        ->assertJsonPath('data.wali_murid.profil_lengkap', true);
+});
+
+it('menolak mengosongkan nomor HP, alamat, atau pekerjaan dan NIK yang tidak 16 digit', function () {
+    $wali = WaliMurid::factory()->create();
+
+    $this->actingAs($wali->user)->putJson('/api/v1/wali/profil', ['no_hp' => '', 'alamat' => '', 'pekerjaan' => null, 'nik' => '123'])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['no_hp', 'alamat', 'pekerjaan', 'nik']);
 
-    expect($wali->fresh()?->profil_lengkap)->toBeFalse();
+    expect($wali->fresh()?->profil_lengkap)->toBeTrue();
+});
+
+it('menampilkan NIK, alamat, dan pekerjaan wali di /auth/me', function () {
+    $wali = WaliMurid::factory()->create(['nik' => '3374011203880002', 'alamat' => 'Jl. Pandanaran No. 12', 'pekerjaan' => 'Perawat']);
+
+    $this->actingAs($wali->user)->getJson('/api/v1/auth/me')
+        ->assertOk()
+        ->assertJsonPath('data.wali_murid.nik', '3374011203880002')
+        ->assertJsonPath('data.wali_murid.alamat', 'Jl. Pandanaran No. 12')
+        ->assertJsonPath('data.wali_murid.pekerjaan', 'Perawat');
 });
 
 it('menampilkan hanya anak milik wali yang login', function () {
