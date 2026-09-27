@@ -72,7 +72,7 @@ it('menolak email atau password yang salah tanpa membedakan penyebabnya', functi
 })->with([
     'password salah' => [fn (User $user) => ['email' => $user->email, 'password' => 'bukanpassword1']],
     'email tidak terdaftar' => [fn (User $user) => ['email' => 'tidak.ada@tkta8.test', 'password' => 'rahasia123']],
-    'akun wali murid' => [fn (User $user) => ['email' => User::factory()->waliMurid()->create(['password' => 'rahasia123'])->email, 'password' => 'rahasia123']],
+    'akun wali murid yang punya email' => [fn (User $user) => ['email' => User::factory()->waliMurid()->create(['email' => 'dewi.lestari@wali.tkta8.test', 'password' => 'rahasia123'])->email, 'password' => 'rahasia123']],
 ]);
 
 it('menolak login akun yang belum atau tidak lagi aktif dengan kode yang sesuai', function (StatusAkun $status, string $kode, string $pesan) {

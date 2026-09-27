@@ -46,9 +46,9 @@ class UserFactory extends Factory
     {
         return $this->state(fn (): array => [
             'role' => Role::WaliMurid,
-            'email' => fake()->unique()->userName().'@wali.tkta8.test',
+            'email' => null,
             'username' => 'TA'.fake()->unique()->numerify('2026####'),
-            'google_id' => (string) fake()->unique()->numerify('1##################'),
+            'email_verified_at' => null,
         ]);
     }
 

@@ -22,8 +22,6 @@ class AppServiceProvider extends ServiceProvider
 
     private const BATAS_LOGIN_WALI_PER_MENIT = 5;
 
-    private const BATAS_LOGIN_GOOGLE_PER_MENIT = 10;
-
     private const BATAS_TAUTKAN_ANAK_PER_MENIT = 5;
 
     private const BATAS_API_PER_MENIT = 120;
@@ -67,9 +65,6 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('login-wali', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_WALI_PER_MENIT)
             ->by(LoginWaliRequest::normalkanUsername((string) $request->input('username')).'|'.$request->ip()));
-
-        RateLimiter::for('login-google', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_GOOGLE_PER_MENIT)
-            ->by((string) $request->ip()));
 
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(self::BATAS_API_PER_MENIT)
             ->by($request->user() === null ? 'ip:'.$request->ip() : 'user:'.$request->user()->getAuthIdentifier()));

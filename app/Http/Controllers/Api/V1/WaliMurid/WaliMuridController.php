@@ -52,8 +52,8 @@ class WaliMuridController extends Controller
     }
 
     /**
-     * Mengubah data wali murid (nama, nomor HP, NIK, alamat, pekerjaan). Boleh sebagian; email tidak bisa diubah
-     * karena dipakai login Google.
+     * Mengubah data wali murid (nama, nomor HP, NIK, alamat, pekerjaan). Boleh sebagian; username (NIS anak) tidak
+     * bisa diubah.
      */
     public function update(PerbaruiWaliMuridRequest $request, int $id, WaliMuridService $service, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {

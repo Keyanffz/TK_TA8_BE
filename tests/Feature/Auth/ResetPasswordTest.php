@@ -36,7 +36,7 @@ it('memberi respons yang sama untuk email yang tidak bisa direset', function (Cl
     Notification::assertNothingSent();
 })->with([
     'email tidak terdaftar' => [fn () => 'tidak.ada@gmail.com'],
-    'akun wali murid' => [fn () => WaliMurid::factory()->create()->user->email],
+    'akun wali murid yang punya email' => [fn () => WaliMurid::factory()->for(User::factory()->waliMurid()->state(['email' => 'dewi.lestari@wali.tkta8.test']))->create()->user->email],
 ]);
 
 it('mengatur password baru dan mencabut semua sesi lama', function () {

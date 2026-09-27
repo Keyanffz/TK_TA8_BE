@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginGoogleRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\LoginWaliRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuthService;
-use App\Services\GoogleLoginService;
 use App\Support\ApiResponse;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
@@ -56,22 +54,6 @@ class AuthController extends Controller
         return ApiResponse::success([
             'token' => $hasil['token'],
             'user' => new UserResource($hasil['user']),
-        ], 'Berhasil masuk.');
-    }
-
-    /**
-     * Login wali murid dengan ID token dari Google Identity Services.
-     *
-     * Wali yang baru pertama kali login otomatis dibuatkan akun (`is_new: true`).
-     */
-    public function google(LoginGoogleRequest $request, GoogleLoginService $google): JsonResponse
-    {
-        $hasil = $google->login($request->string('id_token')->toString(), $request->perangkat());
-
-        return ApiResponse::success([
-            'token' => $hasil['token'],
-            'user' => new UserResource($hasil['user']),
-            'is_new' => $hasil['is_new'],
         ], 'Berhasil masuk.');
     }
 

@@ -162,7 +162,6 @@ return [
         'name' => 'nama',
         'no_hp' => 'nomor HP',
         'username' => 'NIS',
-        'id_token' => 'token Google',
         'current_password' => 'password lama',
         'avatar' => 'foto profil',
         'foto' => 'foto',

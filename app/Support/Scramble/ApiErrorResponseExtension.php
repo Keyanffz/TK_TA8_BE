@@ -5,7 +5,6 @@ namespace App\Support\Scramble;
 use App\Enums\KodeError;
 use App\Exceptions\AksesAkunDitolakException;
 use App\Exceptions\BusinessRuleException;
-use App\Exceptions\LayananBelumDikonfigurasiException;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
@@ -40,12 +39,6 @@ class ApiErrorResponseExtension extends ExceptionToResponseExtension
         RecordsNotFoundException::class => [KodeError::NotFound],
         NotFoundHttpException::class => [KodeError::NotFound],
         TooManyRequestsHttpException::class => [KodeError::TooManyRequests],
-        LayananBelumDikonfigurasiException::class => [KodeError::ServerError],
-    ];
-
-    /** @var array<class-string, int> Exception yang statusnya berbeda dari status bawaan kodenya. */
-    private const STATUS_PER_EXCEPTION = [
-        LayananBelumDikonfigurasiException::class => LayananBelumDikonfigurasiException::STATUS,
     ];
 
     public function shouldHandle(Type $type): bool
@@ -61,14 +54,7 @@ class ApiErrorResponseExtension extends ExceptionToResponseExtension
             return null;
         }
 
-        $status = null;
-        foreach (self::STATUS_PER_EXCEPTION as $class => $statusKhusus) {
-            if ($type instanceof ObjectType && $type->isInstanceOf($class)) {
-                $status = $statusKhusus;
-            }
-        }
-
-        return SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)), $status);
+        return SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)));
     }
 
     public function reference(ObjectType $type): Reference

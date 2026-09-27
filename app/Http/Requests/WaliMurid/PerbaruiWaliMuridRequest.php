@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * `PUT /wali-murid/{id}` oleh Kepala Sekolah, misalnya membetulkan nama atau nomor HP yang salah ketik.
- * Field yang tidak dikirim tidak berubah; email tidak bisa diubah karena dipakai login Google.
+ * Field yang tidak dikirim tidak berubah. Akun wali tidak punya email; username (NIS anak) tidak bisa diubah.
  */
 class PerbaruiWaliMuridRequest extends FormRequest
 {

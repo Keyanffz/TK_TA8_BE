@@ -46,7 +46,6 @@ Route::get('/media/{token}', MediaController::class)->middleware('signed:relativ
 Route::prefix('auth')->middleware('throttle:api')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('/login-wali', [AuthController::class, 'loginWali'])->middleware('throttle:login-wali');
-    Route::post('/google', [AuthController::class, 'google'])->middleware('throttle:login-google');
     Route::post('/register-guru', RegistrasiGuruController::class);
     Route::post('/forgot-password', [ResetPasswordController::class, 'kirimTautan']);
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);

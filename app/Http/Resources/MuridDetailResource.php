@@ -24,7 +24,7 @@ class MuridDetailResource extends MuridResource
     {
         return [
             ...parent::toArray($request),
-            /** @var list<array{id: int, nama: string, email: string, no_hp: string|null, hubungan: Hubungan, is_kontak_utama: bool, tertaut_at: Carbon|null}> */
+            /** @var list<array{id: int, nama: string, email: string|null, username: string|null, no_hp: string|null, hubungan: Hubungan, is_kontak_utama: bool, tertaut_at: Carbon|null}> */
             'wali' => $this->waliMurid->map(fn (WaliMurid $wali): array => $this->ringkasWali($wali))->values()->all(),
         ];
     }
@@ -41,6 +41,7 @@ class MuridDetailResource extends MuridResource
             'id' => $wali->id,
             'nama' => $wali->user->name,
             'email' => $wali->user->email,
+            'username' => $wali->user->username,
             'no_hp' => $wali->user->no_hp,
             'hubungan' => $tautan->hubungan,
             'is_kontak_utama' => $tautan->is_kontak_utama,

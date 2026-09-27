@@ -17,7 +17,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use LogicException;
 
-#[Fillable(['name', 'email', 'username', 'password', 'wajib_ganti_password', 'google_id', 'role', 'status', 'no_hp', 'avatar_path', 'email_verified_at', 'last_login_at'])]
+#[Fillable(['name', 'email', 'username', 'password', 'wajib_ganti_password', 'role', 'status', 'no_hp', 'avatar_path', 'email_verified_at', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
