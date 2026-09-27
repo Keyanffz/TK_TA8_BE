@@ -494,7 +494,7 @@ Setelah audit dashboard FE Fase 3 (branch `be/revisi-audit`, Bagian A kedua file
 28. Istilah "Password" masuk glosarium C4 (hanya di `PROMPT_BE_TK.md`; Bagian C FE tidak disentuh).
 29. Setelah review: "Bentuk data" di A7 (field yang selalu dikirim wajib di OpenAPI, skema detail tersendiri) dan item `landing.*` di respons pengaturan selalu lengkap (commit `3d94a95` di `main` repo FE).
 
-Login wali dengan NIS (branch `be/login-nis`, disetujui pemilik repo sebelum dikerjakan; Bagian A disalin identik ke `PROMPT_FE_TK.md` dan di-push ke `main` repo FE):
+Login wali dengan NIS (branch `be/login-nis`, disetujui pemilik repo sebelum dikerjakan; Bagian A disalin identik ke `PROMPT_FE_TK.md`, commit `1d8355c` di `main` repo FE):
 
 30. Wali murid login dengan NIS anak + password (`POST /auth/login-wali`); login Google dan `POST /auth/google` dihapus. Akun wali dibuat otomatis per murid (username NIS, password awal tanggal lahir DDMMYYYY, wajib ganti password), kode error `PASSWORD_WAJIB_DIGANTI`, `PUT /auth/password` untuk semua role (A2.1, A3, A6, A7).
 31. Tambah anak dengan NIS + tanggal lahir (`POST /wali/tambah-anak`) menggantikan kode tautan; `POST /murid/{id}/kode-tautan`, `POST /wali/tautkan-anak`, dan `kode-tautan:bersihkan` dihapus (A2.2, A3, A6, A7, B6.2).
@@ -633,7 +633,7 @@ Diambil selama Fase 3:
 
 ### Login wali dengan NIS (branch `be/login-nis`)
 
-Perubahan desain yang disetujui pemilik repo: login Google diganti login NIS anak + password, kode tautan diganti akun wali otomatis dan tambah anak, PPDB bisa tanpa login. Kontrak ditulis ke Bagian A `PROMPT_BE_TK.md` (A2, A3, A4, A6, A7) dan Bagian B (B1, B2, B6.2, B6.8, B6.11, B7, B8) serta glosarium C4 (baris Kode Tautan dihapus), lalu Bagian A disalin identik ke `PROMPT_FE_TK.md` di `main` repo FE. Keputusan detail ada di "Keputusan menunggu review".
+Perubahan desain yang disetujui pemilik repo: login Google diganti login NIS anak + password, kode tautan diganti akun wali otomatis dan tambah anak, PPDB bisa tanpa login. Kontrak ditulis ke Bagian A `PROMPT_BE_TK.md` (A2, A3, A4, A6, A7) dan Bagian B (B1, B2, B6.2, B6.8, B6.11, B7, B8) serta glosarium C4 (baris Kode Tautan dihapus), lalu Bagian A disalin identik ke `PROMPT_FE_TK.md` di `main` repo FE (commit `1d8355c`). Keputusan detail ada di "Keputusan menunggu review".
 
 Migration baru (migration lama tidak diubah):
 
