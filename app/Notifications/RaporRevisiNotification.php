@@ -24,8 +24,11 @@ class RaporRevisiNotification extends NotifikasiRapor
 
     protected function pesan(object $notifiable): string
     {
-        $catatan = rtrim($this->catatan, '. ');
+        return "Kepala Sekolah meminta revisi rapor semester {$this->semester} {$this->namaMurid} ({$this->kelas}): {$this->catatanTanpaTitik()}.";
+    }
 
-        return "Kepala Sekolah meminta revisi rapor semester {$this->semester} {$this->namaMurid} ({$this->kelas}): {$catatan}.";
+    protected function catatanTanpaTitik(): string
+    {
+        return rtrim($this->catatan, '. ');
     }
 }

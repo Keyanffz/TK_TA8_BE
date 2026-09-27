@@ -85,13 +85,15 @@ class RaporController extends Controller
     }
 
     /**
-     * Mengisi rapor (hanya guru pembuat, saat status draft atau revisi). Elemen yang tidak dikirim di `detail`
-     * tidak berubah.
+     * Mengisi rapor: guru pembuat saat status draft atau revisi, atau Kepala Sekolah saat status diajukan
+     * (memperbaiki isi sebelum terbit; statusnya tetap diajukan). Elemen yang tidak dikirim di `detail` tidak
+     * berubah.
      */
-    public function update(IsiRaporRequest $request, int $id): JsonResponse
+    public function update(IsiRaporRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        $rapor = $this->cariYangBolehDiubah($id);
-        $rapor = $this->raporService->isi($rapor, $request->dataRapor(), $request->deskripsiPerElemen());
+        $rapor = Rapor::query()->findOrFail($id);
+        Gate::authorize('isi', $rapor);
+        $rapor = $this->raporService->isi($rapor, $request->dataRapor(), $request->deskripsiPerElemen(), $user);
 
         return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), 'Rapor tersimpan.');
     }
@@ -137,6 +139,17 @@ class RaporController extends Controller
         $rapor = $this->raporService->mintaRevisi(Rapor::query()->findOrFail($id), $request->catatan(), $user);
 
         return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), 'Rapor dikembalikan ke guru untuk direvisi.');
+    }
+
+    /**
+     * Menarik rapor yang sudah terbit kembali ke revisi, dengan catatan untuk guru pembuat. Wali murid tidak
+     * bisa melihat rapor itu lagi sampai diterbitkan ulang.
+     */
+    public function tarik(CatatanRevisiRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
+    {
+        $rapor = $this->raporService->tarik(Rapor::query()->findOrFail($id), $request->catatan(), $user);
+
+        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), "Rapor {$rapor->murid->nama_lengkap} ditarik dan dikembalikan ke guru untuk direvisi.");
     }
 
     /**

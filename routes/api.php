@@ -98,6 +98,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->group(functio
 
         Route::post('/rapor/{id}/terbitkan', [RaporController::class, 'terbitkan']);
         Route::post('/rapor/{id}/revisi', [RaporController::class, 'revisi']);
+        Route::post('/rapor/{id}/tarik', [RaporController::class, 'tarik']);
 
         Route::post('/elemen-penilaian', [ElemenPenilaianController::class, 'store']);
         Route::put('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'update']);

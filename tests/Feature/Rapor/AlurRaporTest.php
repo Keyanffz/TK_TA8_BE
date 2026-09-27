@@ -11,6 +11,7 @@ use App\Models\RaporDetail;
 use App\Models\TahunAjaran;
 use App\Models\WaliMurid;
 use App\Notifications\RaporDiajukanNotification;
+use App\Notifications\RaporDitarikNotification;
 use App\Notifications\RaporRevisiNotification;
 use App\Notifications\RaporTerbitNotification;
 use Database\Seeders\ElemenPenilaianSeeder;
@@ -210,9 +211,86 @@ it('hanya guru pembuat yang bisa mengisi dan mengajukan rapor', function () {
 
     $this->actingAs($this->buRina->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))->assertForbidden();
     $this->actingAs($this->buRina->user)->postJson("/api/v1/rapor/{$rapor->id}/ajukan")->assertForbidden();
-    $this->actingAs($this->kepsek)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))->assertForbidden();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/rapor/{$rapor->id}/ajukan")->assertForbidden();
+    $this->actingAs($this->kepsek)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', 'Rapor berstatus Draft tidak bisa diubah. Kepala Sekolah hanya bisa memperbaiki rapor yang sedang diajukan.');
     $this->actingAs($this->buSri->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))->assertNotFound();
     $this->actingAs($this->ibu->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))->assertForbidden();
+});
+
+it('membolehkan Kepala Sekolah memperbaiki isi rapor yang diajukan tanpa mengubah statusnya', function () {
+    $rapor = buatDraftRapor($this);
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))->assertOk();
+    $this->actingAs($this->buAini->user)->postJson("/api/v1/rapor/{$rapor->id}/ajukan")->assertOk();
+    $jatiDiri = ElemenPenilaian::query()->where('kode', 'JD')->value('id');
+
+    $this->actingAs($this->kepsek)->putJson("/api/v1/rapor/{$rapor->id}", [
+        'catatan_guru' => 'Aisyah ceria dan senang membantu teman di kelas.',
+        'detail' => [['elemen_penilaian_id' => $jatiDiri, 'deskripsi' => 'Aisyah berani bercerita di depan kelas.']],
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'diajukan')
+        ->assertJsonPath('data.catatan_guru', 'Aisyah ceria dan senang membantu teman di kelas.')
+        ->assertJsonPath('data.detail.1.deskripsi', 'Aisyah berani bercerita di depan kelas.')
+        ->assertJsonPath('data.tinggi_badan', 108.5);
+
+    $log = Activity::query()->where('log_name', 'rapor')->where('event', 'diubah')->sole();
+    expect($log->causer_id)->toBe($this->kepsek->id)
+        ->and($log->subject_id)->toBe($rapor->id);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/rapor/{$rapor->id}/terbitkan")->assertOk();
+    $this->actingAs($this->kepsek)->putJson("/api/v1/rapor/{$rapor->id}", ['catatan_guru' => 'Ubah setelah terbit.'])
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+});
+
+it('menarik rapor terbit kembali ke revisi, memberi tahu guru pembuat, dan menyembunyikannya dari wali', function () {
+    $rapor = Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->terbit()->create(['dibuat_oleh' => $this->buAini->id, 'disetujui_oleh' => $this->kepsek->id]);
+    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$rapor->id}")->assertOk();
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/rapor/{$rapor->id}/tarik", ['catatan' => 'Berat badan salah ketik.'])
+        ->assertOk()
+        ->assertJsonPath('message', 'Rapor Aisyah Putri ditarik dan dikembalikan ke guru untuk direvisi.')
+        ->assertJsonPath('data.status', 'revisi')
+        ->assertJsonPath('data.catatan_revisi', 'Berat badan salah ketik.')
+        ->assertJsonPath('data.terbit_at', null);
+
+    expect($rapor->fresh()?->disetujui_oleh)->toBeNull();
+    Notification::assertSentTo($this->buAini->user, RaporDitarikNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->buAini->user) === [
+        'jenis' => 'rapor_revisi',
+        'judul' => 'Rapor terbit ditarik untuk revisi',
+        'pesan' => 'Kepala Sekolah menarik rapor semester 1 Aisyah Putri (TK A1) yang sudah terbit: Berat badan salah ketik. Perbaiki lalu ajukan lagi.',
+        'url' => "/dashboard/rapor/{$rapor->id}",
+    ]);
+    $log = Activity::query()->where('log_name', 'rapor')->where('event', 'ditarik')->sole();
+    expect($log->causer_id)->toBe($this->kepsek->id)
+        ->and($log->properties['catatan'])->toBe('Berat badan salah ketik.');
+
+    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$rapor->id}")->assertNotFound();
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/rapor/{$rapor->id}", ['berat_badan' => 18.5])->assertOk();
+});
+
+it('hanya menarik rapor yang sudah terbit, dan hanya oleh Kepala Sekolah', function (StatusRapor $status) {
+    $rapor = Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->create(['status' => $status, 'dibuat_oleh' => $this->buAini->id]);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/rapor/{$rapor->id}/tarik", ['catatan' => 'Perbaiki.'])
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+
+    expect($rapor->fresh()?->status)->toBe($status);
+})->with([StatusRapor::Draft, StatusRapor::Diajukan, StatusRapor::Revisi]);
+
+it('menolak penarikan rapor oleh guru dan tanpa catatan', function () {
+    $rapor = Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->terbit()->create(['dibuat_oleh' => $this->buAini->id]);
+
+    $this->actingAs($this->buAini->user)->postJson("/api/v1/rapor/{$rapor->id}/tarik", ['catatan' => 'Perbaiki.'])->assertForbidden();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/rapor/{$rapor->id}/tarik", ['catatan' => ''])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('catatan');
+
+    expect($rapor->fresh()?->status)->toBe(StatusRapor::Terbit);
 });
 
 it('hanya Kepala Sekolah yang bisa menerbitkan atau meminta revisi', function () {

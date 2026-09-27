@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\Role;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusRapor;
 use App\Exceptions\BusinessRuleException;
@@ -12,6 +13,7 @@ use App\Models\Rapor;
 use App\Models\RaporDetail;
 use App\Models\User;
 use App\Notifications\RaporDiajukanNotification;
+use App\Notifications\RaporDitarikNotification;
 use App\Notifications\RaporRevisiNotification;
 use App\Notifications\RaporTerbitNotification;
 use Illuminate\Http\UploadedFile;
@@ -21,9 +23,10 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Alur rapor (A6, B6.9): draft → diajukan → terbit, atau diajukan → revisi → diajukan lagi. Guru hanya mengisi
- * saat `draft`/`revisi`. Setiap perpindahan status mengunci baris rapor supaya dua aksi bersamaan tidak
- * melompati alur.
+ * Alur rapor (A6, B6.9): draft → diajukan → terbit, atau diajukan → revisi → diajukan lagi. Rapor terbit bisa
+ * ditarik Kepala Sekolah kembali ke revisi. Guru pembuat mengisi saat `draft`/`revisi`; Kepala Sekolah boleh
+ * memperbaiki isi rapor yang sedang `diajukan` sebelum menerbitkannya. Setiap perpindahan status mengunci baris
+ * rapor supaya dua aksi bersamaan tidak melompati alur.
  */
 class RaporService
 {
@@ -71,16 +74,20 @@ class RaporService
     }
 
     /**
+     * Guru pembuat mengisi saat `draft`/`revisi`; Kepala Sekolah memperbaiki saat `diajukan` (tercatat di log
+     * aktivitas, status tidak berubah).
+     *
      * @param  array<string, mixed>  $data  tinggi_badan, berat_badan, catatan_guru
      * @param  array<int, string|null>  $deskripsi  deskripsi per `elemen_penilaian_id`
      *
      * @throws BusinessRuleException
      * @throws ValidationException
      */
-    public function isi(Rapor $rapor, array $data, array $deskripsi): Rapor
+    public function isi(Rapor $rapor, array $data, array $deskripsi, User $pengubah): Rapor
     {
-        return DB::transaction(function () use ($rapor, $data, $deskripsi): Rapor {
-            $rapor = $this->kunciYangBisaDiisi($rapor);
+        [$rapor, $olehKepalaSekolah] = DB::transaction(function () use ($rapor, $data, $deskripsi, $pengubah): array {
+            $rapor = Rapor::query()->lockForUpdate()->findOrFail($rapor->id);
+            $olehKepalaSekolah = $this->pastikanBisaDiisiOleh($rapor, $pengubah);
             $detail = $rapor->detail()->get()->keyBy('elemen_penilaian_id');
 
             $asing = array_diff(array_keys($deskripsi), $detail->keys()->all());
@@ -93,8 +100,16 @@ class RaporService
                 $detail[$elemenId]->update(['deskripsi' => $isi === null ? null : trim($isi)]);
             }
 
-            return $rapor;
+            return [$rapor, $olehKepalaSekolah];
         });
+
+        if ($olehKepalaSekolah) {
+            $rapor->load('murid');
+            activity('rapor')->causedBy($pengubah)->performedOn($rapor)->event('diubah')
+                ->log("Memperbaiki isi rapor semester {$rapor->semester} {$rapor->murid->nama_lengkap} sebelum terbit");
+        }
+
+        return $rapor;
     }
 
     /**
@@ -190,6 +205,57 @@ class RaporService
         $rapor->pembuat->user->notify(new RaporRevisiNotification($rapor, $catatan));
 
         return $rapor;
+    }
+
+    /**
+     * Menarik rapor yang sudah terbit kembali ke `revisi` (misalnya ada kesalahan yang baru ketahuan). Wali
+     * tidak lagi bisa melihatnya sampai rapor diterbitkan ulang; guru pembuat diberi tahu beserta catatannya.
+     *
+     * @throws BusinessRuleException
+     */
+    public function tarik(Rapor $rapor, string $catatan, User $kepalaSekolah): Rapor
+    {
+        $rapor = DB::transaction(function () use ($rapor, $catatan): Rapor {
+            $rapor = Rapor::query()->lockForUpdate()->findOrFail($rapor->id);
+
+            if ($rapor->status !== StatusRapor::Terbit) {
+                throw new BusinessRuleException("Rapor berstatus {$rapor->status->label()} tidak bisa ditarik. Hanya rapor yang sudah terbit yang bisa ditarik.");
+            }
+
+            $rapor->update(['status' => StatusRapor::Revisi, 'catatan_revisi' => $catatan, 'terbit_at' => null, 'disetujui_oleh' => null]);
+
+            return $rapor;
+        });
+
+        $rapor->load([...self::RELASI_NOTIFIKASI, 'pembuat.user']);
+        activity('rapor')->causedBy($kepalaSekolah)->performedOn($rapor)->event('ditarik')
+            ->withProperties(['catatan' => $catatan])
+            ->log("Menarik rapor semester {$rapor->semester} {$rapor->murid->nama_lengkap} yang sudah terbit untuk direvisi");
+        $rapor->pembuat->user->notify(new RaporDitarikNotification($rapor, $catatan));
+
+        return $rapor;
+    }
+
+    /**
+     * @return bool true kalau diisi Kepala Sekolah sebagai peninjau (bukan sebagai guru pembuat)
+     *
+     * @throws BusinessRuleException
+     */
+    private function pastikanBisaDiisiOleh(Rapor $rapor, User $pengubah): bool
+    {
+        $pembuat = $pengubah->guru?->id === $rapor->dibuat_oleh;
+        $kepalaSekolah = $pengubah->role === Role::SuperAdmin;
+
+        if ($pembuat && in_array($rapor->status, [StatusRapor::Draft, StatusRapor::Revisi], true)) {
+            return false;
+        }
+        if ($kepalaSekolah && $rapor->status === StatusRapor::Diajukan) {
+            return true;
+        }
+
+        throw new BusinessRuleException("Rapor berstatus {$rapor->status->label()} tidak bisa diubah. ".($pembuat
+            ? 'Rapor hanya bisa diisi saat berstatus draft atau revisi.'
+            : 'Kepala Sekolah hanya bisa memperbaiki rapor yang sedang diajukan.'));
     }
 
     /**
