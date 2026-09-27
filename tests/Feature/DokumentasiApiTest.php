@@ -97,6 +97,43 @@ it('mendokumentasikan tipe item array bertingkat dan url file yang bisa null', f
         ->and($skema['SimpanPengaturanRequest']['properties']['items']['type'])->toBe('object');
 });
 
+/**
+ * Semua skema `allOf` di dokumen beserta jalurnya.
+ *
+ * @return array<string, array<mixed>>
+ */
+function skemaAllOf(mixed $node, string $jalur = ''): array
+{
+    if (! is_array($node)) {
+        return [];
+    }
+
+    $hasil = isset($node['allOf']) ? [$jalur => $node['allOf']] : [];
+    foreach ($node as $kunci => $anak) {
+        $hasil = [...$hasil, ...skemaAllOf($anak, "{$jalur}/{$kunci}")];
+    }
+
+    return $hasil;
+}
+
+it('mereferensikan skema Resource langsung tanpa allOf berisi objek kosong', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $data = fn (string $path) => $dokumen['paths'][$path]['get']['responses'][200]['content']['application/json']['schema']['properties']['data'];
+    $wali = $data('/dashboard')['anyOf'][2]['properties'];
+
+    // openapi-typescript menerjemahkan objek tanpa properties di allOf menjadi `Record<string, never>`.
+    $objekKosong = array_filter(skemaAllOf($dokumen), fn (array $bagian) => collect($bagian)
+        ->contains(fn (array $satu) => ($satu['type'] ?? null) === 'object' && empty($satu['properties'])));
+
+    expect($objekKosong)->toBe([])
+        ->and($data('/tagihan')['items'])->toBe(['$ref' => '#/components/schemas/TagihanResource'])
+        ->and($data('/kegiatan')['items'])->toBe(['$ref' => '#/components/schemas/KegiatanKelasResource'])
+        ->and($wali['tagihan_aktif']['items'])->toBe(['$ref' => '#/components/schemas/TagihanResource'])
+        ->and($wali['kegiatan_terbaru']['items'])->toBe(['$ref' => '#/components/schemas/KegiatanKelasResource'])
+        ->and($wali['pengumuman_terbaru']['items'])->toBe(['$ref' => '#/components/schemas/PengumumanResource'])
+        ->and($data('/murid/{id}'))->toBe(['$ref' => '#/components/schemas/MuridResource']);
+});
+
 it('mendokumentasikan jenis notifikasi sebagai enum dan rapor PDF sebagai file', function () {
     $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
 

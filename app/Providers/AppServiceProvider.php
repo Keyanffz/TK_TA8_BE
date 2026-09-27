@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -36,6 +37,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn () => Password::min(self::PANJANG_MINIMAL_PASSWORD)->letters()->numbers());
+
+        // Tanpa ini, Resource yang relasinya di-eager load ditulis `allOf: [$ref, { required: [...] }]`, dan
+        // openapi-typescript menerjemahkan bagian kedua menjadi `Record<string, never>` sehingga semua field
+        // Resource bertipe never di FE. Field relasi tetap terdokumentasi (opsional) di skema Resource.
+        Scramble::configure()->withoutEagerLoadAnalysis();
 
         $this->daftarkanGate();
         $this->daftarkanRateLimiter();
