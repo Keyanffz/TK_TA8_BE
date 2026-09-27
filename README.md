@@ -16,7 +16,7 @@ php artisan migrate --seed
 php artisan storage:link
 php artisan db:seed --class=DemoSeeder   # opsional, data contoh
 php artisan dev                # server :8000 + queue:listen + log
-php artisan schedule:work      # scheduler tagihan dan kode tautan
+php artisan schedule:work      # scheduler tagihan
 ```
 
 Dokumentasi API: `http://localhost:8000/docs/api` (selain production).

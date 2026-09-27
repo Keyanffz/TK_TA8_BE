@@ -49,11 +49,12 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
 
 1. **Login:**
    - Kepala Sekolah & Guru → email + password.
-   - Wali Murid → Google Sign-In saja (daftar sendiri otomatis saat pertama login).
+   - Wali Murid → NIS anak (sebagai username) + password. Wali tidak mendaftar sendiri dan tidak punya email. Akun wali dibuat otomatis saat murid ditambahkan Kepala Sekolah atau pendaftaran PPDB diterima, kalau murid itu belum tertaut ke akun wali mana pun: role `wali_murid`, username = NIS murid, password awal = tanggal lahir anak (format DDMMYYYY), `wajib_ganti_password = true`, nama sementara "Wali <nama panggilan anak>", tertaut sebagai kontak utama (hubungan dari formulir PPDB, atau `wali` untuk murid yang ditambahkan Kepala Sekolah). Pendaftaran PPDB yang diajukan wali yang sudah login ditautkan ke akun wali itu, tanpa akun baru. Sekolah membagikan kartu akun (PDF) berisi NIS, tanpa password.
+   - Selama `wajib_ganti_password = true`, akun wali hanya bisa membuka `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`. Password baru tidak boleh sama dengan tanggal lahir anak. Setelah itu wali melengkapi profil (onboarding). Wali yang lupa password meminta Kepala Sekolah mengembalikannya ke password awal.
    - Akun Kepala Sekolah dibuat lewat seeder (hanya 1 akun `super_admin` aktif), sekaligus profil `guru` miliknya (jabatan "Kepala Sekolah") supaya Kepala Sekolah bisa mencatat kegiatan kelas, menjadi wali kelas bila perlu, dan tampil di daftar guru landing. Profil guru ini tidak muncul di `GET /guru`, tidak bisa dinonaktifkan, izin keuangannya tidak bisa diubah, dan tidak dihitung sebagai guru di statistik dashboard; profil ini tetap bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`.
    - Guru bisa daftar sendiri → status `pending` → harus **disetujui Kepala Sekolah** baru bisa login. Kepala Sekolah juga bisa membuat akun guru langsung (status langsung `aktif`).
-2. **Menautkan anak ke wali:** sekolah (super admin) generate **kode tautan** per murid (8 karakter, berlaku 14 hari). Wali memasukkan kode + tanggal lahir anak → langsung tertaut. Kode bisa dipakai lebih dari 1 wali (ayah & ibu) selama belum kedaluwarsa. Super admin bisa melepas tautan.
-3. **PPDB online:** wali bisa mendaftarkan anak baru lewat dashboard saat PPDB dibuka. Pendaftaran selalu untuk tahun ajaran di pengaturan `ppdb.tahun_ajaran_id` (biasanya tahun ajaran berikutnya, bukan yang sedang aktif). PPDB tidak bisa dibuka (`ppdb.dibuka = true` ditolak) kalau `ppdb.tahun_ajaran_id` belum diisi atau tahun ajarannya tidak ada. Kalau diterima, sistem otomatis membuat data murid dan menautkannya ke wali tersebut.
+2. **Menautkan anak ke wali:** setiap murid punya akun wali otomatis (A2.1). Wali yang sudah login menambahkan kakak/adik ke akunnya dengan NIS + tanggal lahir anak. Kalau akun otomatis anak itu belum pernah dipakai (password awal belum diganti), akun itu dinonaktifkan dan tautannya dilepas; kalau sudah dipakai, anak tetap tertaut ke akun itu dan ke akun yang menambahkannya (1 anak boleh punya beberapa akun wali, misal ayah & ibu). Super admin bisa melepas tautan.
+3. **PPDB online:** orang tua mendaftarkan anak baru lewat halaman PPDB publik tanpa login saat PPDB dibuka, lalu memantau status dengan kode pendaftaran + tanggal lahir anak. Wali yang sudah punya akun juga bisa mendaftarkan kakak/adik lewat dashboard. Pendaftaran selalu untuk tahun ajaran di pengaturan `ppdb.tahun_ajaran_id` (biasanya tahun ajaran berikutnya, bukan yang sedang aktif). PPDB tidak bisa dibuka (`ppdb.dibuka = true` ditolak) kalau `ppdb.tahun_ajaran_id` belum diisi atau tahun ajarannya tidak ada. Kalau diterima, sistem otomatis membuat data murid lalu menautkannya ke wali pendaftar yang login, atau membuatkan akun wali otomatis (A2.1) untuk pendaftar tanpa login.
 4. **Tagihan (SPP) otomatis:** scheduler membuat tagihan bulanan tiap tanggal 1 untuk semua murid aktif, berdasarkan `jenis_tagihan` berperiode `bulanan` yang aktif di tahun ajaran aktif. Idempoten (tidak dobel, dijaga unique index); tagihan yang `dibatalkan` tetap dihitung sudah ada, jadi pembatalan dihormati dan tagihan itu hanya bisa dipulihkan Kepala Sekolah lewat aktifkan kembali. Potongan dari tabel `keringanan` otomatis diterapkan. Petugas keuangan bisa mengubah jatuh tempo, potongan, dan catatan tagihan yang belum dibayar.
 5. **Pembayaran:** transfer manual ke rekening sekolah + upload bukti oleh wali → diverifikasi. Petugas keuangan juga bisa mencatat pembayaran tunai, atau transfer yang sudah masuk ke rekening sekolah (bukti opsional); keduanya otomatis diterima. **Tidak ada cicilan** (1 tagihan dibayar penuh). Payment gateway (Midtrans) = pengembangan nanti, bukan sekarang.
 6. **Petugas keuangan:** super admin, ditambah guru yang diberi izin `bisa_kelola_keuangan = true` oleh super admin (untuk guru yang merangkap bendahara).
@@ -68,19 +69,20 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
 **Publik (tanpa login)**
 - Melihat landing page (profil, visi-misi, program, fasilitas, guru, galeri, pengumuman publik, agenda publik, info PPDB, kontak)
 - Melihat daftar & detail pengumuman publik, galeri
-- Login (guru/kepsek), login Google (wali), daftar sebagai guru, lupa/reset password (guru/kepsek)
+- Daftar PPDB tanpa login & cek status pendaftaran dengan kode pendaftaran + tanggal lahir anak
+- Login (guru/kepsek dengan email, wali murid dengan NIS anak), daftar sebagai guru, lupa/reset password (guru/kepsek)
 
 **Wali Murid (User)**
-- Login Google, lengkapi profil (onboarding)
-- Tautkan anak dengan kode tautan; lihat daftar anak; pindah anak aktif (switcher)
+- Login dengan NIS anak + password, ganti password awal saat login pertama, lengkapi profil (onboarding)
+- Tambah kakak/adik dengan NIS + tanggal lahir anak; lihat daftar anak; pindah anak aktif (switcher)
 - Beranda: info sekolah (banner dari Kepala Sekolah), ringkasan tagihan, kegiatan kelas terbaru, pengumuman, agenda, rapor terbaru
 - Lihat tagihan anak, bayar (upload bukti transfer), lihat riwayat pembayaran, unduh kwitansi
 - Lihat kegiatan/dokumentasi kelas anak (foto)
 - Lihat & unduh rapor yang sudah terbit
 - Lihat pengumuman yang relevan (semua / wali / kelas anak / anaknya)
 - Lihat agenda sekolah
-- Daftar PPDB untuk anak baru & pantau statusnya
-- Notifikasi, edit profil (nomor HP, alamat, pekerjaan, NIK)
+- Daftar PPDB untuk kakak/adik & pantau statusnya
+- Notifikasi, edit profil (nama, nomor HP, alamat, pekerjaan, NIK), ganti password
 
 **Guru (Admin)**
 - Daftar akun (menunggu persetujuan), login email
@@ -99,7 +101,7 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
 - Beranda: statistik sekolah + daftar tindakan tertunda (guru pending, pembayaran menunggu verifikasi, rapor menunggu review, pendaftar PPDB baru)
 - Kelola guru: tambah, edit, setujui/tolak pendaftaran, aktif/nonaktifkan, beri izin keuangan, tampilkan di landing
 - Kelola tahun ajaran (aktifkan 1), kelas (wali kelas, pendamping, kapasitas), penempatan murid, kenaikan kelas massal
-- Kelola murid (CRUD, status, generate kode tautan, ubah hubungan & kontak utama wali, lepas tautan wali), lihat & ubah data wali murid
+- Kelola murid (CRUD, status, unduh kartu akun wali, ubah hubungan & kontak utama wali, lepas tautan wali), lihat & ubah data wali murid, reset password wali murid
 - Keuangan: jenis tagihan, keringanan, generate tagihan manual (idempoten), tagihan sekali bayar (uang pangkal/seragam), ubah jatuh tempo/potongan/catatan tagihan, verifikasi pembayaran, catat pembayaran tunai/transfer, batalkan tagihan dan aktifkan kembali, laporan & ekspor Excel, daftar tunggakan
 - Rapor: review, perbaiki isi sebelum terbit, terbitkan, minta revisi, tarik rapor terbit; kelola elemen penilaian
 - Pengumuman (semua target) & agenda
@@ -142,7 +144,7 @@ erDiagram
     tahun_ajaran ||--o{ rapor : ""
     rapor ||--o{ rapor_detail : ""
     elemen_penilaian ||--o{ rapor_detail : ""
-    wali_murid ||--o{ pendaftaran : ""
+    wali_murid |o--o{ pendaftaran : ""
     tahun_ajaran ||--o{ pendaftaran : ""
     pendaftaran ||--o{ pendaftaran_dokumen : ""
     pendaftaran |o--o| murid : "jadi murid"
@@ -151,6 +153,7 @@ erDiagram
     users {
         bigint id PK
         string email UK
+        string username UK
         string role
         string status }
     guru {
@@ -163,7 +166,6 @@ erDiagram
     murid {
         bigint id PK
         string nis UK
-        string kode_tautan UK
         string status }
     murid_wali {
         bigint murid_id FK
@@ -203,10 +205,10 @@ erDiagram
 
 Semua tabel punya `id` (bigint PK) dan `created_at/updated_at` kecuali pivot yang disebut. Nama tabel bahasa Indonesia → set `$table` eksplisit di model.
 
-- **users**: name, email (unique), password (nullable, wali Google tidak punya), google_id (nullable, unique), role (enum Role), status (enum StatusAkun), no_hp (nullable), avatar_path (nullable), email_verified_at, last_login_at, remember_token, deleted_at (soft delete)
+- **users**: name, email (nullable unique; wali murid tidak punya email), username (nullable unique; NIS anak untuk wali murid, kosong untuk guru dan Kepala Sekolah), password (nullable), wajib_ganti_password (bool, default false; true selama wali memakai password awal), role (enum Role), status (enum StatusAkun), no_hp (nullable), avatar_path (nullable), email_verified_at, last_login_at, remember_token, deleted_at (soft delete)
 - **guru**: user_id (FK unique), nip (nullable), nuptk (nullable), jenis_kelamin (L/P), tempat_lahir, tanggal_lahir, alamat, pendidikan_terakhir, jabatan (string, misal "Guru Kelas"), foto_path, bisa_kelola_keuangan (bool, default false), tampil_di_landing (bool, default false), disetujui_oleh (FK users, nullable), disetujui_at, alasan_penolakan (nullable)
 - **wali_murid**: user_id (FK unique), nik (nullable), pekerjaan, alamat, profil_lengkap (bool, default false)
-- **murid**: nis (unique, auto format `TA{tahun}{urut 4 digit}`), nisn (nullable unique), nik (nullable), nama_lengkap, nama_panggilan, jenis_kelamin, tempat_lahir, tanggal_lahir, agama, alamat, anak_ke (nullable), foto_path (nullable), catatan_khusus (nullable, misal alergi makanan / kebutuhan khusus — hanya terlihat guru & kepsek & wali anak itu), status (enum StatusMurid), tanggal_masuk, tanggal_keluar (nullable), kode_tautan (nullable unique), kode_tautan_expired_at (nullable), deleted_at
+- **murid**: nis (unique, auto format `TA{tahun}{urut 4 digit}`), nisn (nullable unique), nik (nullable), nama_lengkap, nama_panggilan, jenis_kelamin, tempat_lahir, tanggal_lahir, agama, alamat, anak_ke (nullable), foto_path (nullable), catatan_khusus (nullable, misal alergi makanan / kebutuhan khusus — hanya terlihat guru & kepsek & wali anak itu), status (enum StatusMurid), tanggal_masuk, tanggal_keluar (nullable), deleted_at
 - **murid_wali** (pivot): murid_id, wali_murid_id, hubungan (enum Hubungan), is_kontak_utama (bool), created_at. Unique (murid_id, wali_murid_id)
 - **tahun_ajaran**: nama ("2026/2027"), tanggal_mulai, tanggal_selesai, semester_aktif (1/2), is_aktif (hanya 1 yang true)
 - **kelas**: tahun_ajaran_id, nama ("TK A1"), tingkat (enum Tingkat), wali_kelas_id (FK guru, nullable), guru_pendamping_id (FK guru, nullable), kapasitas (int, default 20)
@@ -222,7 +224,7 @@ Semua tabel punya `id` (bigint PK) dan `created_at/updated_at` kecuali pivot yan
 - **elemen_penilaian**: kode, nama, deskripsi, urutan, is_aktif
 - **rapor**: murid_id, kelas_id, tahun_ajaran_id, semester (1/2), tinggi_badan (decimal nullable, cm), berat_badan (decimal nullable, kg), catatan_guru, status (enum StatusRapor), catatan_revisi (nullable), dibuat_oleh (FK guru), diajukan_at, disetujui_oleh (FK users nullable), terbit_at. Unique (murid_id, tahun_ajaran_id, semester)
 - **rapor_detail**: rapor_id, elemen_penilaian_id, deskripsi (text), foto_path (nullable, private). Unique (rapor_id, elemen_penilaian_id)
-- **pendaftaran**: kode (unique, `PPDB-YYYY-XXXX`), wali_murid_id, hubungan (enum Hubungan; hubungan wali pendaftar dengan anak, dipakai saat menautkan ketika diterima), tahun_ajaran_id (diisi dari `ppdb.tahun_ajaran_id` saat mendaftar), tingkat_tujuan, nama_lengkap, nama_panggilan, jenis_kelamin, tempat_lahir, tanggal_lahir, nik, agama, alamat, nama_ayah, pekerjaan_ayah, nama_ibu, pekerjaan_ibu, no_hp, status (enum StatusPendaftaran), catatan (nullable), diproses_oleh (nullable), diproses_at, murid_id (nullable, terisi saat diterima)
+- **pendaftaran**: kode (unique, `PPDB-YYYY-XXXX`), wali_murid_id (nullable; kosong untuk pendaftaran tanpa login, diisi akun wali otomatis saat diterima), hubungan (enum Hubungan; hubungan wali pendaftar dengan anak, dipakai saat menautkan ketika diterima), tahun_ajaran_id (diisi dari `ppdb.tahun_ajaran_id` saat mendaftar), tingkat_tujuan, nama_lengkap, nama_panggilan, jenis_kelamin, tempat_lahir, tanggal_lahir, nik, agama, alamat, nama_ayah, pekerjaan_ayah, nama_ibu, pekerjaan_ibu, no_hp, status (enum StatusPendaftaran), catatan (nullable), diproses_oleh (nullable), diproses_at, murid_id (nullable, terisi saat diterima)
 - **pendaftaran_dokumen**: pendaftaran_id, jenis (enum JenisDokumen), path (private)
 - **galeri_album**: judul, slug, deskripsi, cover_path, tanggal, is_publik. **galeri_foto**: galeri_album_id, path (public), caption, urutan
 - **pengaturan**: kunci (unique), nilai (json), grup (string: profil | landing | keuangan | ppdb | beranda)
@@ -286,22 +288,28 @@ flowchart TD
     E -->|pending| F[Halaman menunggu persetujuan]
     E -->|ditolak / nonaktif| G[Tampilkan pesan + alasan]
     E -->|aktif| H[Dashboard sesuai role]
-    B -->|Wali Murid| I[Klik Masuk dengan Google]
-    I --> J[BE verifikasi ID token Google]
-    J --> K{User sudah ada?}
-    K -->|Belum| L[Buat user role wali_murid status aktif + profil wali]
-    K -->|Sudah| M{profil_lengkap?}
-    L --> N[Onboarding: lengkapi no HP, alamat, pekerjaan]
-    M -->|Tidak| N
-    M -->|Ya| O{Punya anak tertaut?}
-    N --> O
-    O -->|Ya| H
-    O -->|Tidak| P[Empty state: Tautkan anak / Daftar PPDB]
-    P -->|Tautkan| Q[Input kode tautan + tanggal lahir anak]
-    Q --> R{Valid & belum kedaluwarsa?}
-    R -->|Ya| H
-    R -->|Tidak| Q
-    P -->|PPDB| S[Form pendaftaran anak baru]
+    Z([Murid ditambahkan Kepsek / pendaftar PPDB tanpa login diterima]) --> Z1[Akun wali otomatis: username NIS, password tanggal lahir DDMMYYYY, wajib ganti password]
+    Z1 --> Z2[Kepsek mencetak kartu akun PDF untuk wali]
+    B -->|Wali Murid| I[Isi NIS anak + password]
+    I --> J{Kredensial valid?}
+    J -->|Tidak| I
+    J -->|Ya| K{Status akun}
+    K -->|nonaktif| G
+    K -->|aktif| L{wajib_ganti_password?}
+    L -->|Ya| M[Ganti password awal, tidak boleh tanggal lahir anak]
+    M --> N{profil_lengkap?}
+    L -->|Tidak| N
+    N -->|Tidak| O[Onboarding: nama & no HP wajib, NIK, alamat, pekerjaan opsional]
+    N -->|Ya| H
+    O --> H
+    H -->|Wali punya kakak/adik| P[Tambah anak: NIS + tanggal lahir]
+    P --> Q{Cocok?}
+    Q -->|Tidak| P
+    Q -->|Ya| R{Akun otomatis anak itu sudah dipakai?}
+    R -->|Belum| R1[Akun otomatis dinonaktifkan + tautan dilepas]
+    R -->|Sudah| R2[Anak tertaut ke kedua akun]
+    R1 --> S[Anak tertaut ke akun yang login]
+    R2 --> S
     T([Guru daftar di /daftar-guru]) --> U[Akun dibuat status pending]
     U --> V[Notifikasi ke Kepsek]
     V --> W{Kepsek memutuskan}
@@ -360,17 +368,22 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([Wali buka menu PPDB]) --> B{PPDB dibuka & kuota tersedia?}
+    A([Orang tua buka halaman PPDB publik / wali buka menu PPDB]) --> B{PPDB dibuka & kuota tersedia?}
     B -->|Tidak| C[Tampilkan info PPDB ditutup]
     B -->|Ya| D[Isi data anak & orang tua]
     D --> E[Upload akta, KK, pas foto]
-    E --> F[Status diajukan + notifikasi Kepsek]
+    E --> F[Status diajukan + kode pendaftaran + notifikasi Kepsek]
+    F --> F1[Pendaftar tanpa login cek status dengan kode + tanggal lahir anak]
     F --> G{Kepsek cek}
     G -->|Dokumen OK| H[Status diverifikasi]
-    G -->|Tolak + alasan| I[Status ditolak + notifikasi wali]
+    G -->|Tolak + alasan| I[Status ditolak + notifikasi wali kalau sudah punya akun]
     H --> J{Keputusan akhir}
-    J -->|Terima + pilih kelas opsional| K[Buat murid + tautkan ke wali + masukkan kelas]
-    K --> L[Status diterima + notifikasi wali]
+    J -->|Terima + pilih kelas opsional| K[Buat murid + masukkan kelas]
+    K --> K1{Didaftarkan wali yang login?}
+    K1 -->|Ya| K2[Tautkan ke akun wali itu]
+    K1 -->|Tidak| K3[Buat akun wali otomatis: username NIS]
+    K2 --> L[Status diterima + notifikasi ke akun wali]
+    K3 --> L
     J -->|Tolak| I
 ```
 
@@ -390,13 +403,13 @@ flowchart TD
 ```json
 { "success": false, "message": "Data tidak valid", "code": "VALIDATION_ERROR", "errors": { "email": ["Email wajib diisi."] } }
 ```
-Kode error: `UNAUTHENTICATED` (401), `FORBIDDEN` (403), `ACCOUNT_PENDING` (403), `ACCOUNT_REJECTED` (403), `ACCOUNT_INACTIVE` (403), `NOT_FOUND` (404), `VALIDATION_ERROR` (422), `BUSINESS_RULE` (422, pelanggaran aturan bisnis), `TOO_MANY_REQUESTS` (429), `SERVER_ERROR` (500).
+Kode error: `UNAUTHENTICATED` (401), `FORBIDDEN` (403), `ACCOUNT_PENDING` (403), `ACCOUNT_REJECTED` (403), `ACCOUNT_INACTIVE` (403), `PASSWORD_WAJIB_DIGANTI` (403, akun wali masih memakai password awal; semua endpoint login selain `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`), `NOT_FOUND` (404), `VALIDATION_ERROR` (422), `BUSINESS_RULE` (422, pelanggaran aturan bisnis), `TOO_MANY_REQUESTS` (429), `SERVER_ERROR` (500).
 
 Untuk `ACCOUNT_REJECTED` saat login, alasan penolakan disertakan di `message` (contoh: `"Pendaftaran akun Anda ditolak. Alasan: …"`), tanpa field tambahan.
 
 Status HTTP di luar daftar di atas dipetakan ke kode terdekat: 405 (metode HTTP salah) → 404 `NOT_FOUND`; 413 (unggahan melebihi batas server) → 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file."; status 4xx lain → 422 `VALIDATION_ERROR`; 503 (pemeliharaan) → 503 `SERVER_ERROR`.
 
-**Bentuk data:** field yang selalu dikirim di sebuah respons ditulis wajib (required) di OpenAPI; yang opsional hanya field yang bergantung role (misalnya `kode_tautan` murid, `catatan_revisi` rapor, `kelas`/`murid` pengumuman) atau hanya ada di satu respons (`password_awal`). Bentuk detail yang berbeda dari bentuk daftar punya skema sendiri (misalnya `TagihanDetailResource` untuk `GET /tagihan/{id}`).
+**Bentuk data:** field yang selalu dikirim di sebuah respons ditulis wajib (required) di OpenAPI; yang opsional hanya field yang bergantung role (misalnya `catatan_revisi` rapor, `kelas`/`murid` pengumuman) atau hanya ada di satu respons (`password_awal`). Bentuk detail yang berbeda dari bentuk daftar punya skema sendiri (misalnya `TagihanDetailResource` untuk `GET /tagihan/{id}`).
 
 **Konvensi query list:** `?search=`, `?sort=nama` / `?sort=-created_at`, `?filter[status]=aktif`, `?filter[kelas_id]=3`. Filter boolean (misal `filter[dibaca]`) menerima `true`/`false` atau `1`/`0`. Tanggal format `YYYY-MM-DD`, datetime ISO 8601 dengan offset `+07:00`. Uang = integer rupiah.
 
@@ -415,30 +428,32 @@ Status HTTP di luar daftar di atas dipetakan ke kode terdekat: 405 (metode HTTP 
 - `GET /public/galeri/{slug}` — Pub — album + foto
 - `GET /public/guru` — Pub — guru aktif `tampil_di_landing` (nama, jabatan, foto)
 - `GET /public/ppdb` — Pub — status buka, tanggal, kuota, sisa kuota, info
+- `POST /public/pendaftaran` — Pub — multipart, isian dan aturan sama dengan `POST /pendaftaran` (jadwal, kuota, NIK dobel) → 201 `{ kode, status, nama_panggilan, tingkat_tujuan, tahun_ajaran { id, nama }, catatan, diproses_at, created_at }`. Rate limit 3/jam per IP
+- `GET /public/pendaftaran/status?kode=&tanggal_lahir=` — Pub — bentuk sama dengan respons `POST /public/pendaftaran` (`catatan` = alasan penolakan); kode atau tanggal lahir tidak cocok → 404 `NOT_FOUND`. Rate limit 10/menit per IP
 
 ### Auth
 - `POST /auth/login` — Pub — `{ email, password, perangkat? }` → `{ token, user }`. Rate limit 5/menit per IP+email
-- `POST /auth/google` — Pub — `{ id_token, perangkat? }` → `{ token, user, is_new }`
+- `POST /auth/login-wali` — Pub — `{ username, password, perangkat? }` (username = NIS anak, huruf kecil dan spasi dinormalkan) → `{ token, user }`. Rate limit 5/menit per IP+username. Akun dengan `wajib_ganti_password = true` tetap mendapat token
 - `perangkat`: `web` | `mobile`, opsional, default `web`; dipakai sebagai nama token Sanctum.
 - `POST /auth/register-guru` — Pub — `{ name, email, password, password_confirmation, no_hp, jenis_kelamin }` → 201, pesan menunggu persetujuan
-- `POST /auth/forgot-password` — Pub — `{ email }` (hanya akun email+password)
+- `POST /auth/forgot-password` — Pub — `{ email }` (hanya guru dan Kepala Sekolah; wali meminta reset ke sekolah)
 - `POST /auth/reset-password` — Pub — `{ token, email, password, password_confirmation }`
 - `GET /auth/me` — semua — user + profil (guru/wali) + untuk W: daftar anak ringkas
 - `POST /auth/logout` — semua
 - `PUT /auth/profil` — semua — multipart (avatar opsional)
-- `PUT /auth/password` — SA, G
+- `PUT /auth/password` — semua — `{ current_password, password, password_confirmation }`. Untuk W, password baru tidak boleh sama dengan tanggal lahir anak mana pun (DDMMYYYY); setelah berhasil `wajib_ganti_password = false`
 
 **Bentuk `user` di respons auth:**
 ```json
 {
-  "id": 1, "name": "…", "email": "…", "role": "guru", "status": "aktif",
-  "no_hp": "…", "avatar_url": "…",
+  "id": 1, "name": "…", "email": "…", "username": null, "role": "guru", "status": "aktif",
+  "wajib_ganti_password": false, "no_hp": "…", "avatar_url": "…",
   "guru": { "id": 3, "bisa_kelola_keuangan": false, "kelas_diampu": [{ "id": 2, "nama": "TK A1" }] },
   "wali_murid": null,
   "permissions": { "kelola_keuangan": false }
 }
 ```
-Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "nik": "…" | null, "alamat": "…" | null, "pekerjaan": "…" | null, "anak": [{ "id": 9, "nama_panggilan": "…", "kelas": "TK B2", "foto_url": "…" }] }`.
+Untuk W: `"email": null`, `"username": "TA20260001"` (NIS anak), `wajib_ganti_password` sesuai akun, dan `"wali_murid": { "id": 5, "profil_lengkap": true, "nik": "…" | null, "alamat": "…" | null, "pekerjaan": "…" | null, "anak": [{ "id": 9, "nama_panggilan": "…", "kelas": "TK B2", "foto_url": "…" }] }`.
 
 ### Dashboard
 - `GET /dashboard` — semua — payload sesuai role; W bisa kirim `?murid_id=`
@@ -468,16 +483,19 @@ Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "nik": "…" | null, 
 ### Murid & wali
 - `GET /murid` — SA, G(scoped), W(anak sendiri) — filter kelas_id, status, tingkat, search
 - `GET /murid/{id}` — SA, G(scoped), W(anak sendiri) — detail + kelas aktif + wali
-- `POST /murid`, `PUT /murid/{id}`, `DELETE /murid/{id}` — SA (multipart foto)
-- `POST /murid/{id}/kode-tautan` — SA — generate baru → `{ kode, expired_at }`
+- `POST /murid`, `PUT /murid/{id}`, `DELETE /murid/{id}` — SA (multipart foto). `POST /murid` membuat akun wali otomatis (A2.1, hubungan `wali`, kontak utama) yang langsung muncul di `wali` detail murid. `DELETE /murid/{id}` menonaktifkan akun otomatis murid itu kalau belum pernah dipakai
+- `GET /murid/{id}/kartu-akun` — SA — PDF A6: kop sekolah, nama anak, kelas, NIS sebagai username, keterangan "Password awal: tanggal lahir anak (DDMMYYYY), wajib diganti saat login pertama", alamat login website. Tanpa password. Ditolak (422 `BUSINESS_RULE`) kalau tidak ada akun wali aktif dengan username NIS itu
+- Wali di detail murid: `wali: [{ id, nama, email (null untuk wali), username, no_hp, hubungan, is_kontak_utama, tertaut_at }]`
 - `PATCH /murid/{id}/wali/{wali_murid_id}` — SA — `{ hubungan?, is_kontak_utama? }` (minimal satu) → detail murid. Tepat satu kontak utama per murid: `is_kontak_utama: true` memindahkan kontak utama ke wali ini; `false` untuk kontak utama ditolak (422 `BUSINESS_RULE`), pilih wali lain sebagai kontak utama
 - `DELETE /murid/{id}/wali/{wali_murid_id}` — SA — lepas tautan
 - `GET /wali-murid` — SA — search, dengan jumlah anak
 - `GET /wali-murid/{id}` — SA
-- `PUT /wali-murid/{id}` — SA — `{ nama?, no_hp?, nik?, alamat?, pekerjaan? }`, boleh sebagian; email tidak bisa diubah. `profil_lengkap` dihitung ulang
+- `PUT /wali-murid/{id}` — SA — `{ nama?, no_hp?, nik?, alamat?, pekerjaan? }`, boleh sebagian; username tidak bisa diubah. `profil_lengkap` dihitung ulang
 - `PATCH /wali-murid/{id}/status` — SA — aktif / nonaktif
-- `PUT /wali/profil` — W — onboarding dan ubah profil `{ no_hp?, alamat?, pekerjaan?, nik? }`, boleh sebagian (field yang tidak dikirim tidak berubah; `nik` boleh `null`) → `user` bentuk auth. `profil_lengkap = true` setelah no_hp, alamat, dan pekerjaan terisi
-- `POST /wali/tautkan-anak` — W — `{ kode, tanggal_lahir, hubungan }`. Rate limit 5/menit
+- `POST /wali-murid/{id}/reset-password` — SA — password kembali ke tanggal lahir anak yang wali ini jadi kontak utamanya (anak yang NIS-nya = username didahulukan), `wajib_ganti_password = true`, semua token dicabut → bentuk daftar wali murid. Ditolak (422 `BUSINESS_RULE`) kalau wali bukan kontak utama anak mana pun
+- `GET /wali-murid` `search` juga mencari username. `user` di data wali murid memuat `username` dan `wajib_ganti_password`
+- `PUT /wali/profil` — W — onboarding dan ubah profil `{ nama, no_hp, nik?, alamat?, pekerjaan? }`: `nama` dan `no_hp` wajib; field opsional yang tidak dikirim tidak berubah, `null` mengosongkan → `user` bentuk auth. `profil_lengkap = true` setelah no_hp, alamat, dan pekerjaan terisi
+- `POST /wali/tambah-anak` — W — `{ nis, tanggal_lahir, hubungan }` → data anak (bentuk `GET /wali/anak`). NIS atau tanggal lahir tidak cocok → 422 `VALIDATION_ERROR` di field `nis` dengan satu pesan yang sama; anak sudah tertaut atau tidak aktif → 422 `BUSINESS_RULE`. Akun otomatis anak itu yang belum dipakai dinonaktifkan dan tautannya dilepas. Wali ini menjadi kontak utama kalau anak tidak punya wali lain. Rate limit 5/menit per user
 - `GET /wali/anak` — W
 
 ### Keuangan
@@ -530,11 +548,12 @@ Untuk W: `"wali_murid": { "id": 5, "profil_lengkap": true, "nik": "…" | null, 
 **Bentuk notifikasi:** `{ id, jenis, judul, pesan, url (path FE tujuan, misal "/dashboard/tagihan/12"), dibaca_at, created_at }`. Jenis: `tagihan_baru`, `tagihan_tertunda` (ke Kepsek: generate terjadwal dilewati karena bulan di luar tahun ajaran aktif), `pengingat_tagihan`, `tagihan_terlambat`, `pembayaran_masuk`, `pembayaran_diterima`, `pembayaran_ditolak`, `guru_baru`, `rapor_diajukan`, `rapor_revisi` (juga saat rapor terbit ditarik), `rapor_terbit`, `pengumuman_baru`, `pendaftaran_baru`, `pendaftaran_diproses`, `anak_tertaut`.
 
 ### PPDB
-- `POST /pendaftaran` — W — multipart (data + `hubungan` + dokumen). Tahun ajaran diambil dari `ppdb.tahun_ajaran_id`. Tolak jika PPDB tutup / kuota penuh / NIK anak sudah punya pendaftaran selain `ditolak` atau sudah menjadi murid (pendaftar yang pernah ditolak boleh daftar ulang)
+- `POST /pendaftaran` — W — multipart (data + `hubungan` + dokumen), untuk kakak/adik dari wali yang sudah punya akun. Tahun ajaran diambil dari `ppdb.tahun_ajaran_id`. Tolak jika PPDB tutup / kuota penuh / NIK anak sudah punya pendaftaran selain `ditolak` atau sudah menjadi murid (pendaftar yang pernah ditolak boleh daftar ulang)
 - `GET /pendaftaran` — SA (semua), W (miliknya)
-- `GET /pendaftaran/{id}` — SA, W(miliknya)
+- `GET /pendaftaran/{id}` — SA, W(miliknya). `wali: { id, nama, username, no_hp } | null` (null untuk pendaftaran tanpa login yang belum diterima)
 - `POST /pendaftaran/{id}/verifikasi` — SA
-- `POST /pendaftaran/{id}/terima` — SA — `{ kelas_id? }`
+- `POST /pendaftaran/{id}/terima` — SA — `{ kelas_id? }`. Pendaftaran tanpa login dibuatkan akun wali otomatis (hubungan dan nomor HP dari formulir) yang lalu dicatat sebagai wali pendaftar
+- Notifikasi `pendaftaran_diproses` hanya dikirim kalau pendaftaran sudah punya akun wali (pendaftar tanpa login baru menerimanya saat diterima)
 - `POST /pendaftaran/{id}/tolak` — SA — `{ alasan }`
 
 ### CMS & pengaturan
@@ -562,7 +581,6 @@ Pakai **versi stabil terbaru** saat pengerjaan dan cek kompatibilitas tiap paket
 | Database | MySQL 8 (utf8mb4). Test pakai SQLite in-memory atau MySQL test DB, pilih yang tidak bentrok dengan fitur yang dipakai |
 | Auth token | `laravel/sanctum` (Bearer token, bukan cookie SPA, karena dipakai web + Flutter) |
 | Dokumentasi API | `dedoc/scramble` — UI di `/docs/api`, export spec ke `storage/api-docs/api.json` |
-| Login Google | `google/apiclient` untuk `verifyIdToken` (FE kirim ID token dari Google Identity Services, BE yang memverifikasi, cek `aud` = `GOOGLE_CLIENT_ID` dan `email_verified`) |
 | Filter/sort/include list | `spatie/laravel-query-builder` |
 | Audit log | `spatie/laravel-activitylog` |
 | PDF (rapor, kwitansi) | `barryvdh/laravel-dompdf` |
@@ -588,7 +606,7 @@ app/
     Middleware/           # EnsureAccountActive, EnsureRole, ForceJsonResponse
   Models/
   Policies/               # otorisasi & scoping per model
-  Services/               # logika bisnis (TagihanService, PembayaranService, RaporService, PendaftaranService, KodeTautanService, MediaService, PengaturanService, DashboardService)
+  Services/               # logika bisnis (TagihanService, PembayaranService, RaporService, PendaftaranService, WaliMuridService, KartuAkunService, MediaService, PengaturanService, DashboardService)
   Notifications/
   Console/Commands/       # tagihan:generate, tagihan:pengingat, tagihan:tandai-terlambat
   Support/ApiResponse.php # helper format respons A7
@@ -639,34 +657,33 @@ Aturan:
    - `tagihan:generate` tiap tanggal 1 pukul 00:10 WIB. Kalau bulan berjalan di luar tahun ajaran aktif (atau belum ada tahun ajaran aktif), tidak ada tagihan dibuat dan Kepala Sekolah mendapat notifikasi `tagihan_tertunda`
    - `tagihan:tandai-terlambat` harian 00:30 WIB (tagihan `belum_bayar` yang lewat jatuh tempo → `terlambat` + notifikasi)
    - `tagihan:pengingat` harian 07:00 WIB (H-`keuangan.hari_pengingat`)
-   - `kode-tautan:bersihkan` harian (kosongkan kode kedaluwarsa)
    - Semua command bisa dijalankan manual dengan opsi `--periode=YYYY-MM` / `--dry-run` untuk testing.
 3. **Pembayaran**: wali selalu transfer dengan bukti wajib (status `menunggu`); petugas keuangan mencatat tunai atau transfer (bukti opsional) yang langsung `diterima`. Tolak upload baru jika sudah ada pembayaran `menunggu` atau tagihan sudah `lunas` / `dibatalkan`. Jumlah pembayaran harus sama dengan `total` tagihan. Terima → tagihan `lunas` + `lunas_at` + notifikasi wali. Tolak → tagihan kembali `terlambat` jika lewat jatuh tempo, selain itu `belum_bayar`. Semua verifikasi dicatat di activity log.
 4. **Tahun ajaran**: tepat 1 yang aktif. Tidak bisa menghapus TA yang sudah punya kelas/tagihan.
 5. **Kelas**: 1 murid maksimal 1 kelas per TA; tolak penempatan jika melebihi kapasitas. Mengeluarkan murid dari kelas ditolak jika murid sudah punya rapor di kelas itu. Kenaikan kelas massal dalam 1 transaksi (update `kelas_murid.status` lama, buat penempatan baru; `lulus` → `murid.status = lulus`).
 6. **Kode tautan**: 8 karakter huruf besar + angka tanpa karakter ambigu (`0 O 1 I L`), unik, berlaku 14 hari. Tautan valid hanya jika kode cocok + belum kedaluwarsa + `tanggal_lahir` cocok. Gagal 5x/menit → 429. Tolak jika wali sudah tertaut ke murid tsb.
 7. **Guru**: login ditolak saat `pending`/`ditolak`/`nonaktif` dengan kode error yang sesuai (FE mengarahkan ke halaman yang tepat); untuk `ditolak`, alasan penolakan masuk ke `message`. Setujui/tolak → notifikasi email ke guru. Guru daftar → notifikasi ke SA. `POST /guru` membuat password acak dan mengembalikannya sekali sebagai `password_awal`. Profil guru milik Kepala Sekolah tidak muncul di `GET /guru`, tetapi bisa dibuka dan diubah lewat `GET/PUT /guru/{id}`; menonaktifkan profil itu atau mengubah `bisa_kelola_keuangan`-nya ditolak dengan `BUSINESS_RULE`.
-8. **Google login**: hanya untuk wali murid. Jika email Google sudah terdaftar sebagai guru/SA → tolak dengan pesan "Gunakan login email & password". User baru → buat `users` (role wali_murid, status aktif, email_verified_at terisi) + `wali_murid`, `is_new: true`.
+8. **Akun wali murid**: akun otomatis dibuat di dalam transaksi yang sama dengan pembuatan murid (`POST /murid`, terima PPDB tanpa login): username NIS, password awal `tanggal_lahir` format `dmY`, `wajib_ganti_password = true`. Login wali (`POST /auth/login-wali`) hanya untuk role `wali_murid`; NIS salah dan password salah memberi pesan yang sama, status akun dicek setelah password benar. Middleware `password.diganti` menolak akun `wajib_ganti_password` dengan 403 `PASSWORD_WAJIB_DIGANTI` di semua route login kecuali `GET /auth/me`, `PUT /auth/password`, `POST /auth/logout`. Tambah anak: NIS + tanggal lahir cocok, murid aktif, belum tertaut ke akun ini; akun otomatis anak itu (username = NIS, `wajib_ganti_password = true`, hanya tertaut ke anak itu) dinonaktifkan, tokennya dicabut, dan tautannya dilepas. Reset password oleh Kepala Sekolah memakai tanggal lahir anak kontak utama dan mencabut semua token.
 9. **Rapor**: transisi status hanya sesuai flowchart; guru hanya bisa edit saat `draft`/`revisi`, Kepala Sekolah saat `diajukan`; rapor `terbit` bisa ditarik Kepala Sekolah ke `revisi` (notifikasi guru pembuat); `POST /rapor` otomatis membuat baris `rapor_detail` untuk semua elemen aktif. Terbit → notifikasi semua wali anak tsb.
 10. **Pengumuman**: guru hanya boleh target `kelas` (kelas yang diampu) atau `murid` (murid di kelasnya). `is_publik` hanya untuk target `semua`. Saat terbit → notifikasi ke penerima sesuai target (via queue, chunk). Feed `GET /pengumuman` untuk user: target semua + target sesuai role + kelas anak/kelas diampu + murid anaknya.
-11. **PPDB**: tolak jika `ppdb.dibuka = false`, di luar tanggal, kuota penuh (hitung pendaftaran selain `ditolak` untuk tahun ajaran `ppdb.tahun_ajaran_id`), atau NIK anak sudah punya pendaftaran selain `ditolak` atau sudah dipakai murid. `pendaftaran.tahun_ajaran_id` diisi dari `ppdb.tahun_ajaran_id`, `pendaftaran.hubungan` dari input wali. Terima → buat murid (NIS otomatis), tautkan wali pendaftar dengan `pendaftaran.hubungan`, masukkan kelas jika dipilih, salin pas foto jadi `foto_path` — satu transaksi.
+11. **PPDB**: tolak jika `ppdb.dibuka = false`, di luar tanggal, kuota penuh (hitung pendaftaran selain `ditolak` untuk tahun ajaran `ppdb.tahun_ajaran_id`), atau NIK anak sudah punya pendaftaran selain `ditolak` atau sudah dipakai murid. `pendaftaran.tahun_ajaran_id` diisi dari `ppdb.tahun_ajaran_id`, `pendaftaran.hubungan` dari input pendaftar. Pendaftaran tanpa login (`wali_murid_id` null) memakai aturan yang sama. Terima → buat murid (NIS otomatis), tautkan wali pendaftar dengan `pendaftaran.hubungan` atau buat akun wali otomatis untuk pendaftar tanpa login (lalu isi `pendaftaran.wali_murid_id`), masukkan kelas jika dipilih, salin pas foto jadi `foto_path` — satu transaksi. `pendaftaran_diproses` hanya dikirim kalau akun wali sudah ada.
 12. **Pengaturan**: `PengaturanService` dengan cache (invalidate saat update); validasi tipe per kunci (buat aturan validasi per kunci di satu tempat). `ppdb.dibuka = true` ditolak kalau `ppdb.tahun_ajaran_id` kosong atau tahun ajarannya tidak ada. Respons menambahkan pasangan `*_url` untuk field gambar (lihat A7 CMS & pengaturan).
 13. **Dashboard**: `DashboardService` per role, sesuai payload di A7. Grafik pemasukan 12 bulan terakhir dari pembayaran `diterima`. `guru_aktif` tidak menghitung profil guru Kepala Sekolah; payload G berisi `pembayaran_menunggu` (int untuk guru `bisa_kelola_keuangan`, `null` untuk guru lain).
 
 ## B7. Keamanan
 
-- Rate limit: login 5/menit, google 10/menit, tautkan anak 5/menit, API umum 120/menit per user.
+- Rate limit: login 5/menit per IP+email, login wali 5/menit per IP+username, tambah anak 5/menit per user, pendaftaran PPDB tanpa login 3/jam per IP, cek status pendaftaran 10/menit per IP, API umum 120/menit per user. Semua limiter berbasis IP memakai IP klien asli dari proxy di `TRUSTED_PROXIES`.
 - CORS hanya `FRONTEND_URL` (env), izinkan header Authorization. Tidak pakai cookie.
 - Password minimal 8 karakter, `Password::defaults()` dengan huruf + angka.
 - Token Sanctum dengan nama perangkat dari field `perangkat` di login (`web` / `mobile`, default `web`), expired 30 hari.
 - Semua HTML dari user disanitasi sebelum disimpan.
-- Activity log untuk: approval guru, perubahan status akun, perubahan data wali oleh Kepala Sekolah, verifikasi/penolakan pembayaran, perubahan, pembatalan, dan pengaktifan kembali tagihan, generate tagihan, terbit/revisi/tarik rapor dan perbaikan rapor oleh Kepala Sekolah, keputusan PPDB, perubahan pengaturan, tautkan/ubah/lepas wali.
+- Activity log untuk: approval guru, perubahan status akun, perubahan data wali oleh Kepala Sekolah, verifikasi/penolakan pembayaran, perubahan, pembatalan, dan pengaktifan kembali tagihan, generate tagihan, terbit/revisi/tarik rapor dan perbaikan rapor oleh Kepala Sekolah, keputusan PPDB, perubahan pengaturan, tautkan/ubah/lepas wali, pembuatan akun wali otomatis, penonaktifan akun otomatis yang belum dipakai, reset password wali oleh Kepala Sekolah.
 
 ## B8. Seeder
 
 - `SuperAdminSeeder`: dari env `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`. Sekaligus membuat profil `guru` milik Kepala Sekolah (jabatan "Kepala Sekolah").
 - `ElemenPenilaianSeeder`, `PengaturanSeeder` (nilai default A4, isi profil & landing dengan konten contoh yang wajar untuk TK).
-- `DemoSeeder` (hanya dijalankan manual/di local): 1 TA aktif 2026/2027, 4 kelas (TK A1, A2, B1, B2), 6 guru aktif + 2 pending (1 guru `bisa_kelola_keuangan`), 60 murid, ±45 wali (ada yang punya 2 anak, ada anak dengan ayah & ibu), jenis tagihan SPP bulanan + uang kegiatan, tagihan 3 bulan terakhir dengan campuran status, beberapa pembayaran menunggu, kegiatan dengan foto placeholder, rapor berbagai status, pengumuman, agenda, 5 pendaftar PPDB, 2 album galeri.
+- `DemoSeeder` (hanya dijalankan manual/di local): 1 TA aktif 2026/2027, 4 kelas (TK A1, A2, B1, B2), 6 guru aktif + 2 pending (1 guru `bisa_kelola_keuangan`), 60 murid, akun wali dengan username NIS per murid (ada yang punya 2 anak, ada anak dengan ayah & ibu, minimal satu akun sudah ganti password dan satu masih wajib ganti), jenis tagihan SPP bulanan + uang kegiatan, tagihan 3 bulan terakhir dengan campuran status, beberapa pembayaran menunggu, kegiatan dengan foto placeholder, rapor berbagai status, pengumuman, agenda, 5 pendaftar PPDB, 2 album galeri.
 - Tulis akun demo di `dokumentasi.md`.
 
 ## B9. Integrasi dengan frontend
@@ -726,7 +743,6 @@ Aturan:
 | Kegiatan Kelas | Aktivitas, Jurnal, Post |
 | Rapor | Laporan perkembangan, Report card |
 | Pengumuman | Info, Berita, Broadcast |
-| Kode Tautan | Kode undangan, Token, Invite code |
 | Tahun Ajaran | Periode, Academic year |
 | Password | Kata sandi |
 

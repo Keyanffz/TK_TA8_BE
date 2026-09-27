@@ -16,20 +16,21 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 7. PPDB, CMS, dashboard | Selesai, disetujui (dengan revisi) |
 | 8. Hardening | Selesai, menunggu review |
 | Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, direview; revisi setelah review menunggu review |
+| Login wali dengan NIS (branch `be/login-nis`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
 | Kelompok | Endpoint |
 |---|---|
 | Umum | `GET /health`, `GET /media/{token}` (signed URL file private) |
-| Auth publik | `POST /auth/login`, `POST /auth/google`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
-| Auth (login) | `GET /auth/me`, `POST /auth/logout`, `PUT /auth/profil`, `PUT /auth/password` (SA, G) |
+| Auth publik | `POST /auth/login`, `POST /auth/login-wali`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
+| Auth (login) | `GET /auth/me`, `POST /auth/logout`, `PUT /auth/password` (semua; tetap terbuka saat wajib ganti password), `PUT /auth/profil` |
 | Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, `PATCH /guru/{id}/status` |
-| Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PUT /wali-murid/{id}`, `PATCH /wali-murid/{id}/status` |
-| Wali (W) | `PUT /wali/profil`, `POST /wali/tautkan-anak`, `GET /wali/anak` |
+| Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PUT /wali-murid/{id}`, `PATCH /wali-murid/{id}/status`, `POST /wali-murid/{id}/reset-password` |
+| Wali (W) | `PUT /wali/profil`, `POST /wali/tambah-anak`, `GET /wali/anak` |
 | Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
 | Kelas | `GET /kelas`, `GET /kelas/{id}` (SA, G terbatas), `POST /kelas`, `PUT/DELETE /kelas/{id}`, `POST /kelas/{id}/murid`, `DELETE /kelas/{id}/murid/{murid_id}`, `POST /kelas/kenaikan` (SA) |
-| Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `POST /murid/{id}/kode-tautan`, `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
+| Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `GET /murid/{id}/kartu-akun`, `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
 | Jenis tagihan | `GET /jenis-tagihan` (K), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
 | Keringanan (K) | `GET/POST /keringanan`, `PUT/DELETE /keringanan/{id}` |
 | Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan`, `POST /tagihan/{id}/aktifkan` (SA) |
@@ -41,22 +42,44 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role), `POST /pengumuman` (SA, G), `PUT/DELETE /pengumuman/{id}` (penulis, SA) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
-| Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb` |
+| Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
-| PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
+| PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA) |
 | Galeri (SA) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
 
 K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga middleware `can:kelola-keuangan`.
 
-Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum).
+Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum). Akun wali yang masih memakai password awal (`wajib_ganti_password`) hanya bisa memakai `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`; endpoint login lain membalas 403 `PASSWORD_WAJIB_DIGANTI`.
 
-Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `kode-tautan:bersihkan` (harian 01:00). Jam dalam WIB.
+Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
 
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Login wali dengan NIS (branch `be/login-nis`). Perubahan kontrak dan skema sudah disetujui pemilik repo; yang di bawah ini detail yang diputuskan saat pengerjaan dan sudah ditulis ke Bagian A:
+
+1. Akun wali otomatis dari `POST /murid` memakai hubungan `wali`, karena body `POST /murid` tidak punya field hubungan. Kepala Sekolah mengubahnya lewat `PATCH /murid/{id}/wali/{wali_murid_id}`. Pembuatan akun ada di transaksi yang sama dengan pembuatan murid; kalau akun gagal dibuat, murid juga batal. Log `akun`/`dibuat` (properti `murid_id`, `username`).
+2. "Akun otomatis yang belum pernah dipakai" = akun dengan username sama dengan NIS anak itu, `wajib_ganti_password = true`, dan hanya tertaut ke anak itu. Syarat terakhir mencegah akun keluarga yang password-nya direset Kepala Sekolah (sehingga `wajib_ganti_password` kembali true) ikut dinonaktifkan. Penonaktifan mencabut semua token dan dicatat di log `akun`/`dinonaktifkan`.
+3. `DELETE /murid/{id}` (hanya untuk salah input) ikut menonaktifkan akun otomatis murid itu kalau belum pernah dipakai, supaya tidak ada akun menganggur dengan password tanggal lahir. Tidak diminta eksplisit.
+4. Tambah anak: NIS tidak terdaftar dan tanggal lahir salah dibalas pesan yang sama di field `nis`, supaya percobaan tidak bisa memastikan NIS mana yang ada. NIS dinormalkan seperti username login. Anak berstatus selain `aktif` ditolak `BUSINESS_RULE`. Wali yang menambahkan menjadi kontak utama kalau anak tidak punya wali lain setelah akun otomatisnya dilepas. Notifikasi `anak_tertaut` tetap dikirim ke Kepala Sekolah dan wali lain yang masih tertaut (akun otomatis yang dinonaktifkan tidak). Log `wali`/`tertaut`.
+5. Reset password: anak acuan dipilih dari anak yang wali itu jadi kontak utamanya, didahulukan yang NIS-nya sama dengan username, lalu yang paling awal tertaut. Wali yang bukan kontak utama anak mana pun ditolak `BUSINESS_RULE`. Status akun tidak diubah (akun nonaktif tetap nonaktif). Respons memakai bentuk daftar wali murid. Log `akun`/`password_direset` (properti `murid_id`).
+6. `PUT /auth/password` untuk wali tetap meminta `current_password` (password awal = tanggal lahir yang wali ketahui). Tanggal lahir dicek terhadap semua anak yang tertaut. `Password::defaults()` (huruf dan angka) sudah menolak password yang hanya berisi angka, jadi untuk tanggal lahir kedua pesan muncul bersamaan; aturan tanggal lahir tetap dipasang supaya tidak bergantung pada aturan umum itu.
+7. `PUT /auth/profil` ikut ditolak `PASSWORD_WAJIB_DIGANTI` karena bukan salah satu dari tiga endpoint yang dikecualikan. Guru dan Kepala Sekolah selalu `wajib_ganti_password = false`; `password_awal` dari `POST /guru` tidak mengubah itu.
+8. Bentuk data: `username` dan `wajib_ganti_password` ditambahkan ke `user` di respons auth dan ke `user` di data wali murid (`AkunResource`); `email` menjadi nullable di keduanya. `wali[]` di detail murid mendapat `username`. `wali` di detail pendaftaran menjadi `{ id, nama, username, no_hp } | null`: `email` diganti `username` karena wali tidak punya email, dan `null` untuk pendaftaran tanpa login yang belum diterima.
+9. PPDB tanpa login: `POST /public/pendaftaran` dan `GET /public/pendaftaran/status` membalas bentuk ringkas yang sama (`PendaftaranPublikResource`: `kode, status, nama_panggilan, tingkat_tujuan, tahun_ajaran, catatan, diproses_at, created_at`), tanpa NIK, alamat, dokumen, dan NIS. NIS tidak ditampilkan walau sudah diterima: kode pendaftaran berurutan dan tanggal lahir sudah cukup untuk login dengan password awal, jadi NIS hanya disampaikan lewat kartu akun dari sekolah. Kode dinormalkan ke huruf besar. Kode atau tanggal lahir yang tidak cocok dibalas 404 `NOT_FOUND` dengan pesan umum "Data tidak ditemukan.".
+10. Rate limit `status-pendaftaran` 10/menit per IP ditambahkan walau tidak diminta, karena kode pendaftaran berurutan dan tanggal lahir anak hanya berkisar satu-dua tahun.
+11. Rate limit `pendaftaran-publik` 3/jam per IP memakai middleware throttle, jadi permintaan yang gagal validasi (misalnya file terlalu besar) ikut terhitung. Kalau ingin hanya pendaftaran yang berhasil yang dihitung, limiter harus dipindah ke service.
+12. Pendaftar tanpa login yang diterima: nomor HP dari formulir disalin ke akun wali, nama akun tetap "Wali <nama panggilan>" (tidak memakai nama ayah/ibu dari formulir), dan `pendaftaran.wali_murid_id` diisi akun baru sehingga pendaftaran itu terlihat di `GET /pendaftaran` akun tersebut. Notifikasi `pendaftaran_diproses` (diterima) dikirim ke akun baru dan terlihat setelah login pertama. Verifikasi dan penolakan pendaftar tanpa login tidak mengirim notifikasi.
+13. Kartu akun: ditolak `BUSINESS_RULE` kalau tidak ada akun wali aktif dengan username NIS itu (misalnya adik yang akun otomatisnya sudah dinonaktifkan karena ditambahkan ke akun kakaknya). Kartu tetap bisa diunduh setelah wali mengganti password; isinya tetap "password awal". Alamat website = `FRONTEND_URL` + `/login`. Kelas kosong ditulis "Belum ada kelas". Ukuran A6 tegak, satu halaman.
+14. `PUT /wali/profil`: `nama` dan `no_hp` wajib di setiap permintaan (tidak lagi boleh sebagian). `alamat`, `pekerjaan`, dan `nik` opsional; yang tidak dikirim tidak berubah, `null` mengosongkan (sebelumnya alamat dan pekerjaan tidak bisa dikosongkan). `PUT /wali-murid/{id}` oleh Kepala Sekolah tidak berubah.
+15. Login wali: username dinormalkan (huruf besar, spasi dibuang). Akun guru yang kebetulan punya username tetap tidak bisa lewat `login-wali`. NIS salah dan password salah memberi pesan yang sama di field `username` ("NIS atau password salah.").
+16. `LayananBelumDikonfigurasiException` dihapus karena hanya dipakai verifikasi Google. `GET /wali-murid` `search` juga mencari username.
+17. A5 tidak diubah karena tidak ada enum baru; kode error `PASSWORD_WAJIB_DIGANTI` ditulis di daftar kode error A7. A4 ikut diperbarui (kolom `users`, `murid`, `pendaftaran`) walau tidak disebut di permintaan, karena skemanya berubah.
+18. Hal yang belum ditangani: (a) akun wali lama hasil login Google tidak punya username sehingga tidak bisa login; tidak ada migrasi data karena belum dipakai di luar lokal. (b) Murid yang sudah ada sebelum migration tidak dibuatkan akun otomatis; tidak ada command untuk itu. (c) Kalau tanggal lahir murid dikoreksi lewat `PUT /murid/{id}`, password akun otomatisnya tidak ikut berubah; Kepala Sekolah perlu mereset password. (d) Password awal berupa tanggal lahir mudah ditebak orang yang mengenal keluarga; pengamannya hanya rate limit per IP+username dan kewajiban ganti password.
+19. `down()` migration `tambah_username_ke_users_table` gagal kalau sudah ada akun tanpa email (email kembali NOT NULL), dan `down()` `ubah_wali_murid_id_pendaftaran_nullable` gagal kalau ada pendaftaran tanpa wali. Keduanya sudah dicoba di database tanpa data seperti itu.
 
 Revisi setelah review audit dashboard (dua keputusan audit diubah pemilik repo; kontraknya sudah di Bagian A):
 
@@ -142,9 +165,9 @@ Fase 4:
 5. `DELETE /kelas/{id}/murid/{murid_id}` menghapus baris penempatan (untuk memperbaiki salah penempatan), bukan memberi status `keluar`. Murid yang keluar sekolah diubah lewat `PUT /murid/{id}`. **Revisi:** ditolak `BUSINESS_RULE` kalau murid sudah punya rapor di kelas itu (rapor di kelas lain tidak menghalangi).
 6. Kenaikan kelas: tahun ajaran asal = tahun ajaran aktif, tujuan harus berbeda. Setiap murid harus aktif dan punya penempatan `aktif` di tahun ajaran asal, dan belum punya kelas di tahun ajaran tujuan. Tingkat kelas tujuan tidak dicek (naik dari A ke B tidak dipaksa). Murid `lulus` mendapat `status = lulus` dan `tanggal_keluar` = `tanggal_selesai` tahun ajaran asal. Respons `{ naik, tinggal, lulus }` (jumlah per status). Tidak dicatat di activity log karena tidak ada di daftar B7.
 7. `POST /murid` tidak menerima `status` (selalu `aktif`). `PUT /murid/{id}` mewajibkan `status`; `tanggal_keluar` wajib untuk `lulus`/`pindah`/`keluar` dan dikosongkan untuk `aktif`. Perubahan status ikut mengubah penempatan di tahun ajaran aktif: `lulus` → `lulus`, `pindah`/`keluar` → `keluar`, kembali `aktif` → penempatan dibuka lagi (dengan cek kapasitas). NIS tidak bisa diubah.
-8. `DELETE /murid/{id}` hanya untuk data salah input: ditolak kalau murid sudah punya tagihan, rapor, atau data PPDB. Murid di-soft delete, penempatannya dihapus, dan kode tautannya dikosongkan.
-9. Isi `MuridResource` sama untuk semua yang boleh melihat murid (Kepala Sekolah, guru pengampu, wali anak itu), termasuk NIK, alamat, dan `catatan_khusus`. Detail murid berisi `wali[]` (`id, nama, email, no_hp, hubungan, is_kontak_utama, tertaut_at`), sehingga ayah dan ibu saling melihat kontak masing-masing. `kode_tautan` dan `kode_tautan_expired_at` hanya untuk Kepala Sekolah.
-10. Kode tautan hanya dibuat untuk murid aktif; kode baru menggantikan kode lama. `kode-tautan:bersihkan` dijadwalkan harian pukul 01:00 WIB (B6.2 tidak menyebut jam).
+8. `DELETE /murid/{id}` hanya untuk data salah input: ditolak kalau murid sudah punya tagihan, rapor, atau data PPDB. Murid di-soft delete, penempatannya dihapus, dan kode tautannya dikosongkan. **Sejak `be/login-nis`** tidak ada kode tautan lagi; akun wali otomatis yang belum dipakai ikut dinonaktifkan.
+9. Isi `MuridResource` sama untuk semua yang boleh melihat murid (Kepala Sekolah, guru pengampu, wali anak itu), termasuk NIK, alamat, dan `catatan_khusus`. Detail murid berisi `wali[]` (`id, nama, email, no_hp, hubungan, is_kontak_utama, tertaut_at`), sehingga ayah dan ibu saling melihat kontak masing-masing. `kode_tautan` dan `kode_tautan_expired_at` hanya untuk Kepala Sekolah (**dihapus di `be/login-nis`**).
+10. Kode tautan hanya dibuat untuk murid aktif; kode baru menggantikan kode lama. `kode-tautan:bersihkan` dijadwalkan harian pukul 01:00 WIB (B6.2 tidak menyebut jam). **Dihapus di `be/login-nis`** bersama fitur kode tautan.
 11. Melepas wali yang menjadi kontak utama memindahkan kontak utama ke wali yang paling awal tertaut. Wali yang dilepas tidak diberi notifikasi (tidak ada jenis notifikasi untuk itu di A7).
 12. `bukti_url` pembayaran hanya diisi untuk petugas keuangan dan wali murid; guru tanpa izin keuangan melihat riwayat pembayaran murid kelasnya dengan `bukti_url: null`.
 13. Parameter daftar di luar yang disebut A7: `GET /murid` `sort=nama|nis|created_at`; `GET /kelas` `sort=nama|created_at`; `GET /tahun-ajaran` `sort=nama|tanggal_mulai`; `GET /tagihan` `search` (kode tagihan, nama murid) dan `sort=jatuh_tempo|periode|created_at`. Semua daftar berpaginasi (bawaan 15, maksimal 100).
@@ -176,7 +199,6 @@ Fase 5:
 | laravel/framework | 13.33.0 |
 | laravel/sanctum | 4.3.3 |
 | dedoc/scramble | 0.13.45 |
-| google/apiclient | 2.20.1 (layanan Google dipangkas, hanya `Oauth2` disimpan) |
 | spatie/laravel-query-builder | 7.3.5 |
 | spatie/laravel-activitylog | 5.1.1 |
 | barryvdh/laravel-dompdf | 3.1.2 |
@@ -199,7 +221,7 @@ Fase 0–3 dikerjakan di container cloud (Ubuntu 24.04, PHP 8.4.19, MySQL 8.0.46
 
 Laptop: Arch Linux, PHP 8.5.10, Composer 2.9.2, MariaDB 12.3.3 (server `utf8mb4_unicode_ci`).
 
-- `composer install` sempat gagal dua kali karena unduhan `google/apiclient-services` (±50 MB) dari codeload.github.com timeout di 300 detik. Berhasil setelah diulang dengan batas waktu lebih panjang: `COMPOSER_PROCESS_TIMEOUT=3600 php -d default_socket_timeout=3600 $(command -v composer) install`. Kalau ekstraksi gagal dengan "cannot find or open ... tmp-*.zip", hapus `vendor/composer/tmp-*` lalu ulangi. Ini masalah jaringan, bukan repo.
+- `composer install` sempat gagal dua kali karena unduhan `google/apiclient-services` (±50 MB) dari codeload.github.com timeout di 300 detik. Berhasil setelah diulang dengan batas waktu lebih panjang: `COMPOSER_PROCESS_TIMEOUT=3600 php -d default_socket_timeout=3600 $(command -v composer) install`. Kalau ekstraksi gagal dengan "cannot find or open ... tmp-*.zip", hapus `vendor/composer/tmp-*` lalu ulangi. Ini masalah jaringan, bukan repo. Paket Google dilepas di `be/login-nis`, jadi unduhan besar ini tidak ada lagi.
 - `php artisan key:generate`, `migrate:fresh --seed`, `storage:link`, dan `DemoSeeder` lancar di MariaDB 12.3.3.
 - 190 test lulus di SQLite dan di MariaDB 12.3.3, tanpa deprecation PHP 8.5; Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak ada perbaikan yang dibutuhkan karena perbedaan versi.
 - Ekstensi `exif` belum aktif di laptop (`php -m`). Unggahan tetap berhasil, tetapi foto dari HP bisa tersimpan miring (lihat tabel di bawah).
@@ -216,7 +238,6 @@ PHP 8.4 atau lebih baru. `composer check-platform-reqs` menampilkan ekstensi yan
 | `gd` dengan dukungan JPEG, PNG, WebP | memproses gambar unggahan (intervention/image driver GD) |
 | `exif` | memutar foto dari HP sesuai orientasi EXIF. Tanpa ekstensi ini unggahan tetap berhasil, tetapi foto bisa tersimpan miring |
 | `pcntl` | `php artisan pail`, bagian dari `php artisan dev` |
-| `curl` | disarankan; Guzzle memakainya untuk mengambil sertifikat Google saat verifikasi ID token |
 
 Di Arch, cek dengan `php -m`; ekstensi yang belum muncul diaktifkan lewat baris `extension=` di `/etc/php/php.ini`.
 
@@ -233,7 +254,7 @@ Mulai dari `cp .env.example .env`, lalu isi:
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | akun Kepala Sekolah; `SuperAdminSeeder` berhenti kalau kosong atau password kurang dari 8 karakter huruf dan angka |
 | `MAIL_FROM_ADDRESS` | alamat pengirim apa saja, misalnya `tu@tkta8.test`. Walau `MAIL_MAILER=log`, email tanpa alamat pengirim gagal dengan "An email must have a "From" or a "Sender" header" dan job-nya masuk `failed_jobs` |
 
-Boleh dibiarkan seperti di `.env.example`: `FRONTEND_URL=http://localhost:3000` (alamat `next dev`), `MAIL_MAILER=log`, `QUEUE_CONNECTION=database`, `CACHE_STORE=database`, `SESSION_DRIVER=file`. `GOOGLE_CLIENT_ID` hanya perlu diisi untuk mencoba login Google; kalau kosong, `POST /auth/google` membalas 503.
+Boleh dibiarkan seperti di `.env.example`: `FRONTEND_URL=http://localhost:3000` (alamat `next dev`), `MAIL_MAILER=log`, `QUEUE_CONNECTION=database`, `CACHE_STORE=database`, `SESSION_DRIVER=file`.
 
 ### Dari `composer install` sampai test lulus
 
@@ -263,7 +284,7 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
 - Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
 - Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
-- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `kode-tautan:bersihkan` 01:00, `tagihan:pengingat` 07:00 (WIB). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
+- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `tagihan:pengingat` 07:00 (WIB). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
 - Notifikasi tagihan dan pembayaran juga lewat queue: tanpa worker, notifikasi hasil generate masih di tabel `jobs`.
 - Mencoba satu jadwal tanpa menunggu jamnya: `php artisan schedule:test --name=tagihan:generate` (atau nama command lain). Command yang dijalankan scheduler memakai jam sistem sebenarnya.
 
@@ -342,7 +363,6 @@ DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: mi
 | `CACHE_STORE` | `database` (rate limiter dan cache pengaturan) |
 | `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
 | `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan di email (`/login`, `/reset-password`) |
-| `GOOGLE_CLIENT_ID` | Client ID OAuth Google Identity Services (sama dengan yang dipakai FE). Wajib untuk `POST /auth/google`; kalau kosong, endpoint itu membalas 503 `SERVER_ERROR` "Login Google belum dikonfigurasi. Hubungi pihak sekolah." dan penyebabnya tercatat di log |
 | `TRUSTED_PROXIES` | IP/CIDR proxy dipisah koma, atau `*`; kosong di lokal. Di server wajib berisi IP server FE (BFF) dan reverse proxy di depan BE. Menentukan apakah header `X-Forwarded-*` dipercaya: IP klien untuk semua rate limiter berbasis IP, serta skema dan host signed URL |
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
@@ -371,7 +391,6 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 | `BusinessRuleException` | 422 | `BUSINESS_RULE` |
 | `AuthorizationException` / 403 | 403 | `FORBIDDEN` |
 | `AksesAkunDitolakException` (login dengan akun belum/tidak aktif) | 403 | `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE` |
-| `LayananBelumDikonfigurasiException` (misalnya `GOOGLE_CLIENT_ID` kosong) | 503 | `SERVER_ERROR` dengan pesan untuk pengguna dari exception; penyebab teknis tercatat di log |
 | `InvalidSignatureException` (signed URL media kedaluwarsa atau diubah) | 403 | `FORBIDDEN` ("Tautan file sudah kedaluwarsa atau tidak valid. …") |
 | `ModelNotFoundException` / `abort(404)` di route yang ada | 404 | `NOT_FOUND` ("Data tidak ditemukan.") |
 | Route tidak ada, metode HTTP salah (405) | 404 | `NOT_FOUND` ("Endpoint tidak ditemukan. …") |
@@ -386,17 +405,19 @@ Middleware:
 
 - `ForceJsonResponse`: dipasang di grup `api`, memaksa `Accept: application/json`.
 - `akun.aktif` (`EnsureAccountActive`): token milik akun selain `aktif` ditolak 403 dengan `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE`.
+- `password.diganti` (`EnsurePasswordDiganti`): akun dengan `wajib_ganti_password` ditolak 403 `PASSWORD_WAJIB_DIGANTI`. Dipasang di semua route login kecuali `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout` (grup route terpisah di `routes/api.php`). Terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
 - Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Setelah `findOrFail`, controller memanggil `Jangkauan::pastikanTerlihat($model)` untuk Policy `view` yang hanya membalas 404, dan `Gate::authorize(...)` untuk aksi yang bisa membalas 403.
 - `signed:relative`: hanya di `GET /media/{token}`.
-- Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-google` 10/menit per IP, `tautkan-anak` 5/menit per user, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
+- Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-wali` 5/menit per username + IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
 
 ## Auth dan akun
 
 - Token Sanctum dikirim sebagai `Authorization: Bearer`, berlaku 30 hari, nama token = `perangkat` (`web` | `mobile`). Logout mencabut token yang sedang dipakai; ganti password mencabut token lain; reset password dan penonaktifan akun mencabut semua token.
 - Login email hanya untuk Kepala Sekolah dan guru. Email tidak terdaftar, password salah, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
-- Login Google (`GoogleLoginService`): ID token diverifikasi `GoogleIdTokenVerifier` (tanda tangan, `aud` = `GOOGLE_CLIENT_ID`, masa berlaku) dan email harus terverifikasi. Akun dicari lewat `google_id` lalu email; email milik guru/Kepala Sekolah ditolak `BUSINESS_RULE`. Email baru dibuatkan akun wali murid aktif dengan `profil_lengkap = false` dan `is_new = true`. Kalau `GOOGLE_CLIENT_ID` kosong, verifier melempar `LayananBelumDikonfigurasiException` (503). Di test, verifier diganti mock.
-- Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya password). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
+- Login wali (`POST /auth/login-wali`) dengan NIS anak sebagai username (dinormalkan ke huruf besar tanpa spasi). NIS tidak terdaftar, password salah, dan akun bukan wali mendapat pesan yang sama ("NIS atau password salah."). Status dicek setelah password benar. Akun wali tidak punya email.
+- Akun wali otomatis (`WaliMuridService::buatAkunOtomatis()`) dibuat saat `POST /murid` dan saat pendaftar PPDB tanpa login diterima: username NIS, password `tanggal_lahir` format `dmY`, `wajib_ganti_password = true`, nama "Wali <nama panggilan>", `profil_lengkap = false`, kontak utama. `lepasAkunOtomatisBelumDipakai()` menonaktifkan akun itu saat anaknya ditambahkan ke akun lain atau murid dihapus. `resetPassword()` mengembalikan password ke tanggal lahir anak kontak utama.
+- Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya email; reset lewat Kepala Sekolah). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
 - Password baru (registrasi, ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
 - Gate `kelola-keuangan` memakai `User::bisaKelolaKeuangan()`; endpoint khusus petugas keuangan memakai middleware `can:kelola-keuangan` (403 `FORBIDDEN`, terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`). Pembatasan per role lewat middleware `role:`.
@@ -442,7 +463,7 @@ Semua sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B) dan Bagian A `PROMPT_F
 6. `ACCOUNT_REJECTED` saat login membawa alasan penolakan di `message`.
 7. Payload dashboard guru mendapat `pembayaran_menunggu` (int untuk guru `bisa_kelola_keuangan`, `null` untuk guru lain).
 8. `POST /guru` mengembalikan `password_awal` sekali di respons 201; tidak dikirim lewat email dan tidak disimpan sebagai teks biasa.
-9. Field opsional `perangkat` (`web` | `mobile`, default `web`) di `POST /auth/login` dan `POST /auth/google`, dipakai sebagai nama token.
+9. Field opsional `perangkat` (`web` | `mobile`, default `web`) di `POST /auth/login` dan `POST /auth/google` (sejak `be/login-nis`: `POST /auth/login-wali`), dipakai sebagai nama token.
 10. Field gambar di respons pengaturan mendapat pasangan `*_url` (`profil.logo_url`, `landing.hero.gambar_url`, `landing.fasilitas[].gambar_url`); diabaikan saat `PUT /pengaturan`.
 11. `POST /tagihan` (tagihan sekali) melewati murid yang sudah punya tagihan jenis itu (selain `dibatalkan`) dan mengembalikan `{ dibuat, dilewati }`.
 12. Signed URL file private (A7 "File private", `GET /media/{token}`, B5): `*_url` file private bisa langsung dipakai di `<img>` / `<a>` tanpa header Authorization dan berlaku 30 menit. Hak akses dicek saat URL dibuat di Resource; route media tidak memakai `auth:sanctum` dan hanya memvalidasi signature, masa berlaku, dan token.
@@ -473,6 +494,15 @@ Setelah audit dashboard FE Fase 3 (branch `be/revisi-audit`, Bagian A kedua file
 28. Istilah "Password" masuk glosarium C4 (hanya di `PROMPT_BE_TK.md`; Bagian C FE tidak disentuh).
 29. Setelah review: "Bentuk data" di A7 (field yang selalu dikirim wajib di OpenAPI, skema detail tersendiri) dan item `landing.*` di respons pengaturan selalu lengkap (commit `3d94a95` di `main` repo FE).
 
+Login wali dengan NIS (branch `be/login-nis`, disetujui pemilik repo sebelum dikerjakan; Bagian A disalin identik ke `PROMPT_FE_TK.md` dan di-push ke `main` repo FE):
+
+30. Wali murid login dengan NIS anak + password (`POST /auth/login-wali`); login Google dan `POST /auth/google` dihapus. Akun wali dibuat otomatis per murid (username NIS, password awal tanggal lahir DDMMYYYY, wajib ganti password), kode error `PASSWORD_WAJIB_DIGANTI`, `PUT /auth/password` untuk semua role (A2.1, A3, A6, A7).
+31. Tambah anak dengan NIS + tanggal lahir (`POST /wali/tambah-anak`) menggantikan kode tautan; `POST /murid/{id}/kode-tautan`, `POST /wali/tautkan-anak`, dan `kode-tautan:bersihkan` dihapus (A2.2, A3, A6, A7, B6.2).
+32. `POST /wali-murid/{id}/reset-password` dan `GET /murid/{id}/kartu-akun` (SA) (A3, A7).
+33. PPDB tanpa login: `POST /public/pendaftaran`, `GET /public/pendaftaran/status`; pendaftar yang diterima dibuatkan akun wali (A2.3, A3, A6, A7, B6.11).
+34. `PUT /wali/profil` dengan `nama` dan `no_hp` wajib (A7).
+35. Skema: `users.username`, `users.wajib_ganti_password`, `users.email` nullable, `users.google_id` dan `murid.kode_tautan`/`kode_tautan_expired_at` dihapus, `pendaftaran.wali_murid_id` nullable (A4).
+
 ## Keputusan teknis
 
 Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
@@ -486,7 +516,7 @@ Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
 - Keringanan untuk murid + jenis tagihan yang sama tidak boleh tumpang tindih periodenya; berlaku juga untuk tagihan sekali (acuan tanggal pembuatan).
 - Generate tagihan bulanan hanya untuk periode dalam rentang tahun ajaran aktif. `keuangan.tanggal_jatuh_tempo` divalidasi 1–28.
 - Kode `INV-YYYYMM` tagihan sekali memakai bulan pembuatan. NIS memakai tahun `tanggal_masuk`, nomor urut mulai lagi tiap tahun.
-- Tautkan anak dibatasi 5 percobaan per menit per user. Wali pertama yang tertaut menjadi kontak utama.
+- Tautkan anak dibatasi 5 percobaan per menit per user. Wali pertama yang tertaut menjadi kontak utama. Sejak `be/login-nis` berlaku untuk tambah anak dengan NIS.
 - Login mengecek status akun hanya setelah password benar.
 - `PATCH /guru/{id}/status` hanya untuk guru `aktif`/`nonaktif`; guru `pending` diproses lewat setujui/tolak.
 - `GET /pengaturan` dan `GET /public/profil` mengembalikan objek datar dengan kunci lengkap (`"profil.visi": …`), sama seperti format `PUT /pengaturan`.
@@ -504,7 +534,7 @@ Diambil selama Fase 1:
 - Pesan untuk pengguna memakai sapaan "Anda", mengikuti contoh di A7.
 - `lang/id/validation.php` dibuat dengan `laravel-lang/common` 6.8.0 di proyek terpisah, lalu hanya file ini yang dikomit. Paket itu tidak dipasang di repo karena membutuhkan ekstensi `bcmath` lewat `dragon-code/support`. Pesan yang belum diterjemahkan atau keliru diperbaiki (misal `password.letters` sebelumnya berbunyi "karakter", sekarang "huruf"), dan daftar `attributes` bawaan dikosongkan untuk diisi nama field proyek ini per fase.
 - Rute bawaan yang tidak ada di A7 dimatikan: rute web `/`, `/up`, `sanctum/csrf-cookie` (`sanctum.routes = false`), dan `storage/{path}` milik disk `local` (`serve = false`).
-- `google/apiclient-services` dipangkas lewat skrip `Google\Task\Composer::cleanup` (hanya `Oauth2` disimpan). Tanpa daftar layanan, skrip tidak memangkas apa pun dan paket berukuran sekitar 370 MB. `verifyIdToken()` tidak membutuhkan kelas layanan.
+- `google/apiclient-services` dipangkas lewat skrip `Google\Task\Composer::cleanup` (hanya `Oauth2` disimpan). Tanpa daftar layanan, skrip tidak memangkas apa pun dan paket berukuran sekitar 370 MB. `verifyIdToken()` tidak membutuhkan kelas layanan. Paket dan skrip ini dilepas di `be/login-nis`.
 - Larastan memakai `parseModelCastsMethod: true`; tanpa itu, cast di `casts()` diabaikan karena PHPDoc `array<string, string>` dan kolom enum terbaca sebagai `string`.
 - `laravel/pao` (bawaan skeleton Laravel 13) dilepas karena tidak ada di desain. `CLAUDE.md`/`AGENTS.md` bawaan skeleton (instruksi Laravel Boost), `CHANGELOG.md`, workflow `.github` milik repo Laravel, dan aset npm/Vite tidak disalin.
 - CORS: dengan satu origin yang diizinkan, header `Access-Control-Allow-Origin` selalu berisi `FRONTEND_URL`, sehingga browser di origin lain menolak respons.
@@ -554,7 +584,7 @@ Diambil selama Fase 3:
 - `GET /wali/anak` (A7 tidak merinci bentuknya) memakai `AnakWaliResource`: `id, nis, nama_lengkap, nama_panggilan, jenis_kelamin, tanggal_lahir, kelas {id, nama} | null, foto_url, hubungan, is_kontak_utama`. `catatan_khusus` dan data sensitif lain (NIK, alamat) tidak ikut; data lengkap murid ada di `GET /murid/{id}` (Fase 4). Resource yang sama dipakai untuk `anak` di `GET /wali-murid/{id}` dan respons `POST /wali/tautkan-anak`.
 - Notifikasi `anak_tertaut` dikirim ke Kepala Sekolah (url `/dashboard/murid/{id}`) dan wali lain yang sudah tertaut ke anak yang sama (url `/dashboard/anak`), supaya penautan oleh orang yang tidak dikenal cepat ketahuan. Wali yang menautkan tidak dikirimi.
 - `guru_baru` dikirim ke Kepala Sekolah aktif dengan url `/dashboard/guru/{id}`. Semua notifikasi database memakai kelas dasar `App\Notifications\NotifikasiDatabase` (bentuk `{ jenis, judul, pesan, url }`) dan lewat queue.
-- Kode tautan dinormalisasi sebelum validasi (huruf besar, spasi dan tanda hubung dibuang), karena kode sering disalin dari pesan WhatsApp. Kode salah, kedaluwarsa, dan tanggal lahir tidak cocok dibalas 422 `VALIDATION_ERROR` dengan pesan berbeda di field `kode` / `tanggal_lahir`; anak yang sudah tertaut dibalas `BUSINESS_RULE`.
+- Kode tautan dinormalisasi sebelum validasi (huruf besar, spasi dan tanda hubung dibuang), karena kode sering disalin dari pesan WhatsApp. Kode salah, kedaluwarsa, dan tanggal lahir tidak cocok dibalas 422 `VALIDATION_ERROR` dengan pesan berbeda di field `kode` / `tanggal_lahir`; anak yang sudah tertaut dibalas `BUSINESS_RULE`. **Dihapus di `be/login-nis`.**
 - `GET /guru` dan `GET /wali-murid` menerima `sort` (`nama`, `created_at`, awali `-` untuk menurun; bawaan `nama`), `per_page` (bawaan 15, maksimal 100), dan `search`. Parameter di luar daftar ditolak 422.
 - `PATCH /wali-murid/{id}/status` mencabut semua token saat menonaktifkan, sama seperti guru, dan dicatat di activity log `akun`.
 - Profil guru Kepala Sekolah dibuat `SuperAdminSeeder` dengan `bisa_kelola_keuangan = true`, supaya data di `GET /guru/{id}` sesuai kenyataan. Nilai yang dikirim ulang tanpa perubahan di `PUT /guru/{id}` diterima; yang mengubahnya ditolak `BUSINESS_RULE`.
@@ -565,7 +595,7 @@ Diambil selama Fase 3:
 
 ## Rencana yang sudah disepakati untuk fase berikutnya
 
-- Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan.
+- Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan. Sejak `be/login-nis` `DemoSeeder` membuat akun wali lewat `WaliMuridService::buatAkunOtomatis()`.
 - Sudah dikerjakan di Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
 - Sudah dikerjakan di Fase 8: respons file, 403 di endpoint detail, dan tipe `*_url` nullable di OpenAPI.
 - Belum ada rencana lanjutan dari BE. Yang belum dibuat karena di luar desain saat ini: payment gateway, push notification (FCM), dan unggah lampiran pengumuman.
@@ -585,10 +615,58 @@ Diambil selama Fase 3:
 | `rina.kusumawati@guru.tkta8.test` | guru pendamping TK A1 |
 | `fitri.handayani@guru.tkta8.test`, `ahmad.fauzi@guru.tkta8.test` | status `pending` (menunggu persetujuan) |
 
-- Kode tautan demo: murid yang belum punya wali tertaut. Lihat lewat Tinker: `App\Models\Murid::whereNotNull('kode_tautan')->get(['nama_panggilan', 'tanggal_lahir', 'kode_tautan'])`.
-- Wali murid demo (44 dari keluarga murid + 3 pendaftar PPDB baru, email `@wali.tkta8.test`) hanya bisa login lewat Google. Untuk mencoba API sebagai wali di lokal, buat token lewat Tinker: `php artisan tinker` lalu `App\Models\User::where('role', 'wali_murid')->first()->createToken('web')->plainTextToken`.
+- Wali murid demo (`DemoSeeder`): setiap murid punya akun wali dengan username NIS. Akun yang sudah dipakai memakai password `wali2026`; akun yang belum pernah login memakai password awal tanggal lahir anak (DDMMYYYY, lihat `tanggal_lahir` di `GET /murid/{id}`).
+
+| Username (NIS) | Password | Keterangan |
+|---|---|---|
+| `TA20260001` | `wali2026` | ayah; tertaut ke dua anak (TK A1 dan TK B1) bersama akun ibu `TA20250001` |
+| `TA20250001` | `wali2026` | ibu; tertaut ke dua anak yang sama |
+| `TA20260004` | `wali2026` | satu akun untuk kakak-adik; akun otomatis adiknya (`TA20250004`) nonaktif |
+| `TA20260011` | `wali2026` | satu anak, profil lengkap |
+| `TA20260006` | `wali2026` | sudah ganti password, profil belum lengkap (onboarding) |
+| `TA20250030` | `05112021` | belum pernah login, wajib ganti password (anak di TK B2, lahir 5 November 2021) |
+| `TA20270001` | tanggal lahir anak | akun otomatis pendaftar PPDB tanpa login yang diterima, wajib ganti password |
+
+  Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Login wali dengan NIS (branch `be/login-nis`)
+
+Perubahan desain yang disetujui pemilik repo: login Google diganti login NIS anak + password, kode tautan diganti akun wali otomatis dan tambah anak, PPDB bisa tanpa login. Kontrak ditulis ke Bagian A `PROMPT_BE_TK.md` (A2, A3, A4, A6, A7) dan Bagian B (B1, B2, B6.2, B6.8, B6.11, B7, B8) serta glosarium C4 (baris Kode Tautan dihapus), lalu Bagian A disalin identik ke `PROMPT_FE_TK.md` di `main` repo FE. Keputusan detail ada di "Keputusan menunggu review".
+
+Migration baru (migration lama tidak diubah):
+
+- `2026_09_27_200000_tambah_username_ke_users_table.php`: `users.username` (nullable unique), `users.wajib_ganti_password` (default false), `users.email` nullable.
+- `2026_09_27_200001_hapus_google_id_dari_users_table.php`: hapus `users.google_id` beserta unique index-nya.
+- `2026_09_27_200002_hapus_kode_tautan_dari_murid_table.php`: hapus `murid.kode_tautan` (beserta unique index) dan `kode_tautan_expired_at`.
+- `2026_09_27_200003_ubah_wali_murid_id_pendaftaran_nullable.php`: `pendaftaran.wali_murid_id` nullable, foreign key tetap.
+
+File baru:
+
+- `app/Http/Middleware/EnsurePasswordDiganti.php` (alias `password.diganti`), `app/Http/Requests/Auth/LoginWaliRequest.php`, `app/Http/Requests/Wali/TambahAnakRequest.php`, `app/Http/Requests/Pendaftaran/StatusPendaftaranPublikRequest.php`.
+- `app/Http/Resources/PendaftaranPublikResource.php`, `app/Services/KartuAkunService.php`, `resources/views/pdf/kartu-akun.blade.php`.
+- Test: `tests/Feature/Auth/LoginWaliTest.php`, `Wali/TambahAnakTest.php`, `Murid/AkunWaliOtomatisTest.php`, `Murid/KartuAkunTest.php`, `WaliMurid/ResetPasswordWaliTest.php`.
+
+File yang dihapus:
+
+- `app/Services/{GoogleLoginService, GoogleIdTokenVerifier, KodeTautanService}.php`, `app/Http/Requests/Auth/LoginGoogleRequest.php`, `app/Http/Requests/Wali/TautkanAnakRequest.php`, `app/Exceptions/LayananBelumDikonfigurasiException.php`, `app/Console/Commands/BersihkanKodeTautanCommand.php`.
+- Test: `tests/Feature/Auth/LoginGoogleTest.php`, `tests/Feature/Wali/TautkanAnakTest.php`. `tests/Feature/Murid/KodeTautanDanWaliTest.php` diganti nama menjadi `TautanWaliTest.php` tanpa test kode tautan.
+
+File yang diubah:
+
+- `app/Services/AuthService.php` (`loginWali()`, ganti password mematikan `wajib_ganti_password`), `WaliMuridService.php` (`buatAkunOtomatis()`, `lepasAkunOtomatisBelumDipakai()`, `tambahAnak()`, `resetPassword()`, profil dengan nama), `MuridService.php` (akun otomatis saat membuat murid, penonaktifan saat menghapus), `PendaftaranService.php` (pendaftaran tanpa wali, akun otomatis saat diterima, notifikasi hanya kalau ada akun, `cariUntukPublik()`).
+- Controller: `Auth/AuthController` (`loginWali`, `google` dihapus), `Auth/ProfilController`, `Wali/AnakController` (`tambah`), `Wali/ProfilWaliController`, `WaliMurid/WaliMuridController` (`resetPassword`), `Murid/MuridController` (`kartuAkun`, `kodeTautan` dihapus), `Ppdb/PendaftaranController` (`storePublik`, `statusPublik`).
+- Request dan Resource: `GantiPasswordRequest` (tanggal lahir anak ditolak), `LengkapiProfilWaliRequest` (`nama` dan `no_hp` wajib), `PerbaruiWaliMuridRequest` (keterangan), `UserResource`/`AkunResource` (`username`, `wajib_ganti_password`, `email` nullable), `MuridResource` (tanpa kode tautan), `MuridDetailResource` (`username` wali), `PendaftaranDetailResource` (`wali` nullable, `username` menggantikan `email`).
+- Model: `User` (kolom baru, tanpa `google_id`), `Murid` (`passwordAwalWali()`, tanpa kode tautan), `WaliMurid` (cari username). `app/Enums/KodeError.php` (`PASSWORD_WAJIB_DIGANTI`), `app/Exceptions/ApiExceptionRenderer.php`, `app/Notifications/AnakTertautNotification.php` (keterangan).
+- `app/Providers/AppServiceProvider.php`: limiter `login-wali`, `tambah-anak`, `pendaftaran-publik`, `status-pendaftaran`; `login-google` dan `tautkan-anak` dihapus. `bootstrap/app.php` (alias middleware), `routes/api.php` (grup route tanpa `password.diganti`, route baru dan yang dihapus), `routes/console.php` (jadwal kode tautan dihapus).
+- `app/Support/Scramble/ResponsErrorRouteExtension.php` (403 `PASSWORD_WAJIB_DIGANTI`), `ApiErrorResponseExtension.php` (tanpa status khusus 503).
+- `composer.json`/`composer.lock`: `google/apiclient` dilepas (ikut terlepas `google/apiclient-services`, `google/auth`, `firebase/php-jwt`, `psr/cache`) beserta skrip cleanup dan daftar layanan Google. `config/services.php` dan `.env.example` tanpa `GOOGLE_CLIENT_ID`. `lang/id/validation.php` (atribut `username`; `id_token` dan `kode` dihapus).
+- Factory dan seeder: `UserFactory` (wali tanpa email dengan username, state `wajibGantiPassword()`), `MuridFactory` (tanpa kode tautan), `PendaftaranFactory` (state `publik()`), `SekolahDemoSeeder` (akun wali per murid), `PpdbDemoSeeder` (tiga pendaftar tanpa login), `KeuanganDemoSeeder` (transfer hanya dari akun yang sudah dipakai), `KomunikasiDemoSeeder` (teks pengumuman PPDB).
+- Test yang disesuaikan: `Auth/{LoginTest, ResetPasswordTest, SesiDanProfilTest}`, `Database/{RelasiModelTest, SeederTest}`, `DokumentasiApiTest`, `Hardening/RateLimitProxyTest` (limiter login wali lewat server FE), `Murid/{AksesMuridTest, ManajemenMuridTest}`, `Ppdb/PendaftaranTest` (7 test PPDB tanpa login), `Wali/ProfilDanAnakWaliTest`, `Unit/EnumKontrakTest`.
+- `PROMPT_BE_TK.md`, `storage/api-docs/api.json`, `dokumentasi.md`, `README.md`.
+
+Hasil pengecekan: 646 test lulus di SQLite (`php artisan test --parallel`) dan di MariaDB 12.3.3 (`DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test`); Pint, PHPStan (`composer phpstan`), dan `check:slop` tanpa temuan. Keempat migration baru dijalankan di MariaDB 12.3.3 di atas data demo lama (akun Google dan kode tautan), di-rollback, lalu dijalankan lagi; hal yang sama dicoba di SQLite. Foreign key `pendaftaran.wali_murid_id` tetap ada di keduanya. Data demo diisi ulang (`migrate:fresh --seed` + `DemoSeeder`, sekitar 16 detik karena 61 password di-hash dengan `BCRYPT_ROUNDS=12`). Kartu akun dirender ke PNG dan diperiksa: satu halaman A6. `api.json` diekspor ulang: `/auth/google`, `/murid/{id}/kode-tautan`, dan `/wali/tautkan-anak` tidak ada lagi.
 
 ### Revisi setelah review audit dashboard (branch `be/revisi-audit`)
 
