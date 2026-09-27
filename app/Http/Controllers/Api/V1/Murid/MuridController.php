@@ -66,14 +66,17 @@ class MuridController extends Controller
     /**
      * Menambah murid (status aktif). NIS dibuat otomatis dari tahun `tanggal_masuk`. Kirim sebagai
      * `multipart/form-data` jika menyertakan foto.
+     *
+     * Murid baru langsung dibuatkan akun wali: username NIS, password awal tanggal lahir anak (DDMMYYYY) yang
+     * wajib diganti saat login pertama, hubungan `wali` sebagai kontak utama. Akun ini muncul di `wali`.
      */
-    public function store(SimpanMuridRequest $request): JsonResponse
+    public function store(SimpanMuridRequest $request, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
-        $murid = $this->muridService->buat($request->dataMurid(), $request->foto());
+        $murid = $this->muridService->buat($request->dataMurid(), $request->foto(), $kepalaSekolah);
 
         return ApiResponse::success(
             new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])),
-            "{$murid->nama_lengkap} ditambahkan dengan NIS {$murid->nis}.",
+            "{$murid->nama_lengkap} ditambahkan dengan NIS {$murid->nis}. Akun wali murid memakai NIS ini sebagai username.",
             status: 201,
         );
     }
@@ -89,12 +92,13 @@ class MuridController extends Controller
     }
 
     /**
-     * Menghapus murid yang salah input. Murid yang sudah punya tagihan, rapor, atau data PPDB ditolak.
+     * Menghapus murid yang salah input. Murid yang sudah punya tagihan, rapor, atau data PPDB ditolak. Akun wali
+     * otomatis murid ini yang belum pernah dipakai ikut dinonaktifkan.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
         $murid = Murid::query()->findOrFail($id);
-        $this->muridService->hapus($murid);
+        $this->muridService->hapus($murid, $kepalaSekolah);
 
         return ApiResponse::success(null, "Data {$murid->nama_lengkap} dihapus.");
     }

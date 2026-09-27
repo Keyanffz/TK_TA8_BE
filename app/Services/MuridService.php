@@ -25,20 +25,27 @@ class MuridService
     public function __construct(
         private readonly MediaService $media,
         private readonly KelasService $kelasService,
+        private readonly WaliMuridService $waliMuridService,
     ) {}
 
     /**
-     * NIS dibuat otomatis dengan format `TA{tahun masuk}{urut 4 digit}`; nomor urut mulai lagi tiap tahun.
+     * NIS dibuat otomatis dengan format `TA{tahun masuk}{urut 4 digit}`; nomor urut mulai lagi tiap tahun. Murid
+     * baru langsung dibuatkan akun wali dengan username NIS-nya (hubungan `wali`, bisa diubah Kepala Sekolah).
      *
      * @param  array<string, mixed>  $data
      *
      * @throws BusinessRuleException
      */
-    public function buat(array $data, ?UploadedFile $foto): Murid
+    public function buat(array $data, ?UploadedFile $foto, User $kepalaSekolah): Murid
     {
         $fotoPath = $foto === null ? null : $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
-        return $this->buatDenganFotoTersimpan($data, $fotoPath);
+        return DB::transaction(function () use ($data, $fotoPath, $kepalaSekolah): Murid {
+            $murid = $this->buatDenganFotoTersimpan($data, $fotoPath);
+            $this->waliMuridService->buatAkunOtomatis($murid, Hubungan::Wali, null, $kepalaSekolah);
+
+            return $murid;
+        });
     }
 
     /**
@@ -95,17 +102,19 @@ class MuridService
 
     /**
      * Hapus hanya untuk data yang salah input. Murid yang sudah punya tagihan, rapor, atau berasal dari
-     * PPDB disimpan sebagai riwayat; statusnya diubah menjadi pindah/keluar.
+     * PPDB disimpan sebagai riwayat; statusnya diubah menjadi pindah/keluar. Akun wali otomatis murid ini yang
+     * belum pernah dipakai ikut dinonaktifkan.
      *
      * @throws BusinessRuleException
      */
-    public function hapus(Murid $murid): void
+    public function hapus(Murid $murid, User $kepalaSekolah): void
     {
         if ($murid->tagihan()->exists() || $murid->rapor()->exists() || $murid->pendaftaran()->exists()) {
             throw new BusinessRuleException("{$murid->nama_lengkap} sudah punya tagihan, rapor, atau data PPDB sehingga tidak bisa dihapus. Ubah statusnya menjadi pindah atau keluar.");
         }
 
-        DB::transaction(function () use ($murid): void {
+        DB::transaction(function () use ($murid, $kepalaSekolah): void {
+            $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $kepalaSekolah);
             $murid->kelasMurid()->delete();
             $murid->update(['kode_tautan' => null, 'kode_tautan_expired_at' => null]);
             $murid->delete();
