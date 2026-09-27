@@ -3277,16 +3277,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -5051,16 +5051,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -6931,16 +6931,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -7866,16 +7866,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -9385,16 +9385,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -10299,16 +10299,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -12036,16 +12036,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -12609,16 +12609,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -13930,16 +13930,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -15429,16 +15429,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -17005,16 +17005,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -19177,16 +19177,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -20554,7 +20554,7 @@
         "/public/profil": {
             "get": {
                 "operationId": "publik.profil",
-                "summary": "Semua pengaturan grup `profil` dan `landing` sebagai objek datar berkunci lengkap, dengan pasangan\n`*_url` untuk field gambar",
+                "summary": "Semua pengaturan grup `profil` dan `landing` sebagai objek datar berkunci lengkap, dengan pasangan\n`*_url` untuk field gambar. Teks yang belum diisi Kepala Sekolah berisi string kosong atau null. Field\nopsional di item `landing.*` tidak ada kalau tidak dikirim saat `PUT /pengaturan`; `gambar_url` selalu ada",
                 "tags": [
                     "Publik"
                 ],
@@ -20570,12 +20570,216 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "type": "string",
-                                            "const": "Berhasil"
+                                            "type": "string"
                                         },
                                         "data": {
                                             "type": "object",
-                                            "additionalProperties": {}
+                                            "properties": {
+                                                "profil.nama_sekolah": {
+                                                    "type": "string"
+                                                },
+                                                "profil.npsn": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.alamat": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.telepon": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.email": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.maps_embed_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.logo": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.logo_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.visi": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.misi": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "profil.sejarah": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "profil.sambutan_kepsek": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "landing.hero": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "judul": {
+                                                            "type": "string"
+                                                        },
+                                                        "subjudul": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "gambar": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "cta_teks": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "gambar_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "judul",
+                                                        "gambar_url"
+                                                    ]
+                                                },
+                                                "landing.program": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "judul": {
+                                                                "type": "string"
+                                                            },
+                                                            "deskripsi": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "ikon": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "judul",
+                                                            "ikon"
+                                                        ]
+                                                    }
+                                                },
+                                                "landing.fasilitas": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "nama": {
+                                                                "type": "string"
+                                                            },
+                                                            "deskripsi": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "gambar": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "gambar_url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "nama",
+                                                            "gambar_url"
+                                                        ]
+                                                    }
+                                                },
+                                                "landing.keunggulan": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "judul": {
+                                                                "type": "string"
+                                                            },
+                                                            "deskripsi": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "ikon": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "judul",
+                                                            "ikon"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "profil.nama_sekolah",
+                                                "profil.npsn",
+                                                "profil.alamat",
+                                                "profil.telepon",
+                                                "profil.email",
+                                                "profil.maps_embed_url",
+                                                "profil.logo",
+                                                "profil.logo_url",
+                                                "profil.visi",
+                                                "profil.misi",
+                                                "profil.sejarah",
+                                                "profil.sambutan_kepsek",
+                                                "landing.hero",
+                                                "landing.program",
+                                                "landing.fasilitas",
+                                                "landing.keunggulan"
+                                            ]
                                         },
                                         "meta": {
                                             "type": "null"
@@ -20679,16 +20883,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -21081,16 +21285,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -22342,16 +22546,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -24811,16 +25015,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -25447,16 +25651,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -26345,16 +26549,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "current_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "per_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "last_page": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 }
                                             },
                                             "required": [
@@ -27111,7 +27315,7 @@
                         ],
                         "properties": {
                             "id": {
-                                "type": "string"
+                                "type": "integer"
                             },
                             "nama": {
                                 "type": "string"
@@ -28498,13 +28702,13 @@
                         ],
                         "properties": {
                             "id": {
-                                "type": "string"
+                                "type": "integer"
                             },
                             "nama": {
                                 "type": "string"
                             },
                             "tingkat": {
-                                "type": "string"
+                                "$ref": "#/components/schemas/Tingkat"
                             }
                         },
                         "required": [
@@ -28534,13 +28738,17 @@
                                     ]
                                 },
                                 "hubungan": {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/Hubungan"
                                 },
                                 "is_kontak_utama": {
-                                    "type": "string"
+                                    "type": "boolean"
                                 },
                                 "tertaut_at": {
-                                    "type": "string"
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "format": "date-time"
                                 }
                             },
                             "required": [
@@ -30091,7 +30299,7 @@
                                 ],
                                 "properties": {
                                     "id": {
-                                        "type": "string"
+                                        "type": "integer"
                                     },
                                     "nama": {
                                         "type": "string"
@@ -30181,8 +30389,27 @@
                         }
                     },
                     "rekening": {
-                        "type": "null",
-                        "description": "Hanya di detail tagihan."
+                        "type": "array",
+                        "description": "Hanya di detail tagihan.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "bank": {
+                                    "type": "string"
+                                },
+                                "nomor": {
+                                    "type": "string"
+                                },
+                                "atas_nama": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "bank",
+                                "nomor",
+                                "atas_nama"
+                            ]
+                        }
                     }
                 },
                 "required": [

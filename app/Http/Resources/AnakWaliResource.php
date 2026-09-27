@@ -31,6 +31,7 @@ class AnakWaliResource extends JsonResource
             'nama_panggilan' => $this->nama_panggilan,
             'jenis_kelamin' => $this->jenis_kelamin,
             'tanggal_lahir' => $this->tanggal_lahir->toDateString(),
+            /** @var array{id: int, nama: string}|null */
             'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama],
             /** @var string|null */
             'foto_url' => app(MediaService::class)->urlPrivat($this->foto_path),

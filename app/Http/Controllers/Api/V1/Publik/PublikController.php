@@ -28,7 +28,32 @@ class PublikController extends Controller
 {
     /**
      * Semua pengaturan grup `profil` dan `landing` sebagai objek datar berkunci lengkap, dengan pasangan
-     * `*_url` untuk field gambar.
+     * `*_url` untuk field gambar. Teks yang belum diisi Kepala Sekolah berisi string kosong atau null. Field
+     * opsional di item `landing.*` tidak ada kalau tidak dikirim saat `PUT /pengaturan`; `gambar_url` selalu ada.
+     *
+     * @response array{
+     *     success: true,
+     *     message: string,
+     *     data: array{
+     *         'profil.nama_sekolah': string,
+     *         'profil.npsn': string|null,
+     *         'profil.alamat': string|null,
+     *         'profil.telepon': string|null,
+     *         'profil.email': string|null,
+     *         'profil.maps_embed_url': string|null,
+     *         'profil.logo': string|null,
+     *         'profil.logo_url': string|null,
+     *         'profil.visi': string|null,
+     *         'profil.misi': list<string>,
+     *         'profil.sejarah': string|null,
+     *         'profil.sambutan_kepsek': string|null,
+     *         'landing.hero': array{judul: string, subjudul?: string|null, gambar?: string|null, cta_teks?: string|null, gambar_url: string|null},
+     *         'landing.program': list<array{judul: string, deskripsi?: string|null, ikon: string}>,
+     *         'landing.fasilitas': list<array{nama: string, deskripsi?: string|null, gambar?: string|null, gambar_url: string|null}>,
+     *         'landing.keunggulan': list<array{judul: string, deskripsi?: string|null, ikon: string}>
+     *     },
+     *     meta: null
+     * }
      */
     public function profil(PengaturanService $pengaturan): JsonResponse
     {
