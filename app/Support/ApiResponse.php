@@ -35,11 +35,12 @@ final class ApiResponse
         /** @var LengthAwarePaginator<int, mixed> $paginator */
         $paginator = $collection->resource;
 
+        // Scramble tidak membaca anotasi @var di atas, sehingga tanpa cast keempat angka ini tertulis string di OpenAPI.
         return self::success($collection, $message, [
-            'current_page' => $paginator->currentPage(),
-            'per_page' => $paginator->perPage(),
-            'total' => $paginator->total(),
-            'last_page' => $paginator->lastPage(),
+            'current_page' => (int) $paginator->currentPage(),
+            'per_page' => (int) $paginator->perPage(),
+            'total' => (int) $paginator->total(),
+            'last_page' => (int) $paginator->lastPage(),
         ]);
     }
 

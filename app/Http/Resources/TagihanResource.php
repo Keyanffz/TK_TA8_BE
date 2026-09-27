@@ -39,6 +39,7 @@ class TagihanResource extends JsonResource
                 'nis' => $this->murid->nis,
                 'nama_lengkap' => $this->murid->nama_lengkap,
                 'nama_panggilan' => $this->murid->nama_panggilan,
+                /** @var array{id: int, nama: string}|null */
                 'kelas' => $this->murid->relationLoaded('kelasAktif') && $this->murid->kelasAktif->isNotEmpty()
                     ? ['id' => $this->murid->kelasAktif->first()->id, 'nama' => $this->murid->kelasAktif->first()->nama]
                     : null,
@@ -59,7 +60,11 @@ class TagihanResource extends JsonResource
             'catatan' => $this->catatan,
             'created_at' => $this->created_at,
             'pembayaran' => PembayaranResource::collection($this->whenLoaded('pembayaran')),
-            /** Hanya di detail tagihan. */
+            /**
+             * Hanya di detail tagihan.
+             *
+             * @var list<array{bank: string, nomor: string, atas_nama: string}>
+             */
             'rekening' => $this->when($this->rekening !== null, fn () => $this->rekening),
         ];
     }

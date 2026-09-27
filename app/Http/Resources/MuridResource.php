@@ -2,13 +2,16 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\Hubungan;
 use App\Enums\Role;
+use App\Enums\Tingkat;
 use App\Models\Murid;
 use App\Models\MuridWali;
 use App\Models\WaliMurid;
 use App\Services\MediaService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 /**
  * Murid hanya sampai ke pengguna yang lolos `Murid::visibleTo` (Kepala Sekolah, guru pengampu, wali anak
@@ -46,7 +49,9 @@ class MuridResource extends JsonResource
             'status' => $this->status,
             'tanggal_masuk' => $this->tanggal_masuk->toDateString(),
             'tanggal_keluar' => $this->tanggal_keluar?->toDateString(),
+            /** @var array{id: int, nama: string, tingkat: Tingkat}|null */
             'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama, 'tingkat' => $kelas->tingkat],
+            /** @var list<array{id: int, nama: string, email: string, no_hp: string|null, hubungan: Hubungan, is_kontak_utama: bool, tertaut_at: Carbon|null}> */
             'wali' => $this->whenLoaded('waliMurid', fn () => $this->waliMurid->map(fn (WaliMurid $wali): array => $this->ringkasWali($wali))->values()->all()),
             /** Hanya untuk Kepala Sekolah. */
             'kode_tautan' => $this->when($kepalaSekolah, fn () => $this->kode_tautan),
