@@ -74,6 +74,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::get('/wali-murid/{id}', [WaliMuridController::class, 'show']);
         Route::put('/wali-murid/{id}', [WaliMuridController::class, 'update']);
         Route::patch('/wali-murid/{id}/status', [WaliMuridController::class, 'ubahStatus']);
+        Route::post('/wali-murid/{id}/reset-password', [WaliMuridController::class, 'resetPassword']);
 
         Route::post('/tahun-ajaran', [TahunAjaranController::class, 'store']);
         Route::put('/tahun-ajaran/{id}', [TahunAjaranController::class, 'update']);

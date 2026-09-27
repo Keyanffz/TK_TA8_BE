@@ -40,6 +40,7 @@ class WaliMurid extends Model
 
         $query->whereHas('user', fn (Builder $user) => $user
             ->where('name', 'like', "%{$kata}%")
+            ->orWhere('username', 'like', "%{$kata}%")
             ->orWhere('email', 'like', "%{$kata}%")
             ->orWhere('no_hp', 'like', "%{$kata}%"));
     }

@@ -153,6 +153,36 @@ class WaliMuridService
     }
 
     /**
+     * Mengembalikan password wali ke tanggal lahir anak yang dia jadi kontak utamanya, lalu mewajibkan ganti
+     * password dan mencabut semua sesi. Kalau kontak utama untuk beberapa anak, dipakai anak yang NIS-nya menjadi
+     * username, lalu anak yang paling awal tertaut. Status akun tidak diubah.
+     *
+     * @return Murid anak yang tanggal lahirnya menjadi password
+     *
+     * @throws BusinessRuleException
+     */
+    public function resetPassword(WaliMurid $wali, User $kepalaSekolah): Murid
+    {
+        $anak = $wali->murid()->wherePivot('is_kontak_utama', true)->orderByPivot('created_at')->orderBy('murid.id')->get();
+        $acuan = $anak->firstWhere('nis', $wali->user->username) ?? $anak->first();
+
+        if ($acuan === null) {
+            throw new BusinessRuleException("{$wali->user->name} bukan kontak utama anak mana pun, jadi password awalnya tidak bisa ditentukan. Jadikan wali ini kontak utama salah satu anak terlebih dahulu.");
+        }
+
+        DB::transaction(function () use ($wali, $acuan): void {
+            $wali->user->forceFill(['password' => $acuan->passwordAwalWali(), 'wajib_ganti_password' => true])->save();
+            $wali->user->tokens()->delete();
+        });
+
+        activity('akun')->causedBy($kepalaSekolah)->performedOn($wali->user)->event('password_direset')
+            ->withProperties(['murid_id' => $acuan->id])
+            ->log("Mengembalikan password wali murid {$wali->user->name} ke tanggal lahir {$acuan->nama_lengkap}");
+
+        return $acuan;
+    }
+
+    /**
      * Menonaktifkan akun mencabut semua tokennya (B4).
      *
      * @throws BusinessRuleException

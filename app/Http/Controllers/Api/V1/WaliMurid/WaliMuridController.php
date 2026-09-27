@@ -23,7 +23,7 @@ class WaliMuridController extends Controller
     /**
      * Daftar wali murid beserta jumlah anak yang tertaut.
      *
-     * `search` mencari nama, email, dan nomor HP. Urutan `sort` = `nama` | `created_at`.
+     * `search` mencari nama, username (NIS anak), email, dan nomor HP. Urutan `sort` = `nama` | `created_at`.
      */
     public function index(DaftarWaliMuridRequest $request): JsonResponse
     {
@@ -61,6 +61,22 @@ class WaliMuridController extends Controller
         $waliMurid->load('murid.kelasAktif')->loadCount('murid');
 
         return ApiResponse::success(new WaliMuridDetailResource($waliMurid), "Data {$waliMurid->user->name} tersimpan.");
+    }
+
+    /**
+     * Mengembalikan password wali murid ke tanggal lahir anak (DDMMYYYY) yang dia jadi kontak utamanya. Wali wajib
+     * mengganti password saat login berikutnya dan semua sesi loginnya dicabut. Ditolak 422 `BUSINESS_RULE` kalau
+     * wali bukan kontak utama anak mana pun.
+     */
+    public function resetPassword(int $id, WaliMuridService $service, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    {
+        $waliMurid = WaliMurid::query()->with('user')->withCount('murid')->findOrFail($id);
+        $anak = $service->resetPassword($waliMurid, $kepalaSekolah);
+
+        return ApiResponse::success(
+            new WaliMuridResource($waliMurid),
+            "Password {$waliMurid->user->name} dikembalikan ke tanggal lahir {$anak->nama_panggilan} (DDMMYYYY) dan wajib diganti saat login berikutnya.",
+        );
     }
 
     /**
