@@ -15,7 +15,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 6. Akademik & komunikasi | Selesai, disetujui (dengan revisi) |
 | 7. PPDB, CMS, dashboard | Selesai, disetujui (dengan revisi) |
 | 8. Hardening | Selesai, menunggu review |
-| Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, menunggu review |
+| Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, direview; revisi setelah review menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -32,7 +32,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `POST /murid/{id}/kode-tautan`, `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
 | Jenis tagihan | `GET /jenis-tagihan` (K), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
 | Keringanan (K) | `GET/POST /keringanan`, `PUT/DELETE /keringanan/{id}` |
-| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan` (SA) |
+| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan`, `POST /tagihan/{id}/aktifkan` (SA) |
 | Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai atau transfer), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
 | Laporan (K) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
@@ -58,9 +58,17 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
 
-Revisi audit dashboard FE Fase 3 (kontraknya sudah ditulis ke Bagian A; yang di bawah ini detail yang dipilih sendiri):
+Revisi setelah review audit dashboard (dua keputusan audit diubah pemilik repo; kontraknya sudah di Bagian A):
 
-1. Tagihan dibatalkan: unique index diganti menjadi (murid_id, jenis_tagihan_id, `periode_aktif`). `periode_aktif` kolom virtual (`virtualAs`) berisi `periode`, atau NULL kalau status `dibatalkan`; NULL tidak dianggap sama oleh unique index di MySQL, MariaDB, dan SQLite. Diuji: dua tagihan aktif untuk periode yang sama ditolak database, begitu juga mengubah tagihan dibatalkan menjadi aktif kalau sudah ada penggantinya. Akibat yang perlu diketahui: tagihan bulanan yang dibatalkan akan dibuat lagi oleh generate berikutnya untuk periode itu (manual `POST /tagihan/generate` atau `--periode`); scheduler hanya menjalankan bulan berjalan pada tanggal 1. Kalau pembatalan dimaksudkan sebagai pembebasan, pakai keringanan 100% atau `PUT /tagihan/{id}` dengan potongan penuh. Rollback migration gagal kalau sudah ada tagihan pengganti untuk periode yang pernah dibatalkan.
+1. Migration `2026_09_27_100000_ubah_unique_tagihan_periode_aktif.php` dihapus, bukan dibalik dengan migration baru, karena branch ini belum di-merge ke `main` dan belum pernah dijalankan di luar laptop. Unique (murid_id, jenis_tagihan_id, periode) bawaan Fase 2 sudah persis menjaga aturan baru: satu tagihan bulanan per murid, jenis, dan periode, termasuk yang dibatalkan. Database lokal yang sempat menjalankan migration itu perlu `migrate:rollback --step=1` sebelum menarik commit ini, atau `migrate:fresh`.
+2. `POST /tagihan/{id}/aktifkan`: status menjadi `terlambat` kalau `jatuh_tempo` sebelum hari ini, selain itu `belum_bayar`. `catatan` (berisi alasan pembatalan) tidak diubah; alasan pembatalan tetap ada di log. Wali tidak diberi notifikasi, termasuk kalau tagihan langsung `terlambat` (`tagihan:tandai-terlambat` hanya memproses `belum_bayar`). Pengecekan tagihan aktif lain praktis hanya berlaku untuk tagihan sekali bayar (periode null, tidak dijaga unique index), karena tagihan bulanan dengan periode sama tidak mungkin dua. Log `tagihan`/`diaktifkan` berisi status baru.
+3. Field wajib di OpenAPI tanpa `allOf`: Resource tidak lagi memakai `whenLoaded`/`whenCounted` untuk relasi yang selalu dimuat, jadi Scramble menuliskannya wajib. Bentuk detail yang punya field tambahan dipisah ke kelas turunan dengan skema sendiri: `TagihanDetailResource` (tambah `pembayaran`, `rekening`), `MuridDetailResource` (`wali`), `KelasDetailResource` (`murid`), `RaporDetailResource` (`detail`), `PendaftaranDetailResource` (`wali`, `dokumen`), `WaliMuridDetailResource` (`anak`), `GaleriAlbumDetailResource` (`foto`). Riwayat pembayaran di detail tagihan memakai `RiwayatPembayaranResource` (tanpa `tagihan`); `PembayaranResource` = riwayat + `tagihan`. `withoutEagerLoadAnalysis()` tetap dipasang supaya `whenLoaded` baru tidak memunculkan `allOf` lagi. Yang tetap opsional hanya field yang bergantung role atau satu respons: `kode_tautan`/`kode_tautan_expired_at` murid, `catatan_revisi` rapor, `kelas`/`murid` pengumuman, `password_awal` guru. Relasi yang lupa dimuat langsung ketahuan di test karena `preventLazyLoading` aktif di luar production.
+4. Perubahan JSON yang menyertai nomor 3 (semua penambahan atau urutan): `tagihan` di pembayaran pindah ke akhir objek; `PATCH /wali-murid/{id}/status` sekarang juga memuat `jumlah_anak`; `landing.hero` dan item `landing.program`/`landing.fasilitas`/`landing.keunggulan` di `GET /pengaturan` dan `GET /public/profil` selalu memuat semua field-nya (null kalau belum diisi), sehingga `@response` `GET /public/profil` tidak lagi punya field opsional; `hubungan` dan `is_kontak_utama` di data anak wali selalu ada (semua pemakaian `AnakWaliResource` memuat murid lewat relasi wali). Nama skema detail berubah, jadi tipe di FE perlu digenerate ulang.
+5. Pengecekan di `KesesuaianDokumentasiTest` (helper `catatFieldSelaluAda()` di `tests/Pest.php`): untuk setiap objek respons dicatat field yang muncul di semua pengamatan. Skema komponen (`$ref`) digabung per nama komponen di semua endpoint dan role, karena satu skema hanya boleh mewajibkan field yang selalu ada di semua pemakaiannya; objek inline digabung per jalur. Objek berkunci bebas (pengaturan per grup) dilewati. Sudah dicoba gagal dengan mengembalikan `whenLoaded` di `GuruResource`.
+
+Revisi audit dashboard FE Fase 3, sudah direview (disetujui kecuali nomor 1 dan 10 yang direvisi di atas):
+
+1. **Revisi:** tagihan yang dibatalkan tidak dibuat ulang oleh generate (terjadwal maupun manual) dan dipulihkan lewat `POST /tagihan/{id}/aktifkan`. Unique index kembali (murid_id, jenis_tagihan_id, periode); kolom `periode_aktif` tidak dipakai lagi (lihat revisi setelah review nomor 1).
 2. `PUT /tagihan/{id}`: field boleh sebagian. Potongan maksimal nominal; potongan sebesar nominal membuat tagihan langsung `lunas` (sama dengan keringanan penuh saat generate). Jatuh tempo yang tidak berubah boleh sudah lewat, jatuh tempo baru minimal hari ini. Tagihan `terlambat` yang jatuh temponya dimundurkan kembali `belum_bayar`; tagihan `belum_bayar` tidak diubah menjadi `terlambat` di sini (tetap tugas `tagihan:tandai-terlambat` yang sekaligus mengirim notifikasi). Wali tidak diberi notifikasi (tidak ada jenis notifikasi untuk perubahan tagihan). Log aktivitas `tagihan`/`diubah` menyimpan jatuh tempo, potongan, total, dan status sebelum dan sesudah. `catatan` kosong disimpan `null`.
 3. Banner info wali: enum baru `NadaInfo` (`info`, `penting`, `peringatan`; masuk A5). `info_sekolah` di dashboard tidak memuat `aktif` karena selalu aktif kalau tidak null. `isi` teks biasa, tidak disanitasi seperti kunci HTML, jadi FE menampilkannya sebagai teks. Kunci ini grup `beranda`, tidak ikut `GET /public/profil`. `PengaturanSeeder` menambahkannya nonaktif (sekarang 25 kunci); `DemoSeeder` mengaktifkannya sampai 10 Oktober 2026.
 4. `PUT /kegiatan-foto/{id}` memakai aturan dan bentuk respons yang sama dengan `PUT /galeri-foto/{id}`: `caption` maks 255 atau `null`, `urutan` 0–1000, balasan `{ id, caption, urutan }`.
@@ -69,7 +77,7 @@ Revisi audit dashboard FE Fase 3 (kontraknya sudah ditulis ke Bagian A; yang di 
 7. `PATCH /murid/{id}/wali/{wali_murid_id}` membalas detail murid (bentuk `GET /murid/{id}`) supaya FE bisa langsung memperbarui daftar wali. Log `wali`/`diubah` berisi field yang dikirim.
 8. `PUT /wali-murid/{id}` dan `PUT /wali/profil` memakai logika simpan yang sama: `profil_lengkap` = nomor HP, alamat, dan pekerjaan terisi. Perubahan oleh Kepala Sekolah dicatat di log `akun`/`data_diubah` dengan nama field yang berubah saja (tanpa nilai, karena berisi NIK dan nomor HP). Nomor HP, alamat, dan pekerjaan tidak bisa dikosongkan lewat kedua endpoint; NIK bisa.
 9. Filter boolean (`filter[dibaca]`, `filter[terbit]`, `filter[is_publik]` galeri, `filter[is_aktif]` jenis tagihan): nilai `true`/`false` (tanpa membedakan huruf besar) diubah ke `1`/`0` di `prepareForValidation` (`MemvalidasiDaftar::normalkanFilterBoolean`) karena aturan `boolean` Laravel tidak menerima teks itu. Nilai lain tetap 422.
-10. OpenAPI: `Scramble::configure()->withoutEagerLoadAnalysis()` di `AppServiceProvider`. Scramble berhenti menambahkan `allOf: [$ref, { type: object, required: [...] }]` untuk Resource yang relasinya di-eager load; 60 tempat (item array dan objek tunggal) sekarang `$ref` langsung. Dibandingkan dengan skrip: hanya pembungkus itu yang berubah, skema `components` sama persis. Akibatnya field relasi Resource (misalnya `murid` di `TagihanResource`) tetap opsional di tipe TypeScript walau selalu dikirim di endpoint itu.
+10. OpenAPI: `Scramble::configure()->withoutEagerLoadAnalysis()` di `AppServiceProvider`, sehingga tidak ada lagi `allOf: [$ref, { type: object, required: [...] }]` yang menjadi `Record<string, never>` di FE. **Revisi:** field relasi yang selalu dikirim sekarang wajib di skema (lihat revisi setelah review nomor 3).
 11. Email factory: `UserFactory` memakai `@guru.tkta8.test`, `@wali.tkta8.test` (state `waliMurid`), dan `@tkta8.test` (state `superAdmin`); sebelumnya `freeEmail()` dipakai tiga wali pendaftar PPDB di data demo. Email Kepala Sekolah tetap dari `SUPERADMIN_EMAIL`. `check:slop` sekarang juga menolak faker email (`email()`, `safeEmail()`, `freeEmail()`, `companyEmail()`) di `database/` dan kata "kata sandi" di `app`, `database`, `lang`, `resources`, `routes`.
 
 Fase 8:
@@ -456,13 +464,14 @@ Setelah review Fase 6–7 (commit `3ecfee0` di BE, `a6a73e7` di FE, Bagian A tet
 Setelah audit dashboard FE Fase 3 (branch `be/revisi-audit`, Bagian A kedua file identik, di-push ke `main` repo FE):
 
 21. Kunci pengaturan `beranda.info_wali` (grup `beranda`) dan `info_sekolah` di dashboard wali; enum `NadaInfo` (A4, A5, A7).
-22. `PUT /tagihan/{id}` (K); unique tagihan hanya untuk tagihan yang belum dibatalkan (kolom virtual `periode_aktif`), dan generate membuat ulang tagihan yang dibatalkan (A2.4, A4, A6, A7, B6.1).
+22. `PUT /tagihan/{id}` (K). **Revisi setelah review:** unique tagihan tetap (murid_id, jenis_tagihan_id, periode), generate melewati tagihan yang dibatalkan, dan `POST /tagihan/{id}/aktifkan` (SA) memulihkannya (A2.4, A3, A4, A6, A7, B6.1, B7).
 23. `PUT /kegiatan-foto/{id}` (pembuat, SA).
 24. `PUT /rapor/{id}` untuk SA saat `diajukan`; `POST /rapor/{id}/tarik` (A2.8, A6, A7, B6.9, B7).
 25. `PATCH /murid/{id}/wali/{wali_murid_id}` dengan tepat satu kontak utama per murid.
 26. `nik`, `alamat`, `pekerjaan` di `wali_murid` `/auth/me`; `PUT /wali/profil` boleh sebagian; `PUT /wali-murid/{id}` (SA).
 27. Filter boolean menerima `true`/`false` (konvensi query A7).
 28. Istilah "Password" masuk glosarium C4 (hanya di `PROMPT_BE_TK.md`; Bagian C FE tidak disentuh).
+29. Setelah review: "Bentuk data" di A7 (field yang selalu dikirim wajib di OpenAPI, skema detail tersendiri) dan item `landing.*` di respons pengaturan selalu lengkap (commit `3d94a95` di `main` repo FE).
 
 ## Keputusan teknis
 
@@ -581,13 +590,34 @@ Diambil selama Fase 3:
 
 ## Changelog
 
+### Revisi setelah review audit dashboard (branch `be/revisi-audit`)
+
+File baru:
+
+- `app/Http/Resources/{TagihanDetailResource, RiwayatPembayaranResource, MuridDetailResource, KelasDetailResource, RaporDetailResource, PendaftaranDetailResource, WaliMuridDetailResource, GaleriAlbumDetailResource}.php`.
+
+File yang dihapus:
+
+- `database/migrations/2026_09_27_100000_ubah_unique_tagihan_periode_aktif.php` (lihat revisi nomor 1).
+
+File yang diubah:
+
+- `app/Services/TagihanService.php`: generate kembali menghitung tagihan dibatalkan sebagai sudah ada; `aktifkan()`. `Keuangan/TagihanController` (`aktifkan`, `show` memakai `TagihanDetailResource`), `routes/api.php` (`POST /tagihan/{id}/aktifkan`).
+- Resource: `TagihanResource`, `PembayaranResource`, `MuridResource`, `KelasResource`, `RaporResource`, `PendaftaranResource`, `WaliMuridResource`, `GaleriAlbumResource`, `GuruResource`, `JenisTagihanResource`, `KeringananResource`, `KegiatanKelasResource`, `PengumumanResource`, `AnakWaliResource` (relasi tanpa `whenLoaded`, bentuk detail dipindah ke kelas turunan).
+- Controller yang membalas bentuk detail: `Murid/MuridController`, `Kelas/KelasController`, `Kelas/PenempatanMuridController`, `Galeri/GaleriController`, `Publik/PublikController`, `WaliMurid/WaliMuridController` (`ubahStatus` memuat jumlah anak), `Rapor/RaporController`, `Ppdb/PendaftaranController`.
+- `app/Services/PengaturanService.php` (`lengkapiFieldItem()`), `Publik/PublikController` (`@response` tanpa field opsional).
+- Test: `tests/Pest.php` (`catatFieldSelaluAda()`), `Hardening/KesesuaianDokumentasiTest` (field yang selalu ada harus wajib), `DokumentasiApiTest` (skema detail, field wajib, field opsional hanya yang bergantung role), `Keuangan/GenerateTagihanTest` (generate melewati tagihan dibatalkan, unique termasuk yang dibatalkan), `Keuangan/TagihanSekaliDanPembatalanTest` (5 test aktifkan).
+- `PROMPT_BE_TK.md` (Bagian A; B6.1, B7), `storage/api-docs/api.json`, `dokumentasi.md`.
+
+Hasil pengecekan: 632 test lulus di SQLite (`--parallel`) dan MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan. Data demo diisi ulang (`migrate:fresh --seed` + `DemoSeeder`). `api.json` diekspor ulang: tidak ada `allOf`.
+
 ### Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`)
 
 Laporan FE setelah Fase 3 (audit data dashboard). Kontrak ditulis ke Bagian A `PROMPT_BE_TK.md` dan disalin identik ke `PROMPT_FE_TK.md` (commit `5e1a44d` di `main` repo FE). Keputusan detail ada di "Keputusan menunggu review".
 
 File baru:
 
-- `database/migrations/2026_09_27_100000_ubah_unique_tagihan_periode_aktif.php`: kolom virtual `periode_aktif` dan unique (murid_id, jenis_tagihan_id, periode_aktif) menggantikan unique (murid_id, jenis_tagihan_id, periode). Unique baru dibuat sebelum yang lama dihapus karena MySQL/MariaDB memakainya untuk foreign key `murid_id`. Dicoba `migrate`, `migrate:rollback --step=1`, dan `migrate` lagi di MariaDB 12.3.3 dan SQLite.
+- `database/migrations/2026_09_27_100000_ubah_unique_tagihan_periode_aktif.php` (dihapus lagi setelah review): kolom virtual `periode_aktif` dan unique (murid_id, jenis_tagihan_id, periode_aktif) menggantikan unique (murid_id, jenis_tagihan_id, periode). Unique baru dibuat sebelum yang lama dihapus karena MySQL/MariaDB memakainya untuk foreign key `murid_id`. Dicoba `migrate`, `migrate:rollback --step=1`, dan `migrate` lagi di MariaDB 12.3.3 dan SQLite.
 - `app/Enums/NadaInfo.php`.
 - `app/Http/Requests/Tagihan/PerbaruiTagihanRequest.php`, `Kegiatan/PerbaruiFotoKegiatanRequest.php`, `Murid/UbahTautanWaliRequest.php`, `WaliMurid/PerbaruiWaliMuridRequest.php`.
 - `app/Notifications/RaporDitarikNotification.php`.

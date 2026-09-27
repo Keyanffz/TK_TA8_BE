@@ -3446,7 +3446,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/GaleriAlbumResource"
+                                            "$ref": "#/components/schemas/GaleriAlbumDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -3639,7 +3639,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/GaleriAlbumResource"
+                                            "$ref": "#/components/schemas/GaleriAlbumDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -3833,7 +3833,7 @@
                                             "const": "Album tersimpan."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/GaleriAlbumResource"
+                                            "$ref": "#/components/schemas/GaleriAlbumDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -4252,7 +4252,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/GaleriAlbumResource"
+                                            "$ref": "#/components/schemas/GaleriAlbumDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -9169,7 +9169,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/KelasResource"
+                                            "$ref": "#/components/schemas/KelasDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -9627,7 +9627,7 @@
                                             "const": "Data kelas tersimpan."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/KelasResource"
+                                            "$ref": "#/components/schemas/KelasDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -10069,7 +10069,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/KelasResource"
+                                            "$ref": "#/components/schemas/KelasDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -12330,7 +12330,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/MuridResource"
+                                            "$ref": "#/components/schemas/MuridDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -12804,7 +12804,7 @@
                                             "const": "Data murid tersimpan."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/MuridResource"
+                                            "$ref": "#/components/schemas/MuridDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -13246,7 +13246,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/MuridResource"
+                                            "$ref": "#/components/schemas/MuridDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -13686,7 +13686,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/MuridResource"
+                                            "$ref": "#/components/schemas/MuridDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16341,7 +16341,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/PendaftaranResource"
+                                            "$ref": "#/components/schemas/PendaftaranDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16569,7 +16569,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/PendaftaranResource"
+                                            "$ref": "#/components/schemas/PendaftaranDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -16804,7 +16804,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/PendaftaranResource"
+                                            "$ref": "#/components/schemas/PendaftaranDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -17299,7 +17299,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/PendaftaranResource"
+                                            "$ref": "#/components/schemas/PendaftaranDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -17493,7 +17493,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/PendaftaranResource"
+                                            "$ref": "#/components/schemas/PendaftaranDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -17689,7 +17689,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/KelasResource"
+                                            "$ref": "#/components/schemas/KelasDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -20578,7 +20578,7 @@
         "/public/profil": {
             "get": {
                 "operationId": "publik.profil",
-                "summary": "Semua pengaturan grup `profil` dan `landing` sebagai objek datar berkunci lengkap, dengan pasangan\n`*_url` untuk field gambar. Teks yang belum diisi Kepala Sekolah berisi string kosong atau null. Field\nopsional di item `landing.*` tidak ada kalau tidak dikirim saat `PUT /pengaturan`; `gambar_url` selalu ada",
+                "summary": "Semua pengaturan grup `profil` dan `landing` sebagai objek datar berkunci lengkap, dengan pasangan\n`*_url` untuk field gambar. Teks yang belum diisi Kepala Sekolah berisi string kosong atau null, termasuk\nfield opsional di item `landing.*` yang tidak dikirim saat `PUT /pengaturan`",
                 "tags": [
                     "Publik"
                 ],
@@ -20701,6 +20701,9 @@
                                                     },
                                                     "required": [
                                                         "judul",
+                                                        "subjudul",
+                                                        "gambar",
+                                                        "cta_teks",
                                                         "gambar_url"
                                                     ]
                                                 },
@@ -20724,6 +20727,7 @@
                                                         },
                                                         "required": [
                                                             "judul",
+                                                            "deskripsi",
                                                             "ikon"
                                                         ]
                                                     }
@@ -20757,6 +20761,8 @@
                                                         },
                                                         "required": [
                                                             "nama",
+                                                            "deskripsi",
+                                                            "gambar",
                                                             "gambar_url"
                                                         ]
                                                     }
@@ -20781,6 +20787,7 @@
                                                         },
                                                         "required": [
                                                             "judul",
+                                                            "deskripsi",
                                                             "ikon"
                                                         ]
                                                     }
@@ -21447,7 +21454,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/GaleriAlbumResource"
+                                            "$ref": "#/components/schemas/GaleriAlbumDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -21773,7 +21780,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22003,7 +22010,7 @@
                                             "const": "Rapor dikembalikan ke guru untuk direvisi."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22239,7 +22246,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22465,7 +22472,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -22956,7 +22963,7 @@
                                             "const": "Rapor tersimpan."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -23181,7 +23188,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -23385,7 +23392,7 @@
                                             "const": "Foto tersimpan."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -23612,7 +23619,7 @@
                                             "const": "Rapor diajukan ke Kepala Sekolah."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/RaporResource"
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -24344,7 +24351,7 @@
         "/tagihan/generate": {
             "post": {
                 "operationId": "tagihan.generate",
-                "summary": "Membuat tagihan bulanan untuk satu periode secara manual. Aman diulang: tagihan yang sudah ada dilewati",
+                "summary": "Membuat tagihan bulanan untuk satu periode secara manual. Aman diulang: tagihan yang sudah ada dilewati,\ntermasuk yang dibatalkan",
                 "tags": [
                     "Tagihan"
                 ],
@@ -24735,6 +24742,225 @@
                                                     "type": "string"
                                                 }
                                             }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tagihan/{id}/aktifkan": {
+            "post": {
+                "operationId": "tagihan.aktifkan",
+                "summary": "Mengaktifkan kembali tagihan yang dibatalkan: status menjadi belum bayar, atau terlambat kalau jatuh\ntemponya sudah lewat. Ditolak kalau murid sudah punya tagihan aktif lain untuk jenis dan periode yang sama.\nGenerate tagihan bulanan tidak membuat ulang tagihan yang dibatalkan, jadi ini satu-satunya cara\nmemulihkannya",
+                "tags": [
+                    "Tagihan"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/TagihanResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_PENDING",
+                                                "ACCOUNT_REJECTED",
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
@@ -25571,7 +25797,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/TagihanResource"
+                                            "$ref": "#/components/schemas/TagihanDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -27084,7 +27310,7 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/WaliMuridResource"
+                                            "$ref": "#/components/schemas/WaliMuridDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -27277,7 +27503,7 @@
                                             "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/WaliMuridResource"
+                                            "$ref": "#/components/schemas/WaliMuridDetailResource"
                                         },
                                         "meta": {
                                             "type": "null"
@@ -27872,20 +28098,10 @@
                         ]
                     },
                     "hubungan": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/Hubungan"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/Hubungan"
                     },
                     "is_kontak_utama": {
-                        "type": [
-                            "boolean",
-                            "null"
-                        ]
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -27896,7 +28112,9 @@
                     "jenis_kelamin",
                     "tanggal_lahir",
                     "kelas",
-                    "foto_url"
+                    "foto_url",
+                    "hubungan",
+                    "is_kontak_utama"
                 ],
                 "title": "AnakWaliResource"
             },
@@ -28172,6 +28390,90 @@
                 ],
                 "title": "FotoRaporRequest"
             },
+            "GaleriAlbumDetailResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "judul": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "deskripsi": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "tanggal": {
+                        "type": "string"
+                    },
+                    "is_publik": {
+                        "type": "boolean"
+                    },
+                    "cover_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "jumlah_foto": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "foto": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "caption": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "urutan": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "url",
+                                "caption",
+                                "urutan"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "judul",
+                    "slug",
+                    "deskripsi",
+                    "tanggal",
+                    "is_publik",
+                    "cover_url",
+                    "jumlah_foto",
+                    "created_at",
+                    "foto"
+                ],
+                "title": "GaleriAlbumDetailResource"
+            },
             "GaleriAlbumResource": {
                 "type": "object",
                 "properties": {
@@ -28205,35 +28507,6 @@
                     "jumlah_foto": {
                         "type": "integer"
                     },
-                    "foto": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "url": {
-                                    "type": "string"
-                                },
-                                "caption": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
-                                },
-                                "urutan": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "url",
-                                "caption",
-                                "urutan"
-                            ]
-                        }
-                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -28250,6 +28523,7 @@
                     "tanggal",
                     "is_publik",
                     "cover_url",
+                    "jumlah_foto",
                     "created_at"
                 ],
                 "title": "GaleriAlbumResource"
@@ -28416,6 +28690,7 @@
                 },
                 "required": [
                     "id",
+                    "user",
                     "nip",
                     "nuptk",
                     "jenis_kelamin",
@@ -28600,6 +28875,7 @@
                 },
                 "required": [
                     "id",
+                    "tahun_ajaran",
                     "nama",
                     "deskripsi",
                     "nominal",
@@ -28703,15 +28979,18 @@
                 },
                 "required": [
                     "id",
+                    "kelas",
+                    "guru",
                     "tanggal",
                     "tema",
                     "judul",
                     "deskripsi",
+                    "foto",
                     "created_at"
                 ],
                 "title": "KegiatanKelasResource"
             },
-            "KelasResource": {
+            "KelasDetailResource": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -28727,7 +29006,8 @@
                         "type": "integer"
                     },
                     "jumlah_murid": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Murid dengan penempatan `aktif`."
                     },
                     "tahun_ajaran": {
                         "type": "object",
@@ -28784,6 +29064,13 @@
                             "nama"
                         ]
                     },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
                     "murid": {
                         "type": "array",
                         "items": {
@@ -28828,6 +29115,95 @@
                                 "foto_url"
                             ]
                         }
+                    }
+                },
+                "required": [
+                    "id",
+                    "nama",
+                    "tingkat",
+                    "kapasitas",
+                    "jumlah_murid",
+                    "tahun_ajaran",
+                    "wali_kelas",
+                    "guru_pendamping",
+                    "created_at",
+                    "murid"
+                ],
+                "title": "KelasDetailResource"
+            },
+            "KelasResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "nama": {
+                        "type": "string"
+                    },
+                    "tingkat": {
+                        "$ref": "#/components/schemas/Tingkat"
+                    },
+                    "kapasitas": {
+                        "type": "integer"
+                    },
+                    "jumlah_murid": {
+                        "type": "integer",
+                        "description": "Murid dengan penempatan `aktif`."
+                    },
+                    "tahun_ajaran": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            },
+                            "is_aktif": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama",
+                            "is_aktif"
+                        ]
+                    },
+                    "wali_kelas": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "guru_pendamping": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
                     },
                     "created_at": {
                         "type": [
@@ -28842,6 +29218,10 @@
                     "nama",
                     "tingkat",
                     "kapasitas",
+                    "jumlah_murid",
+                    "tahun_ajaran",
+                    "wali_kelas",
+                    "guru_pendamping",
                     "created_at"
                 ],
                 "title": "KelasResource"
@@ -28985,11 +29365,14 @@
                 },
                 "required": [
                     "id",
+                    "murid",
+                    "jenis_tagihan",
                     "tipe",
                     "nilai",
                     "alasan",
                     "berlaku_mulai",
                     "berlaku_sampai",
+                    "dibuat_oleh",
                     "created_at"
                 ],
                 "title": "KeringananResource"
@@ -29158,7 +29541,7 @@
                 ],
                 "title": "MetodeBayar"
             },
-            "MuridResource": {
+            "MuridDetailResource": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -29252,6 +29635,28 @@
                             "tingkat"
                         ]
                     },
+                    "kode_tautan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hanya untuk Kepala Sekolah."
+                    },
+                    "kode_tautan_expired_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Hanya untuk Kepala Sekolah."
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
                     "wali": {
                         "type": "array",
                         "items": {
@@ -29296,6 +29701,125 @@
                                 "tertaut_at"
                             ]
                         }
+                    }
+                },
+                "required": [
+                    "id",
+                    "nis",
+                    "nisn",
+                    "nik",
+                    "nama_lengkap",
+                    "nama_panggilan",
+                    "jenis_kelamin",
+                    "tempat_lahir",
+                    "tanggal_lahir",
+                    "agama",
+                    "alamat",
+                    "anak_ke",
+                    "foto_url",
+                    "catatan_khusus",
+                    "status",
+                    "tanggal_masuk",
+                    "tanggal_keluar",
+                    "kelas",
+                    "created_at",
+                    "wali"
+                ],
+                "title": "MuridDetailResource"
+            },
+            "MuridResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "nis": {
+                        "type": "string"
+                    },
+                    "nisn": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nik": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nama_lengkap": {
+                        "type": "string"
+                    },
+                    "nama_panggilan": {
+                        "type": "string"
+                    },
+                    "jenis_kelamin": {
+                        "$ref": "#/components/schemas/JenisKelamin"
+                    },
+                    "tempat_lahir": {
+                        "type": "string"
+                    },
+                    "tanggal_lahir": {
+                        "type": "string"
+                    },
+                    "agama": {
+                        "type": "string"
+                    },
+                    "alamat": {
+                        "type": "string"
+                    },
+                    "anak_ke": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "foto_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "catatan_khusus": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/StatusMurid"
+                    },
+                    "tanggal_masuk": {
+                        "type": "string"
+                    },
+                    "tanggal_keluar": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "kelas": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            },
+                            "tingkat": {
+                                "$ref": "#/components/schemas/Tingkat"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama",
+                            "tingkat"
+                        ]
                     },
                     "kode_tautan": {
                         "type": [
@@ -29410,9 +29934,6 @@
                     "tagihan_id": {
                         "type": "integer"
                     },
-                    "tagihan": {
-                        "$ref": "#/components/schemas/TagihanResource"
-                    },
                     "metode": {
                         "$ref": "#/components/schemas/MetodeBayar"
                     },
@@ -29498,6 +30019,9 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "tagihan": {
+                        "$ref": "#/components/schemas/TagihanResource"
                     }
                 },
                 "required": [
@@ -29512,10 +30036,215 @@
                     "nama_pengirim",
                     "status",
                     "alasan_penolakan",
+                    "dibayar_oleh",
+                    "diverifikasi_oleh",
                     "diverifikasi_at",
-                    "created_at"
+                    "created_at",
+                    "tagihan"
                 ],
                 "title": "PembayaranResource"
+            },
+            "PendaftaranDetailResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kode": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/StatusPendaftaran"
+                    },
+                    "tahun_ajaran": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "tingkat_tujuan": {
+                        "$ref": "#/components/schemas/Tingkat"
+                    },
+                    "hubungan": {
+                        "$ref": "#/components/schemas/Hubungan"
+                    },
+                    "nama_lengkap": {
+                        "type": "string"
+                    },
+                    "nama_panggilan": {
+                        "type": "string"
+                    },
+                    "jenis_kelamin": {
+                        "$ref": "#/components/schemas/JenisKelamin"
+                    },
+                    "tempat_lahir": {
+                        "type": "string"
+                    },
+                    "tanggal_lahir": {
+                        "type": "string"
+                    },
+                    "nik": {
+                        "type": "string"
+                    },
+                    "agama": {
+                        "type": "string"
+                    },
+                    "alamat": {
+                        "type": "string"
+                    },
+                    "nama_ayah": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pekerjaan_ayah": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nama_ibu": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pekerjaan_ibu": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "no_hp": {
+                        "type": "string"
+                    },
+                    "catatan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Alasan penolakan."
+                    },
+                    "murid": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Murid yang dibuat saat pendaftaran diterima.",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nis": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nis"
+                        ]
+                    },
+                    "diproses_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "wali": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "no_hp": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama",
+                            "email",
+                            "no_hp"
+                        ]
+                    },
+                    "dokumen": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "jenis": {
+                                    "$ref": "#/components/schemas/JenisDokumen"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "jenis",
+                                "url"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "kode",
+                    "status",
+                    "tahun_ajaran",
+                    "tingkat_tujuan",
+                    "hubungan",
+                    "nama_lengkap",
+                    "nama_panggilan",
+                    "jenis_kelamin",
+                    "tempat_lahir",
+                    "tanggal_lahir",
+                    "nik",
+                    "agama",
+                    "alamat",
+                    "nama_ayah",
+                    "pekerjaan_ayah",
+                    "nama_ibu",
+                    "pekerjaan_ibu",
+                    "no_hp",
+                    "catatan",
+                    "murid",
+                    "diproses_at",
+                    "created_at",
+                    "wali",
+                    "dokumen"
+                ],
+                "title": "PendaftaranDetailResource"
             },
             "PendaftaranResource": {
                 "type": "object",
@@ -29608,59 +30337,12 @@
                         ],
                         "description": "Alasan penolakan."
                     },
-                    "wali": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "nama": {
-                                "type": "string"
-                            },
-                            "email": {
-                                "type": "string"
-                            },
-                            "no_hp": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "nama",
-                            "email",
-                            "no_hp"
-                        ]
-                    },
-                    "dokumen": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "jenis": {
-                                    "$ref": "#/components/schemas/JenisDokumen"
-                                },
-                                "url": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "jenis",
-                                "url"
-                            ]
-                        }
-                    },
                     "murid": {
                         "type": [
                             "object",
                             "null"
                         ],
+                        "description": "Murid yang dibuat saat pendaftaran diterima.",
                         "properties": {
                             "id": {
                                 "type": "integer"
@@ -29693,6 +30375,7 @@
                     "id",
                     "kode",
                     "status",
+                    "tahun_ajaran",
                     "tingkat_tujuan",
                     "hubungan",
                     "nama_lengkap",
@@ -29709,6 +30392,7 @@
                     "pekerjaan_ibu",
                     "no_hp",
                     "catatan",
+                    "murid",
                     "diproses_at",
                     "created_at"
                 ],
@@ -29860,6 +30544,7 @@
                     "target",
                     "is_publik",
                     "is_pinned",
+                    "penulis",
                     "published_at",
                     "created_at",
                     "updated_at"
@@ -29998,6 +30683,207 @@
                 ],
                 "title": "PeriodeTagihan"
             },
+            "RaporDetailResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "murid": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nis": {
+                                "type": "string"
+                            },
+                            "nama_lengkap": {
+                                "type": "string"
+                            },
+                            "nama_panggilan": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nis",
+                            "nama_lengkap",
+                            "nama_panggilan"
+                        ]
+                    },
+                    "kelas": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "tahun_ajaran": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "semester": {
+                        "type": "integer"
+                    },
+                    "tinggi_badan": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "berat_badan": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "catatan_guru": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/StatusRapor"
+                    },
+                    "catatan_revisi": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Tidak dikirim ke wali murid."
+                    },
+                    "pembuat": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "diajukan_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "terbit_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "detail": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "elemen": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "kode": {
+                                            "type": "string"
+                                        },
+                                        "nama": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "kode",
+                                        "nama"
+                                    ]
+                                },
+                                "deskripsi": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "foto_url": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "elemen",
+                                "deskripsi",
+                                "foto_url"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "murid",
+                    "kelas",
+                    "tahun_ajaran",
+                    "semester",
+                    "tinggi_badan",
+                    "berat_badan",
+                    "catatan_guru",
+                    "status",
+                    "pembuat",
+                    "diajukan_at",
+                    "terbit_at",
+                    "created_at",
+                    "updated_at",
+                    "detail"
+                ],
+                "title": "RaporDetailResource"
+            },
             "RaporResource": {
                 "type": "object",
                 "properties": {
@@ -30117,54 +31003,6 @@
                         ],
                         "format": "date-time"
                     },
-                    "detail": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "elemen": {
-                                    "type": "object",
-                                    "properties": {
-                                        "id": {
-                                            "type": "integer"
-                                        },
-                                        "kode": {
-                                            "type": "string"
-                                        },
-                                        "nama": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "id",
-                                        "kode",
-                                        "nama"
-                                    ]
-                                },
-                                "deskripsi": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
-                                },
-                                "foto_url": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "elemen",
-                                "deskripsi",
-                                "foto_url"
-                            ]
-                        }
-                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -30182,11 +31020,15 @@
                 },
                 "required": [
                     "id",
+                    "murid",
+                    "kelas",
+                    "tahun_ajaran",
                     "semester",
                     "tinggi_badan",
                     "berat_badan",
                     "catatan_guru",
                     "status",
+                    "pembuat",
                     "diajukan_at",
                     "terbit_at",
                     "created_at",
@@ -30253,6 +31095,124 @@
                     "password_confirmation"
                 ],
                 "title": "ResetPasswordRequest"
+            },
+            "RiwayatPembayaranResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kode": {
+                        "type": "string"
+                    },
+                    "tagihan_id": {
+                        "type": "integer"
+                    },
+                    "metode": {
+                        "$ref": "#/components/schemas/MetodeBayar"
+                    },
+                    "jumlah": {
+                        "type": "integer"
+                    },
+                    "tanggal_bayar": {
+                        "type": "string"
+                    },
+                    "bukti_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bank_pengirim": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nama_pengirim": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/StatusPembayaran"
+                    },
+                    "alasan_penolakan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "dibayar_oleh": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "diverifikasi_oleh": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "diverifikasi_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "kode",
+                    "tagihan_id",
+                    "metode",
+                    "jumlah",
+                    "tanggal_bayar",
+                    "bukti_url",
+                    "bank_pengirim",
+                    "nama_pengirim",
+                    "status",
+                    "alasan_penolakan",
+                    "dibayar_oleh",
+                    "diverifikasi_oleh",
+                    "diverifikasi_at",
+                    "created_at"
+                ],
+                "title": "RiwayatPembayaranResource"
             },
             "Role": {
                 "type": "string",
@@ -30882,7 +31842,7 @@
                 ],
                 "title": "StatusTagihan"
             },
-            "TagihanResource": {
+            "TagihanDetailResource": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -30999,12 +31959,11 @@
                     "pembayaran": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/PembayaranResource"
+                            "$ref": "#/components/schemas/RiwayatPembayaranResource"
                         }
                     },
                     "rekening": {
                         "type": "array",
-                        "description": "Hanya di detail tagihan.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -31029,6 +31988,143 @@
                 "required": [
                     "id",
                     "kode",
+                    "murid",
+                    "jenis_tagihan",
+                    "tahun_ajaran_id",
+                    "periode",
+                    "nominal",
+                    "potongan",
+                    "total",
+                    "jatuh_tempo",
+                    "status",
+                    "lunas_at",
+                    "catatan",
+                    "created_at",
+                    "pembayaran",
+                    "rekening"
+                ],
+                "title": "TagihanDetailResource"
+            },
+            "TagihanResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kode": {
+                        "type": "string"
+                    },
+                    "murid": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nis": {
+                                "type": "string"
+                            },
+                            "nama_lengkap": {
+                                "type": "string"
+                            },
+                            "nama_panggilan": {
+                                "type": "string"
+                            },
+                            "kelas": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "nama": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "nama"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nis",
+                            "nama_lengkap",
+                            "nama_panggilan",
+                            "kelas"
+                        ]
+                    },
+                    "jenis_tagihan": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            },
+                            "periode": {
+                                "$ref": "#/components/schemas/PeriodeTagihan"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama",
+                            "periode"
+                        ]
+                    },
+                    "tahun_ajaran_id": {
+                        "type": "integer"
+                    },
+                    "periode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nominal": {
+                        "type": "integer"
+                    },
+                    "potongan": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    },
+                    "jatuh_tempo": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/StatusTagihan"
+                    },
+                    "lunas_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "catatan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "kode",
+                    "murid",
+                    "jenis_tagihan",
                     "tahun_ajaran_id",
                     "periode",
                     "nominal",
@@ -31411,6 +32507,66 @@
                 ],
                 "title": "UserResource"
             },
+            "WaliMuridDetailResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/AkunResource"
+                    },
+                    "nik": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pekerjaan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "alamat": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "profil_lengkap": {
+                        "type": "boolean"
+                    },
+                    "jumlah_anak": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "anak": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AnakWaliResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "user",
+                    "nik",
+                    "pekerjaan",
+                    "alamat",
+                    "profil_lengkap",
+                    "jumlah_anak",
+                    "created_at",
+                    "anak"
+                ],
+                "title": "WaliMuridDetailResource"
+            },
             "WaliMuridResource": {
                 "type": "object",
                 "properties": {
@@ -31444,12 +32600,6 @@
                     "jumlah_anak": {
                         "type": "integer"
                     },
-                    "anak": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/AnakWaliResource"
-                        }
-                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -31460,10 +32610,12 @@
                 },
                 "required": [
                     "id",
+                    "user",
                     "nik",
                     "pekerjaan",
                     "alamat",
                     "profil_lengkap",
+                    "jumlah_anak",
                     "created_at"
                 ],
                 "title": "WaliMuridResource"
