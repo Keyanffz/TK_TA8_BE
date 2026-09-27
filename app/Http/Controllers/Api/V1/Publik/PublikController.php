@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Agenda\DaftarAgendaRequest;
 use App\Http\Requests\HalamanRequest;
 use App\Http\Resources\AgendaResource;
+use App\Http\Resources\GaleriAlbumDetailResource;
 use App\Http\Resources\GaleriAlbumResource;
 use App\Http\Resources\GuruPublikResource;
 use App\Http\Resources\PengumumanPublikResource;
@@ -28,8 +29,8 @@ class PublikController extends Controller
 {
     /**
      * Semua pengaturan grup `profil` dan `landing` sebagai objek datar berkunci lengkap, dengan pasangan
-     * `*_url` untuk field gambar. Teks yang belum diisi Kepala Sekolah berisi string kosong atau null. Field
-     * opsional di item `landing.*` tidak ada kalau tidak dikirim saat `PUT /pengaturan`; `gambar_url` selalu ada.
+     * `*_url` untuk field gambar. Teks yang belum diisi Kepala Sekolah berisi string kosong atau null, termasuk
+     * field opsional di item `landing.*` yang tidak dikirim saat `PUT /pengaturan`.
      *
      * @response array{
      *     success: true,
@@ -47,10 +48,10 @@ class PublikController extends Controller
      *         'profil.misi': list<string>,
      *         'profil.sejarah': string|null,
      *         'profil.sambutan_kepsek': string|null,
-     *         'landing.hero': array{judul: string, subjudul?: string|null, gambar?: string|null, cta_teks?: string|null, gambar_url: string|null},
-     *         'landing.program': list<array{judul: string, deskripsi?: string|null, ikon: string}>,
-     *         'landing.fasilitas': list<array{nama: string, deskripsi?: string|null, gambar?: string|null, gambar_url: string|null}>,
-     *         'landing.keunggulan': list<array{judul: string, deskripsi?: string|null, ikon: string}>
+     *         'landing.hero': array{judul: string, subjudul: string|null, gambar: string|null, cta_teks: string|null, gambar_url: string|null},
+     *         'landing.program': list<array{judul: string, deskripsi: string|null, ikon: string}>,
+     *         'landing.fasilitas': list<array{nama: string, deskripsi: string|null, gambar: string|null, gambar_url: string|null}>,
+     *         'landing.keunggulan': list<array{judul: string, deskripsi: string|null, ikon: string}>
      *     },
      *     meta: null
      * }
@@ -109,7 +110,7 @@ class PublikController extends Controller
         $album = GaleriAlbum::query()->where('is_publik', true)->where('slug', $slug)
             ->with(['foto', 'fotoPertama'])->withCount('foto')->firstOrFail();
 
-        return ApiResponse::success(new GaleriAlbumResource($album));
+        return ApiResponse::success(new GaleriAlbumDetailResource($album));
     }
 
     /**

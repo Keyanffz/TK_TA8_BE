@@ -90,8 +90,8 @@ it('mendokumentasikan tipe item array bertingkat dan url file yang bisa null', f
     $skema = $this->getJson('/docs/api.json')->assertOk()->json('components.schemas');
 
     expect($skema['KegiatanKelasResource']['properties']['foto']['items']['properties'])->toHaveKeys(['id', 'url', 'caption', 'urutan'])
-        ->and($skema['MuridResource']['properties']['wali']['items']['properties'])->toHaveKey('hubungan')
-        ->and($skema['RaporResource']['properties']['detail']['items']['properties']['foto_url']['type'])->toBe(['string', 'null'])
+        ->and($skema['MuridDetailResource']['properties']['wali']['items']['properties'])->toHaveKey('hubungan')
+        ->and($skema['RaporDetailResource']['properties']['detail']['items']['properties']['foto_url']['type'])->toBe(['string', 'null'])
         ->and($skema['MuridResource']['properties']['foto_url']['type'])->toBe(['string', 'null'])
         ->and($skema['UserResource']['properties']['avatar_url']['type'])->toBe(['string', 'null'])
         ->and($skema['SimpanPengaturanRequest']['properties']['items']['type'])->toBe('object');
@@ -131,7 +131,25 @@ it('mereferensikan skema Resource langsung tanpa allOf berisi objek kosong', fun
         ->and($wali['tagihan_aktif']['items'])->toBe(['$ref' => '#/components/schemas/TagihanResource'])
         ->and($wali['kegiatan_terbaru']['items'])->toBe(['$ref' => '#/components/schemas/KegiatanKelasResource'])
         ->and($wali['pengumuman_terbaru']['items'])->toBe(['$ref' => '#/components/schemas/PengumumanResource'])
-        ->and($data('/murid/{id}'))->toBe(['$ref' => '#/components/schemas/MuridResource']);
+        ->and($data('/murid/{id}'))->toBe(['$ref' => '#/components/schemas/MuridDetailResource'])
+        ->and($data('/tagihan/{id}'))->toBe(['$ref' => '#/components/schemas/TagihanDetailResource']);
+});
+
+it('mewajibkan field relasi yang selalu dikirim dan membiarkan opsional hanya field yang bergantung role', function () {
+    $skema = $this->getJson('/docs/api.json')->assertOk()->json('components.schemas');
+    $opsional = fn (string $nama) => array_values(array_diff(array_keys($skema[$nama]['properties']), $skema[$nama]['required']));
+
+    expect($skema['TagihanResource']['required'])->toContain('murid', 'jenis_tagihan')
+        ->and($skema['TagihanDetailResource']['required'])->toContain('murid', 'jenis_tagihan', 'pembayaran', 'rekening')
+        ->and($skema['PembayaranResource']['required'])->toContain('tagihan', 'dibayar_oleh', 'diverifikasi_oleh')
+        ->and($skema['KelasDetailResource']['required'])->toContain('jumlah_murid', 'tahun_ajaran', 'murid')
+        ->and($skema['WaliMuridDetailResource']['required'])->toContain('user', 'jumlah_anak', 'anak')
+        ->and($skema['RaporResource']['required'])->toContain('murid', 'kelas', 'tahun_ajaran', 'pembuat')
+        ->and($skema['RaporDetailResource']['required'])->toContain('detail')
+        ->and($opsional('MuridDetailResource'))->toBe(['kode_tautan', 'kode_tautan_expired_at'])
+        ->and($opsional('RaporResource'))->toBe(['catatan_revisi'])
+        ->and($opsional('PengumumanResource'))->toBe(['kelas', 'murid'])
+        ->and($opsional('GuruResource'))->toBe(['password_awal']);
 });
 
 it('mendokumentasikan jenis notifikasi sebagai enum dan rapor PDF sebagai file', function () {
@@ -234,5 +252,5 @@ it('mendokumentasikan id kelas di data anak, murid, dan tagihan sebagai angka se
 
     expect($anak[0]['kelas']['id'])->toBe($kelas->id)
         ->and(selisihDenganSkema($anak, skemaSukses($dokumen, '/wali/anak')['properties']['data'], $dokumen))->toBe([])
-        ->and(selisihDenganSkema($detailMurid, $skema['MuridResource'], $dokumen))->toBe([]);
+        ->and(selisihDenganSkema($detailMurid, $skema['MuridDetailResource'], $dokumen))->toBe([]);
 });

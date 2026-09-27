@@ -18,7 +18,7 @@ class JenisTagihanResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'tahun_ajaran' => $this->whenLoaded('tahunAjaran', fn () => ['id' => $this->tahunAjaran->id, 'nama' => $this->tahunAjaran->nama]),
+            'tahun_ajaran' => ['id' => $this->tahunAjaran->id, 'nama' => $this->tahunAjaran->nama],
             'nama' => $this->nama,
             'deskripsi' => $this->deskripsi,
             'nominal' => $this->nominal,

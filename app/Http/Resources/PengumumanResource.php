@@ -40,7 +40,7 @@ class PengumumanResource extends JsonResource
                 ->map(fn (Murid $murid): array => ['id' => $murid->id, 'nama_lengkap' => $murid->nama_lengkap])->values()->all()),
             'is_publik' => $this->is_publik,
             'is_pinned' => $this->is_pinned,
-            'penulis' => $this->whenLoaded('penulis', fn () => ['id' => $this->penulis->id, 'nama' => $this->penulis->name]),
+            'penulis' => ['id' => $this->penulis->id, 'nama' => $this->penulis->name],
             /** Null = draft. */
             'published_at' => $this->published_at,
             'created_at' => $this->created_at,

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Murid\DaftarMuridRequest;
 use App\Http\Requests\Murid\SimpanMuridRequest;
 use App\Http\Requests\Murid\UbahTautanWaliRequest;
+use App\Http\Resources\MuridDetailResource;
 use App\Http\Resources\MuridResource;
 use App\Models\Murid;
 use App\Models\User;
@@ -59,7 +60,7 @@ class MuridController extends Controller
         $murid = Murid::query()->findOrFail($id);
         Jangkauan::pastikanTerlihat($murid);
 
-        return ApiResponse::success(new MuridResource($murid->load(['kelasAktif', 'waliMurid.user'])));
+        return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])));
     }
 
     /**
@@ -71,7 +72,7 @@ class MuridController extends Controller
         $murid = $this->muridService->buat($request->dataMurid(), $request->foto());
 
         return ApiResponse::success(
-            new MuridResource($murid->load(['kelasAktif', 'waliMurid.user'])),
+            new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])),
             "{$murid->nama_lengkap} ditambahkan dengan NIS {$murid->nis}.",
             status: 201,
         );
@@ -84,7 +85,7 @@ class MuridController extends Controller
     {
         $murid = $this->muridService->perbarui(Murid::query()->findOrFail($id), $request->dataMurid(), $request->foto());
 
-        return ApiResponse::success(new MuridResource($murid->load(['kelasAktif', 'waliMurid.user'])), 'Data murid tersimpan.');
+        return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])), 'Data murid tersimpan.');
     }
 
     /**
@@ -120,7 +121,7 @@ class MuridController extends Controller
         $murid = Murid::query()->findOrFail($id);
         $this->muridService->ubahTautanWali($murid, $wali_murid_id, $request->hubungan(), $request->kontakUtama(), $kepalaSekolah);
 
-        return ApiResponse::success(new MuridResource($murid->load(['kelasAktif', 'waliMurid.user'])), "Data wali {$murid->nama_panggilan} tersimpan.");
+        return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])), "Data wali {$murid->nama_panggilan} tersimpan.");
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Http\Requests\Rapor\CatatanRevisiRequest;
 use App\Http\Requests\Rapor\DaftarRaporRequest;
 use App\Http\Requests\Rapor\FotoRaporRequest;
 use App\Http\Requests\Rapor\IsiRaporRequest;
+use App\Http\Resources\RaporDetailResource;
 use App\Http\Resources\RaporResource;
 use App\Models\Rapor;
 use App\Models\User;
@@ -70,7 +71,7 @@ class RaporController extends Controller
         $rapor = Rapor::query()->findOrFail($id);
         Jangkauan::pastikanTerlihat($rapor);
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)));
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)));
     }
 
     /**
@@ -81,7 +82,7 @@ class RaporController extends Controller
     {
         $rapor = $this->raporService->buat($request->murid(), $request->integer('semester'), $user);
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), "Draft rapor semester {$rapor->semester} {$rapor->murid->nama_lengkap} dibuat.", status: 201);
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), "Draft rapor semester {$rapor->semester} {$rapor->murid->nama_lengkap} dibuat.", status: 201);
     }
 
     /**
@@ -95,7 +96,7 @@ class RaporController extends Controller
         Gate::authorize('isi', $rapor);
         $rapor = $this->raporService->isi($rapor, $request->dataRapor(), $request->deskripsiPerElemen(), $user);
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), 'Rapor tersimpan.');
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), 'Rapor tersimpan.');
     }
 
     /**
@@ -108,7 +109,7 @@ class RaporController extends Controller
         $detail = $rapor->detail()->findOrFail($detail_id);
         $this->raporService->simpanFoto($rapor, $detail, $request->foto());
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), 'Foto tersimpan.');
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), 'Foto tersimpan.');
     }
 
     /**
@@ -118,7 +119,7 @@ class RaporController extends Controller
     {
         $rapor = $this->raporService->ajukan($this->cariYangBolehDiubah($id));
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), 'Rapor diajukan ke Kepala Sekolah.');
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), 'Rapor diajukan ke Kepala Sekolah.');
     }
 
     /**
@@ -128,7 +129,7 @@ class RaporController extends Controller
     {
         $rapor = $this->raporService->terbitkan(Rapor::query()->findOrFail($id), $user);
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), "Rapor {$rapor->murid->nama_lengkap} diterbitkan.");
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), "Rapor {$rapor->murid->nama_lengkap} diterbitkan.");
     }
 
     /**
@@ -138,7 +139,7 @@ class RaporController extends Controller
     {
         $rapor = $this->raporService->mintaRevisi(Rapor::query()->findOrFail($id), $request->catatan(), $user);
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), 'Rapor dikembalikan ke guru untuk direvisi.');
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), 'Rapor dikembalikan ke guru untuk direvisi.');
     }
 
     /**
@@ -149,7 +150,7 @@ class RaporController extends Controller
     {
         $rapor = $this->raporService->tarik(Rapor::query()->findOrFail($id), $request->catatan(), $user);
 
-        return ApiResponse::success(new RaporResource($rapor->load(self::RELASI_DETAIL)), "Rapor {$rapor->murid->nama_lengkap} ditarik dan dikembalikan ke guru untuk direvisi.");
+        return ApiResponse::success(new RaporDetailResource($rapor->load(self::RELASI_DETAIL)), "Rapor {$rapor->murid->nama_lengkap} ditarik dan dikembalikan ke guru untuk direvisi.");
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UbahStatusAkunRequest;
 use App\Http\Requests\WaliMurid\DaftarWaliMuridRequest;
 use App\Http\Requests\WaliMurid\PerbaruiWaliMuridRequest;
+use App\Http\Resources\WaliMuridDetailResource;
 use App\Http\Resources\WaliMuridResource;
 use App\Models\User;
 use App\Models\WaliMurid;
@@ -47,7 +48,7 @@ class WaliMuridController extends Controller
     {
         $waliMurid = WaliMurid::query()->with(['user', 'murid.kelasAktif'])->withCount('murid')->findOrFail($id);
 
-        return ApiResponse::success(new WaliMuridResource($waliMurid));
+        return ApiResponse::success(new WaliMuridDetailResource($waliMurid));
     }
 
     /**
@@ -59,7 +60,7 @@ class WaliMuridController extends Controller
         $waliMurid = $service->perbarui(WaliMurid::query()->with('user')->findOrFail($id), $request->dataWali(), $kepalaSekolah);
         $waliMurid->load('murid.kelasAktif')->loadCount('murid');
 
-        return ApiResponse::success(new WaliMuridResource($waliMurid), "Data {$waliMurid->user->name} tersimpan.");
+        return ApiResponse::success(new WaliMuridDetailResource($waliMurid), "Data {$waliMurid->user->name} tersimpan.");
     }
 
     /**
@@ -67,7 +68,7 @@ class WaliMuridController extends Controller
      */
     public function ubahStatus(UbahStatusAkunRequest $request, int $id, WaliMuridService $service, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
-        $waliMurid = $service->ubahStatus(WaliMurid::query()->with('user')->findOrFail($id), $request->status(), $kepalaSekolah);
+        $waliMurid = $service->ubahStatus(WaliMurid::query()->with('user')->withCount('murid')->findOrFail($id), $request->status(), $kepalaSekolah);
 
         return ApiResponse::success(
             new WaliMuridResource($waliMurid),

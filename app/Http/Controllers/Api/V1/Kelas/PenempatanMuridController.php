@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1\Kelas;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Kelas\KenaikanKelasRequest;
 use App\Http\Requests\Kelas\TempatkanMuridRequest;
-use App\Http\Resources\KelasResource;
+use App\Http\Resources\KelasDetailResource;
 use App\Models\Kelas;
 use App\Models\TahunAjaran;
 use App\Services\KelasService;
@@ -23,7 +23,7 @@ class PenempatanMuridController extends Controller
     {
         $kelas = $kelasService->tempatkanMurid(Kelas::query()->findOrFail($id), $request->muridIds());
 
-        return ApiResponse::success(new KelasResource($kelas->muatDetail()), count($request->muridIds())." murid ditempatkan di {$kelas->nama}.");
+        return ApiResponse::success(new KelasDetailResource($kelas->muatDetail()), count($request->muridIds())." murid ditempatkan di {$kelas->nama}.");
     }
 
     /**

@@ -36,6 +36,17 @@ class PengaturanService
 
     private const MAKSIMAL_ITEM_DAFTAR = 20;
 
+    /**
+     * Field item objek di pengaturan landing. Field opsional yang tidak dikirim saat `PUT /pengaturan` tetap
+     * muncul di respons sebagai null, supaya bentuk respons selalu sama.
+     */
+    private const FIELD_ITEM = [
+        'landing.hero' => ['judul', 'subjudul', 'gambar', 'cta_teks'],
+        'landing.program' => ['judul', 'deskripsi', 'ikon'],
+        'landing.fasilitas' => ['nama', 'deskripsi', 'gambar'],
+        'landing.keunggulan' => ['judul', 'deskripsi', 'ikon'],
+    ];
+
     public function nilai(string $kunci, mixed $bawaan = null): mixed
     {
         return $this->semua()[$kunci] ?? $bawaan;
@@ -67,7 +78,7 @@ class PengaturanService
                 continue;
             }
 
-            $hasil[$kunci] = $this->denganUrlGambar($kunci, $nilai);
+            $hasil[$kunci] = $this->denganUrlGambar($kunci, $this->lengkapiFieldItem($kunci, $nilai));
 
             if ($kunci === 'profil.logo') {
                 $hasil['profil.logo_url'] = $this->urlGambar($nilai);
@@ -325,6 +336,18 @@ class PengaturanService
     private function urlGambar(mixed $path): ?string
     {
         return is_string($path) ? app(MediaService::class)->urlPublik($path) : null;
+    }
+
+    private function lengkapiFieldItem(string $kunci, mixed $nilai): mixed
+    {
+        if (! isset(self::FIELD_ITEM[$kunci]) || ! is_array($nilai)) {
+            return $nilai;
+        }
+
+        $kosong = array_fill_keys(self::FIELD_ITEM[$kunci], null);
+        $lengkapi = fn (mixed $item): mixed => is_array($item) ? [...$kosong, ...$item] : $item;
+
+        return $kunci === 'landing.hero' ? $lengkapi($nilai) : array_map($lengkapi, $nilai);
     }
 
     /**

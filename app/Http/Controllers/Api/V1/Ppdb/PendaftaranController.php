@@ -7,6 +7,7 @@ use App\Http\Requests\AlasanRequest;
 use App\Http\Requests\Pendaftaran\BuatPendaftaranRequest;
 use App\Http\Requests\Pendaftaran\DaftarPendaftaranRequest;
 use App\Http\Requests\Pendaftaran\TerimaPendaftaranRequest;
+use App\Http\Resources\PendaftaranDetailResource;
 use App\Http\Resources\PendaftaranResource;
 use App\Models\Pendaftaran;
 use App\Models\User;
@@ -58,7 +59,7 @@ class PendaftaranController extends Controller
         $pendaftaran = Pendaftaran::query()->findOrFail($id);
         Jangkauan::pastikanTerlihat($pendaftaran);
 
-        return ApiResponse::success(new PendaftaranResource($pendaftaran->load(self::RELASI_DETAIL)));
+        return ApiResponse::success(new PendaftaranDetailResource($pendaftaran->load(self::RELASI_DETAIL)));
     }
 
     /**
@@ -70,7 +71,7 @@ class PendaftaranController extends Controller
         $pendaftaran = $this->pendaftaranService->daftar($user->profilWaliMurid(), $request->dataPendaftaran(), $request->dokumen());
 
         return ApiResponse::success(
-            new PendaftaranResource($pendaftaran->load(self::RELASI_DETAIL)),
+            new PendaftaranDetailResource($pendaftaran->load(self::RELASI_DETAIL)),
             "Pendaftaran {$pendaftaran->nama_panggilan} terkirim dengan kode {$pendaftaran->kode}. Pantau statusnya di menu PPDB.",
             status: 201,
         );
@@ -83,7 +84,7 @@ class PendaftaranController extends Controller
     {
         $pendaftaran = $this->pendaftaranService->verifikasi(Pendaftaran::query()->findOrFail($id), $user);
 
-        return ApiResponse::success(new PendaftaranResource($pendaftaran->load(self::RELASI_DETAIL)), "Pendaftaran {$pendaftaran->kode} diverifikasi.");
+        return ApiResponse::success(new PendaftaranDetailResource($pendaftaran->load(self::RELASI_DETAIL)), "Pendaftaran {$pendaftaran->kode} diverifikasi.");
     }
 
     /**
@@ -94,13 +95,13 @@ class PendaftaranController extends Controller
     {
         $pendaftaran = $this->pendaftaranService->terima(Pendaftaran::query()->findOrFail($id), $request->kelas(), $user);
 
-        return ApiResponse::success(new PendaftaranResource($pendaftaran->load(self::RELASI_DETAIL)), "{$pendaftaran->nama_lengkap} diterima sebagai murid.");
+        return ApiResponse::success(new PendaftaranDetailResource($pendaftaran->load(self::RELASI_DETAIL)), "{$pendaftaran->nama_lengkap} diterima sebagai murid.");
     }
 
     public function tolak(AlasanRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
         $pendaftaran = $this->pendaftaranService->tolak(Pendaftaran::query()->findOrFail($id), $request->alasan(), $user);
 
-        return ApiResponse::success(new PendaftaranResource($pendaftaran->load(self::RELASI_DETAIL)), "Pendaftaran {$pendaftaran->kode} ditolak.");
+        return ApiResponse::success(new PendaftaranDetailResource($pendaftaran->load(self::RELASI_DETAIL)), "Pendaftaran {$pendaftaran->kode} ditolak.");
     }
 }

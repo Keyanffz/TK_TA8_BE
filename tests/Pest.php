@@ -93,6 +93,61 @@ function selisihDenganSkema(mixed $nilai, array $skema, array $dokumen, string $
     return $selisih;
 }
 
+/**
+ * Mencatat, per lokasi skema, field mana saja yang muncul di setiap objek respons dan field mana yang wajib
+ * menurut dokumentasi. Skema komponen (`$ref`) dicatat per nama komponen, karena satu skema dipakai bersama
+ * oleh beberapa endpoint dan role: field hanya boleh wajib kalau selalu ada di semuanya. Objek inline dicatat
+ * per jalur tanpa indeks array; pilihan anyOf ikut jadi bagian jalur karena tiap pilihan punya field wajib
+ * sendiri.
+ *
+ * @param  array<string, array{wajib: list<string>, selalu: list<string>}>  $catatan
+ */
+function catatFieldSelaluAda(mixed $nilai, array $skema, array $dokumen, string $lokasi, array &$catatan): void
+{
+    if (isset($skema['$ref'])) {
+        $lokasi = str_replace('#/components/schemas/', '', $skema['$ref']);
+        $skema = $dokumen['components']['schemas'][$lokasi];
+    }
+    if (isset($skema['anyOf'])) {
+        foreach ($skema['anyOf'] as $i => $pilihan) {
+            if (selisihDenganSkema($nilai, $pilihan, $dokumen) === []) {
+                catatFieldSelaluAda($nilai, $pilihan, $dokumen, "{$lokasi}(anyOf {$i})", $catatan);
+
+                return;
+            }
+        }
+
+        return;
+    }
+    if (! is_array($nilai)) {
+        return;
+    }
+
+    if (array_is_list($nilai) && ($nilai !== [] || ($skema['type'] ?? null) !== 'object')) {
+        foreach ($nilai as $isi) {
+            catatFieldSelaluAda($isi, $skema['items'] ?? [], $dokumen, "{$lokasi}[]", $catatan);
+        }
+
+        return;
+    }
+
+    // Objek berkunci bebas (misalnya pengaturan per grup) tidak punya daftar properti yang bisa diwajibkan.
+    if (! isset($skema['properties'])) {
+        return;
+    }
+
+    $kunci = array_keys($nilai);
+    $catatan[$lokasi] = [
+        'wajib' => $skema['required'] ?? [],
+        'selalu' => isset($catatan[$lokasi]) ? array_values(array_intersect($catatan[$lokasi]['selalu'], $kunci)) : $kunci,
+    ];
+    foreach ($nilai as $nama => $isi) {
+        if (isset($skema['properties'][$nama])) {
+            catatFieldSelaluAda($isi, $skema['properties'][$nama], $dokumen, "{$lokasi}.{$nama}", $catatan);
+        }
+    }
+}
+
 function skemaSukses(array $dokumen, string $path): array
 {
     return $dokumen['paths'][$path]['get']['responses'][200]['content']['application/json']['schema'] ?? [];

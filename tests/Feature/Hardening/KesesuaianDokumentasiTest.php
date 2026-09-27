@@ -36,6 +36,7 @@ it('mencocokkan respons GET setiap role dengan dokumentasi OpenAPI', function ()
 
     $selisih = [];
     $diperiksa = [];
+    $catatan = [];
     foreach ($dokumen['paths'] as $path => $operasi) {
         $skema = isset($operasi['get']) ? skemaSukses($dokumen, $path) : [];
         if ($skema === [] || str_contains($path, '{token}')) {
@@ -60,9 +61,20 @@ it('mencocokkan respons GET setiap role dengan dokumentasi OpenAPI', function ()
 
             $diperiksa[] = "{$role} {$url}";
             $selisih = [...$selisih, ...selisihDenganSkema($respons->json(), $skema, $dokumen, "{$role} {$url}")];
+            catatFieldSelaluAda($respons->json(), $skema, $dokumen, "GET {$path}", $catatan);
+        }
+    }
+
+    // Field yang muncul di setiap respons sungguhan (semua role, semua item) harus wajib di skema, supaya tipe
+    // TypeScript di FE tidak menandainya opsional.
+    $opsional = [];
+    foreach ($catatan as $lokasi => ['wajib' => $wajib, 'selalu' => $selalu]) {
+        foreach (array_diff($selalu, $wajib) as $field) {
+            $opsional[] = "{$lokasi}.{$field}";
         }
     }
 
     expect($selisih)->toBe([])
+        ->and($opsional)->toBe([])
         ->and(count($diperiksa))->toBeGreaterThan(100);
 });

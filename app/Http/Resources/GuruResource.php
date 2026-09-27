@@ -31,7 +31,7 @@ class GuruResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'user' => new AkunResource($this->whenLoaded('user')),
+            'user' => new AkunResource($this->user),
             'nip' => $this->nip,
             'nuptk' => $this->nuptk,
             'jenis_kelamin' => $this->jenis_kelamin,

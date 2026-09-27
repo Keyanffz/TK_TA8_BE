@@ -3,14 +3,13 @@
 namespace App\Http\Resources;
 
 use App\Models\GaleriAlbum;
-use App\Models\GaleriFoto;
 use App\Services\MediaService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Galeri ada di disk public (B5), jadi semua URL-nya URL biasa. `cover_url` memakai foto pertama kalau album
- * tidak punya sampul sendiri. `foto` hanya ada di detail album.
+ * tidak punya sampul sendiri. Butuh `withCount('foto')`; daftar foto ada di `GaleriAlbumDetailResource`.
  *
  * @mixin GaleriAlbum
  */
@@ -33,13 +32,7 @@ class GaleriAlbumResource extends JsonResource
             'is_publik' => $this->is_publik,
             /** @var string|null */
             'cover_url' => $media->urlPublik($sampul),
-            'jumlah_foto' => $this->whenCounted('foto'),
-            'foto' => $this->whenLoaded('foto', fn () => $this->foto->map(fn (GaleriFoto $foto): array => [
-                'id' => $foto->id,
-                'url' => $media->urlPublik($foto->path),
-                'caption' => $foto->caption,
-                'urutan' => $foto->urutan,
-            ])->values()->all()),
+            'jumlah_foto' => (int) $this->foto_count,
             'created_at' => $this->created_at,
         ];
     }

@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Bentuk wali murid di daftar. Butuh relasi `user` dan `withCount('murid')`. Daftar anak ada di
+ * `WaliMuridDetailResource`.
+ *
  * @mixin WaliMurid
  */
 class WaliMuridResource extends JsonResource
@@ -18,13 +21,12 @@ class WaliMuridResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'user' => new AkunResource($this->whenLoaded('user')),
+            'user' => new AkunResource($this->user),
             'nik' => $this->nik,
             'pekerjaan' => $this->pekerjaan,
             'alamat' => $this->alamat,
             'profil_lengkap' => $this->profil_lengkap,
-            'jumlah_anak' => $this->whenCounted('murid'),
-            'anak' => AnakWaliResource::collection($this->whenLoaded('murid')),
+            'jumlah_anak' => (int) $this->murid_count,
             'created_at' => $this->created_at,
         ];
     }

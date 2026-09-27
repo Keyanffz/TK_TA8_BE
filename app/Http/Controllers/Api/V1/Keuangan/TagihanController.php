@@ -8,11 +8,11 @@ use App\Http\Requests\Tagihan\BuatTagihanSekaliRequest;
 use App\Http\Requests\Tagihan\DaftarTagihanRequest;
 use App\Http\Requests\Tagihan\GenerateTagihanRequest;
 use App\Http\Requests\Tagihan\PerbaruiTagihanRequest;
+use App\Http\Resources\TagihanDetailResource;
 use App\Http\Resources\TagihanResource;
 use App\Models\JenisTagihan;
 use App\Models\Tagihan;
 use App\Models\User;
-use App\Services\PengaturanService;
 use App\Services\TagihanService;
 use App\Support\ApiResponse;
 use App\Support\Jangkauan;
@@ -61,7 +61,7 @@ class TagihanController extends Controller
     /**
      * Detail tagihan beserta riwayat pembayaran dan rekening sekolah untuk transfer.
      */
-    public function show(int $id, PengaturanService $pengaturan): JsonResponse
+    public function show(int $id): JsonResponse
     {
         $tagihan = Tagihan::query()->findOrFail($id);
         Jangkauan::pastikanTerlihat($tagihan);
@@ -71,7 +71,7 @@ class TagihanController extends Controller
             'pembayaran' => fn ($pembayaran) => $pembayaran->with(['pembayar', 'verifikator'])->latest('id'),
         ]);
 
-        return ApiResponse::success(TagihanResource::make($tagihan)->denganRekening($pengaturan->rekeningSekolah()));
+        return ApiResponse::success(new TagihanDetailResource($tagihan));
     }
 
     /**

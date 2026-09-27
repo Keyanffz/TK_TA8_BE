@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Kelas\DaftarKelasRequest;
 use App\Http\Requests\Kelas\SimpanKelasRequest;
+use App\Http\Resources\KelasDetailResource;
 use App\Http\Resources\KelasResource;
 use App\Models\Kelas;
 use App\Models\User;
@@ -53,14 +54,14 @@ class KelasController extends Controller
         $kelas = Kelas::query()->findOrFail($id);
         Jangkauan::pastikanTerlihat($kelas);
 
-        return ApiResponse::success(new KelasResource($kelas->muatDetail()));
+        return ApiResponse::success(new KelasDetailResource($kelas->muatDetail()));
     }
 
     public function store(SimpanKelasRequest $request): JsonResponse
     {
         $kelas = $this->kelasService->buat($request->validated());
 
-        return ApiResponse::success(new KelasResource($kelas->muatDetail()), "Kelas {$kelas->nama} dibuat.", status: 201);
+        return ApiResponse::success(new KelasDetailResource($kelas->muatDetail()), "Kelas {$kelas->nama} dibuat.", status: 201);
     }
 
     /**
@@ -71,7 +72,7 @@ class KelasController extends Controller
     {
         $kelas = $this->kelasService->perbarui(Kelas::query()->findOrFail($id), $request->validated());
 
-        return ApiResponse::success(new KelasResource($kelas->muatDetail()), 'Data kelas tersimpan.');
+        return ApiResponse::success(new KelasDetailResource($kelas->muatDetail()), 'Data kelas tersimpan.');
     }
 
     /**

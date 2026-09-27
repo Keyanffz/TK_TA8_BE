@@ -25,18 +25,18 @@ class KegiatanKelasResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'kelas' => $this->whenLoaded('kelas', fn () => ['id' => $this->kelas->id, 'nama' => $this->kelas->nama]),
-            'guru' => $this->whenLoaded('guru', fn () => ['id' => $this->guru->id, 'nama' => $this->guru->user->name]),
+            'kelas' => ['id' => $this->kelas->id, 'nama' => $this->kelas->nama],
+            'guru' => ['id' => $this->guru->id, 'nama' => $this->guru->user->name],
             'tanggal' => $this->tanggal->toDateString(),
             'tema' => $this->tema,
             'judul' => $this->judul,
             'deskripsi' => $this->deskripsi,
-            'foto' => $this->whenLoaded('foto', fn () => $this->foto->map(fn (KegiatanFoto $foto): array => [
+            'foto' => $this->foto->map(fn (KegiatanFoto $foto): array => [
                 'id' => $foto->id,
                 'url' => $media->urlPrivat($foto->path),
                 'caption' => $foto->caption,
                 'urutan' => $foto->urutan,
-            ])->values()->all()),
+            ])->values()->all(),
             'created_at' => $this->created_at,
         ];
     }

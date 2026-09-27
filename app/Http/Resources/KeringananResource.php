@@ -18,23 +18,24 @@ class KeringananResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'murid' => $this->whenLoaded('murid', fn () => [
+            'murid' => [
                 'id' => $this->murid->id,
                 'nis' => $this->murid->nis,
                 'nama_lengkap' => $this->murid->nama_lengkap,
-            ]),
-            'jenis_tagihan' => $this->whenLoaded('jenisTagihan', fn () => [
+            ],
+            'jenis_tagihan' => [
                 'id' => $this->jenisTagihan->id,
                 'nama' => $this->jenisTagihan->nama,
                 'nominal' => $this->jenisTagihan->nominal,
                 'periode' => $this->jenisTagihan->periode,
-            ]),
+            ],
             'tipe' => $this->tipe,
             'nilai' => $this->nilai,
             'alasan' => $this->alasan,
             'berlaku_mulai' => $this->berlaku_mulai->toDateString(),
             'berlaku_sampai' => $this->berlaku_sampai?->toDateString(),
-            'dibuat_oleh' => $this->whenLoaded('pembuat', fn () => $this->pembuat === null ? null : ['id' => $this->pembuat->id, 'nama' => $this->pembuat->name]),
+            /** @var array{id: int, nama: string}|null */
+            'dibuat_oleh' => $this->pembuat === null ? null : ['id' => $this->pembuat->id, 'nama' => $this->pembuat->name],
             'created_at' => $this->created_at,
         ];
     }

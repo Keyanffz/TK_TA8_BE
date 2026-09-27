@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\Hubungan;
 use App\Models\Murid;
 use App\Models\MuridWali;
 use App\Services\MediaService;
@@ -9,7 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Anak yang tertaut ke wali murid, beserta hubungan wali dengan anak dari pivot `murid_wali`.
+ * Anak yang tertaut ke wali murid, beserta hubungan wali dengan anak dari pivot `murid_wali`. Murid harus
+ * dimuat lewat relasi `WaliMurid::murid()` supaya pivotnya ada.
  * Data murid lengkap (termasuk catatan khusus) disajikan `GET /murid/{id}`.
  *
  * @mixin Murid
@@ -22,7 +24,8 @@ class AnakWaliResource extends JsonResource
     public function toArray(Request $request): array
     {
         $kelas = $this->relationLoaded('kelasAktif') ? $this->kelasAktif->first() : null;
-        $pivot = $this->pivotWali();
+        /** @var MuridWali $pivot */
+        $pivot = $this->resource->getRelation('pivot');
 
         return [
             'id' => $this->id,
@@ -35,18 +38,10 @@ class AnakWaliResource extends JsonResource
             'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama],
             /** @var string|null */
             'foto_url' => app(MediaService::class)->urlPrivat($this->foto_path),
-            'hubungan' => $this->when($pivot !== null, fn () => $pivot?->hubungan),
-            'is_kontak_utama' => $this->when($pivot !== null, fn () => $pivot?->is_kontak_utama),
+            /** @var Hubungan */
+            'hubungan' => $pivot->hubungan,
+            /** @var bool */
+            'is_kontak_utama' => $pivot->is_kontak_utama,
         ];
-    }
-
-    /**
-     * Pivot hanya ada kalau murid dimuat lewat relasi `WaliMurid::murid()`.
-     */
-    private function pivotWali(): ?MuridWali
-    {
-        $pivot = $this->resource->relationLoaded('pivot') ? $this->resource->getRelation('pivot') : null;
-
-        return $pivot instanceof MuridWali ? $pivot : null;
     }
 }

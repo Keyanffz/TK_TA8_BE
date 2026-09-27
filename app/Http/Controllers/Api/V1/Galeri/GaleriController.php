@@ -7,6 +7,7 @@ use App\Http\Requests\Galeri\DaftarGaleriRequest;
 use App\Http\Requests\Galeri\PerbaruiFotoGaleriRequest;
 use App\Http\Requests\Galeri\SimpanAlbumRequest;
 use App\Http\Requests\Galeri\TambahFotoGaleriRequest;
+use App\Http\Resources\GaleriAlbumDetailResource;
 use App\Http\Resources\GaleriAlbumResource;
 use App\Models\GaleriAlbum;
 use App\Models\GaleriFoto;
@@ -47,7 +48,7 @@ class GaleriController extends Controller
     {
         $album = GaleriAlbum::query()->with(['foto', 'fotoPertama'])->withCount('foto')->findOrFail($id);
 
-        return ApiResponse::success(new GaleriAlbumResource($album));
+        return ApiResponse::success(new GaleriAlbumDetailResource($album));
     }
 
     /**
@@ -58,14 +59,14 @@ class GaleriController extends Controller
     {
         $album = $this->galeriService->buat($request->dataAlbum(), $request->cover());
 
-        return ApiResponse::success(new GaleriAlbumResource($album->load('foto', 'fotoPertama')->loadCount('foto')), "Album {$album->judul} dibuat.", status: 201);
+        return ApiResponse::success(new GaleriAlbumDetailResource($album->load('foto', 'fotoPertama')->loadCount('foto')), "Album {$album->judul} dibuat.", status: 201);
     }
 
     public function update(SimpanAlbumRequest $request, int $id): JsonResponse
     {
         $album = $this->galeriService->perbarui(GaleriAlbum::query()->findOrFail($id), $request->dataAlbum(), $request->cover());
 
-        return ApiResponse::success(new GaleriAlbumResource($album->load('foto', 'fotoPertama')->loadCount('foto')), 'Album tersimpan.');
+        return ApiResponse::success(new GaleriAlbumDetailResource($album->load('foto', 'fotoPertama')->loadCount('foto')), 'Album tersimpan.');
     }
 
     /**
@@ -86,7 +87,7 @@ class GaleriController extends Controller
     {
         $album = $this->galeriService->tambahFoto(GaleriAlbum::query()->findOrFail($id), $request->foto());
 
-        return ApiResponse::success(new GaleriAlbumResource($album->load('foto', 'fotoPertama')->loadCount('foto')), count($request->foto()).' foto ditambahkan.', status: 201);
+        return ApiResponse::success(new GaleriAlbumDetailResource($album->load('foto', 'fotoPertama')->loadCount('foto')), count($request->foto()).' foto ditambahkan.', status: 201);
     }
 
     /**
