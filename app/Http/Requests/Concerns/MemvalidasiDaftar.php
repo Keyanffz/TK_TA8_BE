@@ -38,6 +38,32 @@ trait MemvalidasiDaftar
         return ['sort' => ['sometimes', 'string', Rule::in($pilihan)]];
     }
 
+    /**
+     * Filter boolean bertipe `boolean` di OpenAPI, jadi klien boleh mengirim `true`/`false` selain `1`/`0`.
+     * Aturan `boolean` Laravel tidak menerima teks `true`/`false`, jadi nilainya diubah ke `1`/`0` sebelum
+     * validasi. Dipanggil dari `prepareForValidation()`.
+     *
+     * @param  list<string>  $nama  nama filter boolean, misalnya `dibaca` untuk `filter[dibaca]`
+     */
+    protected function normalkanFilterBoolean(array $nama): void
+    {
+        $filter = $this->input('filter');
+
+        if (! is_array($filter)) {
+            return;
+        }
+
+        foreach ($nama as $satu) {
+            $nilai = is_string($filter[$satu] ?? null) ? strtolower($filter[$satu]) : null;
+
+            if ($nilai === 'true' || $nilai === 'false') {
+                $filter[$satu] = $nilai === 'true' ? '1' : '0';
+            }
+        }
+
+        $this->merge(['filter' => $filter]);
+    }
+
     public function perHalaman(): int
     {
         return $this->integer('per_page', self::PER_HALAMAN_BAWAAN);

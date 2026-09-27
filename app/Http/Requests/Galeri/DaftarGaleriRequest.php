@@ -9,6 +9,11 @@ class DaftarGaleriRequest extends FormRequest
 {
     use MemvalidasiDaftar;
 
+    protected function prepareForValidation(): void
+    {
+        $this->normalkanFilterBoolean(['is_publik']);
+    }
+
     /**
      * @return array<string, mixed>
      */

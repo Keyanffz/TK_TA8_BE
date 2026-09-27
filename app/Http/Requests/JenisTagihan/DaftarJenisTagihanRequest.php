@@ -11,6 +11,11 @@ class DaftarJenisTagihanRequest extends FormRequest
 {
     use MemvalidasiDaftar;
 
+    protected function prepareForValidation(): void
+    {
+        $this->normalkanFilterBoolean(['is_aktif']);
+    }
+
     /**
      * @return array<string, mixed>
      */

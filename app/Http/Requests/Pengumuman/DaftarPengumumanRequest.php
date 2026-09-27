@@ -11,6 +11,11 @@ class DaftarPengumumanRequest extends FormRequest
 {
     use MemvalidasiDaftar;
 
+    protected function prepareForValidation(): void
+    {
+        $this->normalkanFilterBoolean(['terbit']);
+    }
+
     /**
      * @return array<string, mixed>
      */

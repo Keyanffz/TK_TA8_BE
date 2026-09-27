@@ -13,7 +13,7 @@ use Illuminate\Http\JsonResponse;
 class NotifikasiController extends Controller
 {
     /**
-     * Notifikasi milik pengguna yang sedang masuk, terbaru lebih dulu. `filter[dibaca]=0` hanya yang belum dibaca.
+     * Notifikasi milik pengguna yang sedang masuk, terbaru lebih dulu. `filter[dibaca]=0` atau `false` hanya yang belum dibaca.
      */
     public function index(DaftarNotifikasiRequest $request, #[CurrentUser] User $user): JsonResponse
     {

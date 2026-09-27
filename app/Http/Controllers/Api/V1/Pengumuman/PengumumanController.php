@@ -30,7 +30,7 @@ class PengumumanController extends Controller
      * murid di kelasnya / anaknya, ditambah tulisannya sendiri (termasuk draft). Kepala Sekolah melihat semua.
      * Yang disematkan lebih dulu, lalu terbaru.
      *
-     * Filter `filter[target]`, `filter[terbit]` (`0` = draft). `search` mencari judul.
+     * Filter `filter[target]`, `filter[terbit]` (`0` atau `false` = draft). `search` mencari judul.
      */
     public function index(DaftarPengumumanRequest $request, #[CurrentUser] User $user): JsonResponse
     {

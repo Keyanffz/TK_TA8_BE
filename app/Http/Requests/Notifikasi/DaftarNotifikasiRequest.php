@@ -9,6 +9,11 @@ class DaftarNotifikasiRequest extends FormRequest
 {
     use MemvalidasiDaftar;
 
+    protected function prepareForValidation(): void
+    {
+        $this->normalkanFilterBoolean(['dibaca']);
+    }
+
     /**
      * @return array<string, mixed>
      */
