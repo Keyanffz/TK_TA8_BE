@@ -14,9 +14,9 @@ use Illuminate\Http\JsonResponse;
 class ProfilWaliController extends Controller
 {
     /**
-     * Onboarding dan ubah profil wali murid: nomor HP, alamat, pekerjaan, dan NIK (opsional). Boleh sebagian;
-     * field yang tidak dikirim tidak berubah. `wali_murid.profil_lengkap` bernilai `true` setelah nomor HP,
-     * alamat, dan pekerjaan terisi.
+     * Onboarding dan ubah profil wali murid setelah password awal diganti. `nama` dan `no_hp` wajib; `nik`,
+     * `alamat`, dan `pekerjaan` opsional (tidak dikirim = tidak berubah, `null` = dikosongkan).
+     * `wali_murid.profil_lengkap` bernilai `true` setelah nomor HP, alamat, dan pekerjaan terisi.
      */
     public function __invoke(LengkapiProfilWaliRequest $request, #[CurrentUser] User $user, WaliMuridService $service): JsonResponse
     {

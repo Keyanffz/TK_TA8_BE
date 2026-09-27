@@ -121,10 +121,10 @@ class WaliMuridService
     }
 
     /**
-     * Onboarding dan ubah profil oleh wali sendiri. Sebagian field boleh dikirim; `profil_lengkap` menjadi
-     * true setelah nomor HP, alamat, dan pekerjaan terisi.
+     * Onboarding dan ubah profil oleh wali sendiri. `profil_lengkap` menjadi true setelah nomor HP, alamat, dan
+     * pekerjaan terisi.
      *
-     * @param  array{no_hp?: string, alamat?: string, pekerjaan?: string, nik?: string|null}  $data
+     * @param  array{nama: string, no_hp: string, alamat?: string|null, pekerjaan?: string|null, nik?: string|null}  $data
      */
     public function lengkapiProfil(User $user, array $data): User
     {
@@ -211,7 +211,7 @@ class WaliMuridService
     }
 
     /**
-     * @param  array{nama?: string, no_hp?: string, alamat?: string, pekerjaan?: string, nik?: string|null}  $data
+     * @param  array{nama?: string, no_hp?: string, alamat?: string|null, pekerjaan?: string|null, nik?: string|null}  $data
      * @return list<string> nama field yang nilainya berubah
      */
     private function simpanData(WaliMurid $wali, array $data): array
