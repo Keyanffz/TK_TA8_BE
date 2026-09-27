@@ -103,7 +103,8 @@ it('mengisi data demo sesuai B8', function () {
         ->and(Pendaftaran::query()->where('status', StatusPendaftaran::Diterima)->sole()->murid?->waliMurid)->toHaveCount(1)
         ->and(GaleriAlbum::query()->where('is_publik', true)->count())->toBe(2)
         ->and(Pengaturan::query()->where('kunci', 'ppdb.dibuka')->value('nilai'))->toBeTrue()
-        ->and(Pengaturan::query()->where('kunci', 'beranda.info_wali')->value('nilai')['aktif'])->toBeTrue();
+        ->and(Pengaturan::query()->where('kunci', 'beranda.info_wali')->value('nilai')['aktif'])->toBeTrue()
+        ->and(User::query()->pluck('email')->reject(fn (string $email) => str_ends_with($email, '.test'))->all())->toBe([]);
 
     Storage::disk('local')->assertExists(KegiatanFoto::query()->value('path'));
     Storage::disk('public')->assertExists(GaleriAlbum::query()->value('cover_path'));
