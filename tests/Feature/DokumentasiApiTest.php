@@ -1,5 +1,15 @@
 <?php
 
+use App\Enums\Hubungan;
+use App\Models\Agenda;
+use App\Models\Kelas;
+use App\Models\Murid;
+use App\Models\Pengumuman;
+use App\Models\TahunAjaran;
+use App\Models\WaliMurid;
+use Database\Seeders\PengaturanSeeder;
+use Illuminate\Support\Facades\Storage;
+
 it('membuka /docs/api di environment selain production', function () {
     $this->get('/docs/api')->assertOk();
 });
@@ -110,4 +120,80 @@ it('mendokumentasikan endpoint publik tanpa auth dan dashboard sebagai gabungan 
         ->and($dashboard['anyOf'][1]['required'])->toContain('kelas_saya', 'progres_rapor', 'pembayaran_menunggu')
         ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'rapor_terbaru')
         ->and($dokumen['paths']['/public/ppdb']['get']['responses'][200]['content']['application/json']['schema']['properties']['data']['properties']['dibuka'])->toBe(['type' => 'boolean']);
+});
+
+it('mendokumentasikan meta paginasi sebagai angka di semua endpoint berpaginasi', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $berpaginasi = [];
+
+    foreach ($dokumen['paths'] as $path => $operasi) {
+        $meta = isset($operasi['get']) ? (skemaSukses($dokumen, $path)['properties']['meta'] ?? null) : null;
+
+        if (($meta['type'] ?? null) === 'object') {
+            $berpaginasi[$path] = array_map(fn (array $properti) => $properti['type'], $meta['properties']);
+        }
+    }
+
+    expect($berpaginasi)->toHaveCount(18);
+    foreach ($berpaginasi as $path => $tipe) {
+        expect($tipe)->toBe(['current_page' => 'integer', 'per_page' => 'integer', 'total' => 'integer', 'last_page' => 'integer'], $path);
+    }
+});
+
+it('mencocokkan respons daftar berpaginasi dengan dokumentasinya, termasuk meta', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    Agenda::factory()->create();
+    Pengumuman::factory()->count(2)->create(['is_publik' => true]);
+
+    $respons = $this->getJson('/api/v1/public/pengumuman?per_page=1')->assertOk()->json();
+
+    expect(selisihDenganSkema($respons, skemaSukses($dokumen, '/public/pengumuman'), $dokumen, 'respons'))->toBe([])
+        ->and($respons['meta'])->toBe(['current_page' => 1, 'per_page' => 1, 'total' => 2, 'last_page' => 2]);
+});
+
+it('mendokumentasikan GET /public/profil sesuai kunci pengaturan dan respons sebenarnya', function () {
+    Storage::fake('public');
+    $this->seed(PengaturanSeeder::class);
+    $kepsek = buatKepalaSekolah();
+    $this->actingAs($kepsek)->putJson('/api/v1/pengaturan', ['items' => [
+        'landing.fasilitas' => [['nama' => 'Taman bermain']],
+        'landing.keunggulan' => [['judul' => 'Guru berpengalaman', 'deskripsi' => 'Rata-rata mengajar lebih dari sepuluh tahun.', 'ikon' => 'award']],
+    ]])->assertOk();
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $skema = skemaSukses($dokumen, '/public/profil')['properties']['data'];
+
+    expect(array_keys($skema['properties']))->toBe([
+        'profil.nama_sekolah', 'profil.npsn', 'profil.alamat', 'profil.telepon', 'profil.email', 'profil.maps_embed_url',
+        'profil.logo', 'profil.logo_url', 'profil.visi', 'profil.misi', 'profil.sejarah', 'profil.sambutan_kepsek',
+        'landing.hero', 'landing.program', 'landing.fasilitas', 'landing.keunggulan',
+    ])
+        ->and($skema)->not->toHaveKey('additionalProperties')
+        ->and($skema['properties']['profil.misi'])->toBe(['type' => 'array', 'items' => ['type' => 'string']])
+        ->and($skema['properties']['landing.hero']['properties']['gambar_url']['type'])->toBe(['string', 'null']);
+
+    $respons = $this->getJson('/api/v1/public/profil')->assertOk()->json('data');
+    expect(array_keys($respons))->toEqualCanonicalizing(array_keys($skema['properties']))
+        ->and(selisihDenganSkema($respons, $skema, $dokumen))->toBe([]);
+});
+
+it('mendokumentasikan id kelas di data anak, murid, dan tagihan sebagai angka sesuai respons', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $skema = $dokumen['components']['schemas'];
+
+    expect($skema['AnakWaliResource']['properties']['kelas']['properties']['id']['type'])->toBe('integer')
+        ->and($skema['MuridResource']['properties']['kelas']['properties']['id']['type'])->toBe('integer')
+        ->and($skema['TagihanResource']['properties']['murid']['properties']['kelas']['properties']['id']['type'])->toBe('integer');
+
+    $kelas = Kelas::factory()->for(TahunAjaran::factory()->aktif())->create();
+    $murid = Murid::factory()->create();
+    $kelas->murid()->attach($murid);
+    $wali = WaliMurid::factory()->create();
+    $murid->waliMurid()->attach($wali, ['hubungan' => Hubungan::Ibu, 'is_kontak_utama' => true]);
+
+    $anak = $this->actingAs($wali->user)->getJson('/api/v1/wali/anak')->assertOk()->json('data');
+    $detailMurid = $this->actingAs($wali->user)->getJson("/api/v1/murid/{$murid->id}")->assertOk()->json('data');
+
+    expect($anak[0]['kelas']['id'])->toBe($kelas->id)
+        ->and(selisihDenganSkema($anak, skemaSukses($dokumen, '/wali/anak')['properties']['data'], $dokumen))->toBe([])
+        ->and(selisihDenganSkema($detailMurid, $skema['MuridResource'], $dokumen))->toBe([]);
 });

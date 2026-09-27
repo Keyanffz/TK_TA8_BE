@@ -555,6 +555,20 @@ Diambil selama Fase 3:
 
 ## Changelog
 
+### Perbaikan OpenAPI (branch `be/fix-openapi`)
+
+Laporan FE: tipe di `api.json` tidak sesuai respons. Respons JSON tidak berubah; yang diubah hanya informasi tipe untuk Scramble.
+
+- `app/Support/ApiResponse.php`: `meta` paginasi (`current_page`, `per_page`, `total`, `last_page`) di-cast `int`, karena Scramble tidak membaca anotasi `@var` paginator dan menulis keempatnya sebagai string di 18 endpoint berpaginasi.
+- `app/Http/Controllers/Api/V1/Publik/PublikController.php`: `@response` untuk `GET /public/profil` berisi 16 kunci pengaturan grup `profil` dan `landing` beserta pasangan `*_url`. Field opsional item `landing.*` (misalnya `deskripsi`, `gambar`) ditandai opsional karena tidak ada kalau tidak dikirim saat `PUT /pengaturan`.
+- `app/Http/Resources/{AnakWaliResource, MuridResource, TagihanResource}.php`: anotasi bentuk `kelas` (`id` integer). Ditemukan juga lewat test baru: `MuridResource.wali[]` (`hubungan` enum, `is_kontak_utama` boolean, `tertaut_at` date-time) dan `TagihanResource.rekening` (sebelumnya tertulis `null`).
+- `tests/Pest.php`: helper `selisihDenganSkema()` dan `skemaSukses()` untuk mencocokkan respons JSON dengan skema OpenAPI (tipe, field wajib, field yang tidak terdokumentasi).
+- `tests/Feature/DokumentasiApiTest.php`: meta angka di semua endpoint berpaginasi, bentuk dan respons `GET /public/profil`, `kelas.id` integer, dan respons `GET /wali/anak` serta `GET /murid/{id}` cocok dengan skema.
+- `tests/Feature/Hardening/KesesuaianDokumentasiTest.php` (baru): dengan data demo, respons setiap endpoint GET untuk lima jenis pengguna (publik, Kepala Sekolah, guru, bendahara, wali) dicocokkan dengan dokumentasi; lebih dari 100 kombinasi diperiksa dan semuanya cocok.
+- `storage/api-docs/api.json`: diekspor ulang.
+
+Hasil pengecekan: 559 test lulus di SQLite dan MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan.
+
 ### Fase 8
 
 File baru:
