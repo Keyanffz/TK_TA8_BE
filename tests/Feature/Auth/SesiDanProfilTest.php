@@ -112,6 +112,15 @@ it('menolak ganti password dengan password lama yang salah atau sama', function 
     'password baru sama' => [['current_password' => 'rahasia123', 'password' => 'rahasia123', 'password_confirmation' => 'rahasia123'], 'password'],
 ]);
 
+it('memakai istilah password di pesan password lama yang salah', function () {
+    $guru = buatGuru();
+    $guru->user->update(['password' => 'rahasia123']);
+
+    $this->withToken($guru->user->createToken('web')->plainTextToken)
+        ->putJson('/api/v1/auth/password', ['current_password' => 'bukanItu99', 'password' => 'rahasiaBaru456', 'password_confirmation' => 'rahasiaBaru456'])
+        ->assertJsonPath('errors.current_password', ['Password salah.']);
+});
+
 it('tidak menyediakan ganti password untuk wali murid', function () {
     $wali = User::factory()->waliMurid()->create();
 

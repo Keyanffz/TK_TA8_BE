@@ -28,7 +28,7 @@ return [
     'can' => 'Bidang :attribute berisi nilai yang tidak sah.',
     'confirmed' => 'Konfirmasi :attribute tidak cocok.',
     'contains' => 'Bidang :attribute tidak memiliki nilai yang diperlukan.',
-    'current_password' => 'Kata sandi salah.',
+    'current_password' => 'Password salah.',
     'date' => ':Attribute bukan tanggal yang valid.',
     'date_equals' => ':Attribute harus berisi tanggal yang sama dengan :date.',
     'date_format' => ':Attribute tidak cocok dengan format :format.',
