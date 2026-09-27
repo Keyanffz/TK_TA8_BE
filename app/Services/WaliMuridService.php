@@ -98,10 +98,7 @@ class WaliMuridService
      */
     public function lepasAkunOtomatisBelumDipakai(Murid $murid, User $pelaku): ?WaliMurid
     {
-        $wali = $murid->waliMurid()->with('user')->withCount('murid')->get()
-            ->first(fn (WaliMurid $calon): bool => $calon->user->username === $murid->nis
-                && $calon->user->wajib_ganti_password
-                && $calon->murid_count === 1);
+        $wali = $this->akunOtomatisBelumDipakai($murid);
 
         if ($wali === null) {
             return null;
@@ -148,6 +145,27 @@ class WaliMuridService
                 ->withProperties(['field' => $diubah])
                 ->log("Mengubah data wali murid {$wali->user->name}: ".implode(', ', $diubah));
         }
+
+        return $wali;
+    }
+
+    /**
+     * Setelah tanggal lahir murid dikoreksi, password awal akun otomatisnya yang belum pernah dipakai ikut diganti
+     * ke tanggal lahir baru, supaya kartu akun tetap berlaku. Akun yang sudah dipakai tidak disentuh.
+     */
+    public function sesuaikanPasswordAwal(Murid $murid, User $pelaku): ?WaliMurid
+    {
+        $wali = $this->akunOtomatisBelumDipakai($murid);
+
+        if ($wali === null) {
+            return null;
+        }
+
+        $wali->user->forceFill(['password' => $murid->passwordAwalWali()])->save();
+
+        activity('akun')->causedBy($pelaku)->performedOn($wali->user)->event('password_disesuaikan')
+            ->withProperties(['murid_id' => $murid->id])
+            ->log("Menyesuaikan password awal wali murid {$wali->user->username} dengan tanggal lahir baru {$murid->nama_lengkap}");
 
         return $wali;
     }
@@ -229,5 +247,17 @@ class WaliMuridService
         });
 
         return $diubah;
+    }
+
+    /**
+     * Akun otomatis murid ini yang belum pernah dipakai: username sama dengan NIS murid, password awal belum
+     * diganti, dan hanya tertaut ke murid ini (akun keluarga yang password-nya direset tidak termasuk).
+     */
+    private function akunOtomatisBelumDipakai(Murid $murid): ?WaliMurid
+    {
+        return $murid->waliMurid()->with('user')->withCount('murid')->get()
+            ->first(fn (WaliMurid $calon): bool => $calon->user->username === $murid->nis
+                && $calon->user->wajib_ganti_password
+                && $calon->murid_count === 1);
     }
 }

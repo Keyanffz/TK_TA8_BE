@@ -85,10 +85,13 @@ class MuridController extends Controller
 
     /**
      * Mengubah data murid, termasuk status (lulus, pindah, keluar) dan tanggal keluarnya.
+     *
+     * Kalau `tanggal_lahir` berubah dan akun wali otomatis murid ini belum pernah dipakai (password awal belum
+     * diganti), password awalnya ikut diganti ke tanggal lahir baru (DDMMYYYY).
      */
-    public function update(SimpanMuridRequest $request, int $id): JsonResponse
+    public function update(SimpanMuridRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
-        $murid = $this->muridService->perbarui(Murid::query()->findOrFail($id), $request->dataMurid(), $request->foto());
+        $murid = $this->muridService->perbarui(Murid::query()->findOrFail($id), $request->dataMurid(), $request->foto(), $kepalaSekolah);
 
         return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])), 'Data murid tersimpan.');
     }

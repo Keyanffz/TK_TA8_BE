@@ -67,27 +67,32 @@ class MuridService
 
     /**
      * Perubahan status ikut mengubah penempatan murid di tahun ajaran aktif: lulus → `lulus`,
-     * pindah/keluar → `keluar`, kembali aktif → penempatan dibuka lagi (dengan cek kapasitas).
+     * pindah/keluar → `keluar`, kembali aktif → penempatan dibuka lagi (dengan cek kapasitas). Tanggal lahir yang
+     * berubah ikut mengganti password awal akun wali otomatis yang belum pernah dipakai.
      *
      * @param  array<string, mixed>  $data
      *
      * @throws BusinessRuleException
      */
-    public function perbarui(Murid $murid, array $data, ?UploadedFile $foto): Murid
+    public function perbarui(Murid $murid, array $data, ?UploadedFile $foto, User $kepalaSekolah): Murid
     {
         $fotoLama = $murid->foto_path;
         $statusLama = $murid->status;
         $statusBaru = StatusMurid::from($data['status']);
 
-        DB::transaction(function () use ($murid, $data, $foto, $statusLama, $statusBaru): void {
+        DB::transaction(function () use ($murid, $data, $foto, $statusLama, $statusBaru, $kepalaSekolah): void {
             $murid->fill([...$data, 'tanggal_keluar' => $statusBaru === StatusMurid::Aktif ? null : $data['tanggal_keluar']]);
 
             if ($foto !== null) {
                 $murid->foto_path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
             }
 
+            $tanggalLahirBerubah = $murid->isDirty('tanggal_lahir');
             $murid->save();
 
+            if ($tanggalLahirBerubah) {
+                $this->waliMuridService->sesuaikanPasswordAwal($murid, $kepalaSekolah);
+            }
             if ($statusLama !== $statusBaru) {
                 $this->sesuaikanPenempatan($murid, $statusBaru);
             }

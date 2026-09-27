@@ -12780,6 +12780,7 @@
         "/murid/{id}": {
             "put": {
                 "operationId": "murid.update",
+                "description": "Kalau `tanggal_lahir` berubah dan akun wali otomatis murid ini belum pernah dipakai (password awal belum\ndiganti), password awalnya ikut diganti ke tanggal lahir baru (DDMMYYYY).",
                 "summary": "Mengubah data murid, termasuk status (lulus, pindah, keluar) dan tanggal keluarnya",
                 "tags": [
                     "Murid"

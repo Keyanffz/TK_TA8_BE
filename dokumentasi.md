@@ -59,7 +59,7 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
 
-Login wali dengan NIS (branch `be/login-nis`). Perubahan kontrak dan skema sudah disetujui pemilik repo; yang di bawah ini detail yang diputuskan saat pengerjaan dan sudah ditulis ke Bagian A:
+Login wali dengan NIS (branch `be/login-nis`). Perubahan kontrak dan skema sudah disetujui pemilik repo; yang di bawah ini detail yang diputuskan saat pengerjaan dan sudah ditulis ke Bagian A. Nomor 1–14 sudah disetujui; nomor 20 menunggu review:
 
 1. Akun wali otomatis dari `POST /murid` memakai hubungan `wali`, karena body `POST /murid` tidak punya field hubungan. Kepala Sekolah mengubahnya lewat `PATCH /murid/{id}/wali/{wali_murid_id}`. Pembuatan akun ada di transaksi yang sama dengan pembuatan murid; kalau akun gagal dibuat, murid juga batal. Log `akun`/`dibuat` (properti `murid_id`, `username`).
 2. "Akun otomatis yang belum pernah dipakai" = akun dengan username sama dengan NIS anak itu, `wajib_ganti_password = true`, dan hanya tertaut ke anak itu. Syarat terakhir mencegah akun keluarga yang password-nya direset Kepala Sekolah (sehingga `wajib_ganti_password` kembali true) ikut dinonaktifkan. Penonaktifan mencabut semua token dan dicatat di log `akun`/`dinonaktifkan`.
@@ -78,8 +78,9 @@ Login wali dengan NIS (branch `be/login-nis`). Perubahan kontrak dan skema sudah
 15. Login wali: username dinormalkan (huruf besar, spasi dibuang). Akun guru yang kebetulan punya username tetap tidak bisa lewat `login-wali`. NIS salah dan password salah memberi pesan yang sama di field `username` ("NIS atau password salah.").
 16. `LayananBelumDikonfigurasiException` dihapus karena hanya dipakai verifikasi Google. `GET /wali-murid` `search` juga mencari username.
 17. A5 tidak diubah karena tidak ada enum baru; kode error `PASSWORD_WAJIB_DIGANTI` ditulis di daftar kode error A7. A4 ikut diperbarui (kolom `users`, `murid`, `pendaftaran`) walau tidak disebut di permintaan, karena skemanya berubah.
-18. Hal yang belum ditangani: (a) akun wali lama hasil login Google tidak punya username sehingga tidak bisa login; tidak ada migrasi data karena belum dipakai di luar lokal. (b) Murid yang sudah ada sebelum migration tidak dibuatkan akun otomatis; tidak ada command untuk itu. (c) Kalau tanggal lahir murid dikoreksi lewat `PUT /murid/{id}`, password akun otomatisnya tidak ikut berubah; Kepala Sekolah perlu mereset password. (d) Password awal berupa tanggal lahir mudah ditebak orang yang mengenal keluarga; pengamannya hanya rate limit per IP+username dan kewajiban ganti password.
+18. Hal yang belum ditangani: (a) akun wali lama hasil login Google tidak punya username sehingga tidak bisa login; tidak ada migrasi data karena belum dipakai di luar lokal. (b) Murid yang sudah ada sebelum migration tidak dibuatkan akun otomatis; tidak ada command untuk itu. (c) **Selesai** (lihat nomor 20). (d) Password awal berupa tanggal lahir mudah ditebak orang yang mengenal keluarga; pengamannya hanya rate limit per IP+username dan kewajiban ganti password.
 19. `down()` migration `tambah_username_ke_users_table` gagal kalau sudah ada akun tanpa email (email kembali NOT NULL), dan `down()` `ubah_wali_murid_id_pendaftaran_nullable` gagal kalau ada pendaftaran tanpa wali. Keduanya sudah dicoba di database tanpa data seperti itu.
+20. Permintaan pemilik repo setelah review: kalau `tanggal_lahir` murid berubah lewat `PUT /murid/{id}`, password akun otomatisnya ikut diganti ke tanggal lahir baru, dengan syarat "belum pernah dipakai" yang sama seperti nomor 2 (username = NIS, masih wajib ganti password, hanya tertaut ke murid itu). Akun keluarga yang direset dan tertaut ke beberapa anak tidak diubah; Kepala Sekolah mereset ulang kalau perlu. Password ikut berubah di transaksi yang sama dengan data murid, token tidak dicabut (akun belum pernah dipakai), dan dicatat di log `akun`/`password_disesuaikan` (properti `murid_id`). Ditulis di B6.8 dan B7; Bagian A tidak berubah karena bentuk request dan respons tetap.
 
 Revisi setelah review audit dashboard (dua keputusan audit diubah pemilik repo; kontraknya sudah di Bagian A):
 
@@ -632,6 +633,8 @@ Diambil selama Fase 3:
 ## Changelog
 
 ### Login wali dengan NIS (branch `be/login-nis`)
+
+Tambahan setelah review: `WaliMuridService::sesuaikanPasswordAwal()` dipanggil `MuridService::perbarui()` saat `tanggal_lahir` berubah; pemeriksaan akun otomatis yang belum dipakai dipindah ke `akunOtomatisBelumDipakai()` dan dipakai bersama `lepasAkunOtomatisBelumDipakai()`. `MuridController::update` meneruskan Kepala Sekolah sebagai pelaku log. Test baru di `tests/Feature/Murid/AkunWaliOtomatisTest.php` (4 test; test pertama dicoba gagal dulu tanpa perbaikannya). `PROMPT_BE_TK.md` B6.8 dan B7; `api.json` diekspor ulang (hanya deskripsi `PUT /murid/{id}` yang berubah). Hasil: 650 test lulus di SQLite dan MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan; data demo diisi ulang.
 
 Perubahan desain yang disetujui pemilik repo: login Google diganti login NIS anak + password, kode tautan diganti akun wali otomatis dan tambah anak, PPDB bisa tanpa login. Kontrak ditulis ke Bagian A `PROMPT_BE_TK.md` (A2, A3, A4, A6, A7) dan Bagian B (B1, B2, B6.2, B6.8, B6.11, B7, B8) serta glosarium C4 (baris Kode Tautan dihapus), lalu Bagian A disalin identik ke `PROMPT_FE_TK.md` di `main` repo FE (commit `1d8355c`). Keputusan detail ada di "Keputusan menunggu review".
 

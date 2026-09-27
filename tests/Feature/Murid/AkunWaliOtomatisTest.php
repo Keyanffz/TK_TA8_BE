@@ -88,3 +88,63 @@ it('tidak menyentuh akun wali yang sudah dipakai saat murid dihapus', function (
 
     expect($wali->user->fresh()?->status)->toBe(StatusAkun::Aktif);
 });
+
+function ubahTanggalLahir(object $test, User $kepsek, Murid $murid, string $tanggalLahir): void
+{
+    $test->actingAs($kepsek)->putJson("/api/v1/murid/{$murid->id}", [
+        ...dataMuridBaru(['tanggal_lahir' => $tanggalLahir]),
+        'status' => 'aktif',
+    ])->assertOk();
+}
+
+it('mengganti password awal akun otomatis yang belum dipakai saat tanggal lahir murid dikoreksi', function () {
+    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
+    $murid = Murid::query()->where('nis', $nis)->sole();
+    $akun = User::query()->where('username', $nis)->sole();
+
+    ubahTanggalLahir($this, $this->kepsek, $murid, '2021-12-06');
+
+    $akun->refresh();
+    expect(Hash::check('06122021', (string) $akun->password))->toBeTrue()
+        ->and(Hash::check('05112021', (string) $akun->password))->toBeFalse()
+        ->and($akun->wajib_ganti_password)->toBeTrue();
+
+    $log = Activity::query()->where('log_name', 'akun')->where('event', 'password_disesuaikan')->sole();
+    expect($log->causer_id)->toBe($this->kepsek->id)
+        ->and($log->subject_id)->toBe($akun->id)
+        ->and($log->properties->all())->toBe(['murid_id' => $murid->id]);
+
+    $this->postJson('/api/v1/auth/login-wali', ['username' => $nis, 'password' => '06122021'])->assertOk();
+});
+
+it('tidak mengubah password akun yang sudah dipakai saat tanggal lahir murid dikoreksi', function () {
+    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
+    $murid = Murid::query()->where('nis', $nis)->sole();
+    $akun = User::query()->where('username', $nis)->sole();
+    $akun->update(['password' => 'rakaCeria21', 'wajib_ganti_password' => false]);
+
+    ubahTanggalLahir($this, $this->kepsek, $murid, '2021-12-06');
+
+    expect(Hash::check('rakaCeria21', (string) $akun->fresh()?->password))->toBeTrue();
+});
+
+it('tidak mengubah password akun keluarga yang direset dan tertaut ke anak lain', function () {
+    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
+    $murid = Murid::query()->where('nis', $nis)->sole();
+    $akun = User::query()->with('waliMurid')->where('username', $nis)->sole();
+    $akun->waliMurid?->murid()->attach(Murid::factory()->create(), ['hubungan' => Hubungan::Ibu, 'is_kontak_utama' => true]);
+
+    ubahTanggalLahir($this, $this->kepsek, $murid, '2021-12-06');
+
+    expect(Hash::check('05112021', (string) $akun->fresh()?->password))->toBeTrue()
+        ->and(Activity::query()->where('event', 'password_disesuaikan')->exists())->toBeFalse();
+});
+
+it('tidak menyentuh password akun kalau tanggal lahir tidak berubah', function () {
+    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
+    $murid = Murid::query()->where('nis', $nis)->sole();
+
+    ubahTanggalLahir($this, $this->kepsek, $murid, '2021-11-05');
+
+    expect(Activity::query()->where('event', 'password_disesuaikan')->exists())->toBeFalse();
+});
