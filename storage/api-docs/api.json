@@ -7857,7 +7857,7 @@
         "/kegiatan/{id}": {
             "put": {
                 "operationId": "kegiatanKelas.update",
-                "summary": "Mengubah tanggal, tema, judul, dan deskripsi. Hanya guru pembuat dan Kepala Sekolah",
+                "summary": "Mengubah tanggal, tema, judul, dan deskripsi. Hanya guru pembuat dan Kepala Sekolah. `kelas_id` dan\n`foto` ditolak (422): kelas tidak bisa diganti, foto lewat `POST /kegiatan/{id}/foto`",
                 "tags": [
                     "KegiatanKelas"
                 ],
@@ -7874,9 +7874,9 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/SimpanKegiatanRequest"
+                                "$ref": "#/components/schemas/PerbaruiKegiatanRequest"
                             }
                         }
                     }
@@ -31238,6 +31238,39 @@
                 },
                 "title": "PerbaruiFotoKegiatanRequest"
             },
+            "PerbaruiKegiatanRequest": {
+                "type": "object",
+                "description": "`PUT /kegiatan/{id}`: tanggal, tema, judul, dan deskripsi. Kelas tidak bisa diganti dan foto dikelola lewat\nendpoint foto; mengirim `kelas_id` atau `foto` dibalas 422.",
+                "properties": {
+                    "tanggal": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "tema": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "judul": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "deskripsi": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 5000
+                    }
+                },
+                "required": [
+                    "tanggal",
+                    "judul"
+                ],
+                "title": "PerbaruiKegiatanRequest"
+            },
             "PerbaruiProfilRequest": {
                 "type": "object",
                 "properties": {
@@ -32112,7 +32145,7 @@
             },
             "SimpanKegiatanRequest": {
                 "type": "object",
-                "description": "`POST /kegiatan` (multipart: data + `foto[]` maksimal 10) dan `PUT /kegiatan/{id}` (data saja; foto dikelola\nlewat endpoint foto). Guru hanya mencatat kegiatan untuk kelas yang dia ampu di tahun ajaran aktif.",
+                "description": "`POST /kegiatan` (multipart: data + `foto[]` maksimal 10). Guru hanya mencatat kegiatan untuk kelas yang dia\nampu di tahun ajaran aktif. `PUT /kegiatan/{id}` memakai `PerbaruiKegiatanRequest`.",
                 "properties": {
                     "tanggal": {
                         "type": "string",

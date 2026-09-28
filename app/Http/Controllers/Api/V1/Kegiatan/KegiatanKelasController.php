@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Kegiatan;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Kegiatan\DaftarKegiatanRequest;
 use App\Http\Requests\Kegiatan\PerbaruiFotoKegiatanRequest;
+use App\Http\Requests\Kegiatan\PerbaruiKegiatanRequest;
 use App\Http\Requests\Kegiatan\SimpanKegiatanRequest;
 use App\Http\Requests\Kegiatan\TambahFotoKegiatanRequest;
 use App\Http\Resources\KegiatanKelasResource;
@@ -71,13 +72,14 @@ class KegiatanKelasController extends Controller
     }
 
     /**
-     * Mengubah tanggal, tema, judul, dan deskripsi. Hanya guru pembuat dan Kepala Sekolah.
+     * Mengubah tanggal, tema, judul, dan deskripsi. Hanya guru pembuat dan Kepala Sekolah. `kelas_id` dan
+     * `foto` ditolak (422): kelas tidak bisa diganti, foto lewat `POST /kegiatan/{id}/foto`.
      */
-    public function update(SimpanKegiatanRequest $request, int $id): JsonResponse
+    public function update(PerbaruiKegiatanRequest $request, int $id): JsonResponse
     {
         $kegiatan = KegiatanKelas::query()->findOrFail($id);
         Gate::authorize('kelola', $kegiatan);
-        $kegiatan->update($request->dataKegiatan());
+        $kegiatan->update($request->validated());
 
         return ApiResponse::success(new KegiatanKelasResource($kegiatan->load(self::RELASI)), 'Kegiatan tersimpan.');
     }

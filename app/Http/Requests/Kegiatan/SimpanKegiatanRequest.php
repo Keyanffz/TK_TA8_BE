@@ -12,8 +12,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 
 /**
- * `POST /kegiatan` (multipart: data + `foto[]` maksimal 10) dan `PUT /kegiatan/{id}` (data saja; foto dikelola
- * lewat endpoint foto). Guru hanya mencatat kegiatan untuk kelas yang dia ampu di tahun ajaran aktif.
+ * `POST /kegiatan` (multipart: data + `foto[]` maksimal 10). Guru hanya mencatat kegiatan untuk kelas yang dia
+ * ampu di tahun ajaran aktif. `PUT /kegiatan/{id}` memakai `PerbaruiKegiatanRequest`.
  */
 class SimpanKegiatanRequest extends FormRequest
 {
@@ -22,33 +22,14 @@ class SimpanKegiatanRequest extends FormRequest
      */
     public function rules(): array
     {
-        $data = [
+        return [
             'tanggal' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'tema' => ['nullable', 'string', 'max:100'],
             'judul' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string', 'max:5000'],
-        ];
-
-        if ($this->route('id') !== null) {
-            return [...$data, 'kelas_id' => ['prohibited'], 'foto' => ['prohibited']];
-        }
-
-        return [
-            ...$data,
             'kelas_id' => ['required', 'integer', 'exists:kelas,id', $this->kelasDiampu(...)],
             'foto' => ['sometimes', 'array', 'max:'.KegiatanKelasService::MAKSIMAL_FOTO_PER_UNGGAHAN],
             'foto.*' => ['required', ...MediaService::aturanGambar()],
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'kelas_id.prohibited' => 'Kelas kegiatan tidak bisa diganti. Hapus kegiatan ini lalu catat ulang di kelas yang benar.',
-            'foto.prohibited' => 'Foto ditambahkan lewat POST /kegiatan/{id}/foto.',
         ];
     }
 

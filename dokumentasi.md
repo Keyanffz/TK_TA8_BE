@@ -17,6 +17,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 8. Hardening | Selesai, menunggu review |
 | Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, direview; revisi setelah review menunggu review |
 | Login wali dengan NIS (branch `be/login-nis`) | Selesai, menunggu review |
+| Perbaikan dokumentasi `PUT /kegiatan/{id}` (branch `be/fix-kegiatan`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -631,6 +632,19 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Perbaikan dokumentasi `PUT /kegiatan/{id}` (branch `be/fix-kegiatan`)
+
+Laporan FE: `api.json` mewajibkan `kelas_id` di `PUT /kegiatan/{id}`, padahal backend menolaknya (422 di `kelas_id`). Penyebabnya, `POST` dan `PUT` memakai `SimpanKegiatanRequest` yang bercabang lewat `route('id')`; saat ekspor tidak ada route aktif, jadi Scramble selalu membaca aturan `POST` dan menulis satu skema untuk keduanya. Perilaku API tidak berubah.
+
+- `app/Http/Requests/Kegiatan/PerbaruiKegiatanRequest.php` (baru): aturan `PUT` (`tanggal`, `judul` wajib; `tema`, `deskripsi` opsional). `kelas_id` dan `foto` tetap ditolak dengan pesan yang sama, tetapi disembunyikan dari OpenAPI lewat `@ignoreParam`.
+- `SimpanKegiatanRequest` hanya untuk `POST`; `KegiatanKelasController::update` memakai request baru.
+- `tests/Feature/DokumentasiApiTest.php`: body `PUT /kegiatan/{id}` bertipe `application/json` dengan field `tanggal, tema, judul, deskripsi` (wajib `tanggal`, `judul`), dan `POST /kegiatan` tetap multipart dengan `kelas_id` wajib dan `foto`. Dicoba gagal dulu sebelum perbaikan.
+- `storage/api-docs/api.json`: diekspor ulang; skema baru `PerbaruiKegiatanRequest`, body `PUT /kegiatan/{id}` pindah dari `multipart/form-data` ke `application/json`.
+
+Hasil pengecekan: 651 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak dijalankan ke MariaDB karena tidak ada perubahan migration, query, atau seeder. Tidak diuji manual lewat curl; perilaku `PUT` sudah dicakup test `KegiatanKelasTest` yang ada.
+
+Belum ditangani: `SimpanMuridRequest` memakai pola yang sama (`status` dilarang di `POST /murid`, wajib di `PUT /murid/{id}`), sehingga `api.json` menulis `status` sebagai string opsional tanpa enum di kedua operasi.
 
 ### Login wali dengan NIS (branch `be/login-nis`)
 

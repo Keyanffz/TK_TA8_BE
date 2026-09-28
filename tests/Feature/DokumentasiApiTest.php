@@ -258,3 +258,35 @@ it('mendokumentasikan id kelas di data anak, murid, dan tagihan sebagai angka se
         ->and(selisihDenganSkema($anak, skemaSukses($dokumen, '/wali/anak')['properties']['data'], $dokumen))->toBe([])
         ->and(selisihDenganSkema($detailMurid, $skema['MuridDetailResource'], $dokumen))->toBe([]);
 });
+
+/**
+ * Skema body request sebuah operasi, `$ref` komponen sudah diurai.
+ *
+ * @return array{tipe: string, skema: array<mixed>}
+ */
+function skemaBodyRequest(array $dokumen, string $path, string $metode): array
+{
+    $konten = $dokumen['paths'][$path][$metode]['requestBody']['content'];
+    $tipe = array_key_first($konten);
+    $skema = $konten[$tipe]['schema'];
+
+    if (isset($skema['$ref'])) {
+        $skema = $dokumen['components']['schemas'][str_replace('#/components/schemas/', '', $skema['$ref'])];
+    }
+
+    return ['tipe' => $tipe, 'skema' => $skema];
+}
+
+it('mendokumentasikan PUT /kegiatan/{id} tanpa kelas_id dan foto, sesuai validasinya', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+
+    $perbarui = skemaBodyRequest($dokumen, '/kegiatan/{id}', 'put');
+    $simpan = skemaBodyRequest($dokumen, '/kegiatan', 'post');
+
+    expect($perbarui['tipe'])->toBe('application/json')
+        ->and(array_keys($perbarui['skema']['properties']))->toEqualCanonicalizing(['tanggal', 'tema', 'judul', 'deskripsi'])
+        ->and($perbarui['skema']['required'])->toEqualCanonicalizing(['tanggal', 'judul'])
+        ->and($simpan['tipe'])->toBe('multipart/form-data')
+        ->and($simpan['skema']['required'])->toContain('kelas_id')
+        ->and($simpan['skema']['properties'])->toHaveKey('foto');
+});
