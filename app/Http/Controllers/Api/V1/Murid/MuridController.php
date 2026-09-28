@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Murid;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Murid\DaftarMuridRequest;
+use App\Http\Requests\Murid\PerbaruiMuridRequest;
 use App\Http\Requests\Murid\SimpanMuridRequest;
 use App\Http\Requests\Murid\UbahTautanWaliRequest;
 use App\Http\Resources\MuridDetailResource;
@@ -89,7 +90,7 @@ class MuridController extends Controller
      * Kalau `tanggal_lahir` berubah dan akun wali otomatis murid ini belum pernah dipakai (password awal belum
      * diganti), password awalnya ikut diganti ke tanggal lahir baru (DDMMYYYY).
      */
-    public function update(SimpanMuridRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function update(PerbaruiMuridRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
         $murid = $this->muridService->perbarui(Murid::query()->findOrFail($id), $request->dataMurid(), $request->foto(), $kepalaSekolah);
 

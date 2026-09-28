@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Hubungan;
+use App\Enums\StatusMurid;
 use App\Models\Agenda;
 use App\Models\Kelas;
 use App\Models\Murid;
@@ -289,4 +290,18 @@ it('mendokumentasikan PUT /kegiatan/{id} tanpa kelas_id dan foto, sesuai validas
         ->and($simpan['tipe'])->toBe('multipart/form-data')
         ->and($simpan['skema']['required'])->toContain('kelas_id')
         ->and($simpan['skema']['properties'])->toHaveKey('foto');
+});
+
+it('mendokumentasikan status murid sebagai enum wajib hanya di PUT /murid/{id}', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+
+    $perbarui = skemaBodyRequest($dokumen, '/murid/{id}', 'put')['skema'];
+    $simpan = skemaBodyRequest($dokumen, '/murid', 'post')['skema'];
+
+    expect($perbarui['properties']['status']['$ref'])->toBe('#/components/schemas/StatusMurid')
+        ->and($dokumen['components']['schemas']['StatusMurid']['enum'])->toEqualCanonicalizing(array_column(StatusMurid::cases(), 'value'))
+        ->and($perbarui['required'])->toContain('status')
+        ->and($perbarui['properties'])->toHaveKey('tanggal_keluar')
+        ->and($simpan['properties'])->not->toHaveKeys(['status', 'tanggal_keluar'])
+        ->and($simpan['required'])->toContain('nama_lengkap');
 });

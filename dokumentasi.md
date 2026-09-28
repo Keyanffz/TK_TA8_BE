@@ -17,7 +17,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | 8. Hardening | Selesai, menunggu review |
 | Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, direview; revisi setelah review menunggu review |
 | Login wali dengan NIS (branch `be/login-nis`) | Selesai, menunggu review |
-| Perbaikan dokumentasi `PUT /kegiatan/{id}` (branch `be/fix-kegiatan`) | Selesai, menunggu review |
+| Perbaikan dokumentasi `PUT /kegiatan/{id}` dan `PUT /murid/{id}` (branch `be/fix-kegiatan`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -633,7 +633,7 @@ Diambil selama Fase 3:
 
 ## Changelog
 
-### Perbaikan dokumentasi `PUT /kegiatan/{id}` (branch `be/fix-kegiatan`)
+### Perbaikan dokumentasi `PUT /kegiatan/{id}` dan `PUT /murid/{id}` (branch `be/fix-kegiatan`)
 
 Laporan FE: `api.json` mewajibkan `kelas_id` di `PUT /kegiatan/{id}`, padahal backend menolaknya (422 di `kelas_id`). Penyebabnya, `POST` dan `PUT` memakai `SimpanKegiatanRequest` yang bercabang lewat `route('id')`; saat ekspor tidak ada route aktif, jadi Scramble selalu membaca aturan `POST` dan menulis satu skema untuk keduanya. Perilaku API tidak berubah.
 
@@ -644,7 +644,15 @@ Laporan FE: `api.json` mewajibkan `kelas_id` di `PUT /kegiatan/{id}`, padahal ba
 
 Hasil pengecekan: 651 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak dijalankan ke MariaDB karena tidak ada perubahan migration, query, atau seeder. Tidak diuji manual lewat curl; perilaku `PUT` sudah dicakup test `KegiatanKelasTest` yang ada.
 
-Belum ditangani: `SimpanMuridRequest` memakai pola yang sama (`status` dilarang di `POST /murid`, wajib di `PUT /murid/{id}`), sehingga `api.json` menulis `status` sebagai string opsional tanpa enum di kedua operasi.
+Setelah disetujui pemilik repo, `SimpanMuridRequest` yang memakai pola yang sama ikut diperbaiki. Sebelumnya `api.json` menulis `status` sebagai string opsional tanpa enum di `POST /murid` dan `PUT /murid/{id}`, padahal `status` ditolak di `POST` dan wajib di `PUT`. Perilaku API tidak berubah.
+
+- `app/Http/Requests/Murid/PerbaruiMuridRequest.php` (baru): turunan `SimpanMuridRequest` untuk `PUT` dengan `status` wajib (enum `StatusMurid`) dan `tanggal_keluar` (wajib kecuali status `aktif`, ditolak untuk `aktif`) beserta pesannya. Turunan dipilih supaya aturan data murid, `dataMurid()`, dan `foto()` tidak ditulis dua kali.
+- `SimpanMuridRequest` hanya untuk `POST`: `status` dan `tanggal_keluar` tetap ditolak 422, tetapi disembunyikan dari OpenAPI lewat `@ignoreParam`. `MuridController::update` memakai request baru.
+- Test: `DokumentasiApiTest` (body `PUT /murid/{id}` mewajibkan `status` dengan `$ref` ke enum `StatusMurid` dan memuat `tanggal_keluar`; body `POST /murid` tanpa keduanya), dicoba gagal dulu sebelum perbaikan. `Murid/ManajemenMuridTest` mendapat 2 test perilaku: `POST /murid` menolak `status` dan `tanggal_keluar`, `PUT /murid/{id}` tanpa `status` ditolak.
+- `storage/api-docs/api.json`: diekspor ulang; skema baru `PerbaruiMuridRequest`, `SimpanMuridRequest` tanpa `status` dan `tanggal_keluar`. Keduanya tetap `multipart/form-data`.
+- `CLAUDE.md`: aturan hemat pengujian dari pemilik repo, di-commit terpisah.
+
+Hasil pengecekan setelah perbaikan murid: 654 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak dijalankan ke MariaDB dan tidak diuji manual lewat curl, dengan alasan yang sama seperti di atas.
 
 ### Login wali dengan NIS (branch `be/login-nis`)
 

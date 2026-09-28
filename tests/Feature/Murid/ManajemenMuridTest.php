@@ -113,6 +113,20 @@ it('membuka kembali penempatan kelas saat murid diaktifkan lagi', function () {
     expect($kelas->muridAktif()->count())->toBe(1);
 });
 
+it('menolak status dan tanggal keluar saat menambah murid', function () {
+    $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMurid(['status' => 'lulus', 'tanggal_keluar' => '2027-06-25']))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['status', 'tanggal_keluar']);
+});
+
+it('mewajibkan status saat memperbarui murid', function () {
+    $murid = Murid::factory()->create();
+
+    $this->actingAs($this->kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMurid())
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['status']);
+});
+
 it('mewajibkan tanggal keluar untuk murid yang tidak aktif', function () {
     $murid = Murid::factory()->create();
 

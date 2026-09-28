@@ -12800,7 +12800,7 @@
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/SimpanMuridRequest"
+                                "$ref": "#/components/schemas/PerbaruiMuridRequest"
                             }
                         }
                     }
@@ -31271,6 +31271,101 @@
                 ],
                 "title": "PerbaruiKegiatanRequest"
             },
+            "PerbaruiMuridRequest": {
+                "type": "object",
+                "description": "`PUT /murid/{id}` (multipart jika menyertakan foto): data yang sama dengan `POST /murid` ditambah `status`\n(wajib) dan `tanggal_keluar` (wajib untuk murid yang lulus, pindah, atau keluar; kosong untuk murid aktif).",
+                "properties": {
+                    "nisn": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nik": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nama_lengkap": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "nama_panggilan": {
+                        "type": "string",
+                        "maxLength": 50
+                    },
+                    "jenis_kelamin": {
+                        "$ref": "#/components/schemas/JenisKelamin"
+                    },
+                    "tempat_lahir": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "tanggal_lahir": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "agama": {
+                        "type": "string",
+                        "maxLength": 20
+                    },
+                    "alamat": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "anak_ke": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1,
+                        "maximum": 20
+                    },
+                    "catatan_khusus": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
+                    },
+                    "tanggal_masuk": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "foto": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/StatusMurid"
+                    },
+                    "tanggal_keluar": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    }
+                },
+                "required": [
+                    "nama_lengkap",
+                    "nama_panggilan",
+                    "jenis_kelamin",
+                    "tempat_lahir",
+                    "tanggal_lahir",
+                    "agama",
+                    "alamat",
+                    "tanggal_masuk",
+                    "status"
+                ],
+                "title": "PerbaruiMuridRequest"
+            },
             "PerbaruiProfilRequest": {
                 "type": "object",
                 "properties": {
@@ -32275,7 +32370,7 @@
             },
             "SimpanMuridRequest": {
                 "type": "object",
-                "description": "Dipakai `POST /murid` dan `PUT /murid/{id}` (multipart jika menyertakan foto). NIS dibuat otomatis\nsaat murid dibuat dan tidak bisa diubah. Status dan tanggal keluar hanya diisi saat memperbarui;\nmurid baru selalu berstatus aktif.",
+                "description": "`POST /murid` (multipart jika menyertakan foto). NIS dibuat otomatis saat murid dibuat dan tidak bisa\ndiubah. Murid baru selalu berstatus aktif, jadi `status` dan `tanggal_keluar` ditolak; keduanya diisi\nlewat `PUT /murid/{id}` (`PerbaruiMuridRequest`).",
                 "properties": {
                     "nisn": {
                         "type": [
@@ -32343,12 +32438,6 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "tanggal_keluar": {
-                        "type": "string"
                     }
                 },
                 "required": [
