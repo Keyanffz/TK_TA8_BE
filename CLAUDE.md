@@ -6,3 +6,10 @@ Aturan kerja untuk repo backend ini, berlaku di setiap sesi.
 2. Kerjakan satu fase (Bagian D) saja. Di akhir fase jalankan pengecekan yang diwajibkan, perbarui `dokumentasi.md`, laporkan hasilnya, lalu berhenti dan tunggu konfirmasi sebelum lanjut ke fase berikutnya.
 3. Patuhi Bagian C (anti AI-slop) di semua kode, test, teks, dokumentasi, dan pesan commit.
 4. Laporan akhir fase (dan balasan ke pemilik repo) ditulis dalam Bahasa Indonesia.
+
+## Hemat pengujian
+
+- php artisan test (SQLite), Pint, PHPStan, dan check:slop tetap dijalankan penuh. Pakai output ringkas (misalnya --compact) dan tampilkan hanya ringkasan dan error.
+- Test ke MariaDB hanya kalau ada perubahan migration, query, atau seeder.
+- Uji manual lewat curl atau server hanya untuk endpoint yang baru atau berubah.
+- Jangan membaca ulang file besar (api.json, composer.lock) kecuali perlu.
