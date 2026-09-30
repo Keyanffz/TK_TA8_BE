@@ -51,7 +51,7 @@ it('membuat akun wali dengan username NIS dan password tanggal lahir saat murid 
         ->and($log->subject_id)->toBe($user->id)
         ->and($log->properties->all())->toBe(['murid_id' => $response->json('data.id'), 'username' => $nis]);
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => $nis, 'password' => '05112021'])
+    $this->postJson('/api/v1/auth/wali/login', ['username' => $nis, 'password' => '05112021'])
         ->assertOk()
         ->assertJsonPath('data.user.wajib_ganti_password', true)
         ->assertJsonPath('data.user.wali_murid.anak.0.nama_panggilan', 'Raka');
@@ -114,7 +114,7 @@ it('mengganti password awal akun otomatis yang belum dipakai saat tanggal lahir 
         ->and($log->subject_id)->toBe($akun->id)
         ->and($log->properties->all())->toBe(['murid_id' => $murid->id]);
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => $nis, 'password' => '06122021'])->assertOk();
+    $this->postJson('/api/v1/auth/wali/login', ['username' => $nis, 'password' => '06122021'])->assertOk();
 });
 
 it('tidak mengubah password akun yang sudah dipakai saat tanggal lahir murid dikoreksi', function () {

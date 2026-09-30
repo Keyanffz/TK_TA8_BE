@@ -12,7 +12,7 @@ it('memberi token dan data user sesuai kontrak A7 saat guru login', function () 
     $kelas = Kelas::factory()->for(TahunAjaran::factory()->aktif())->create(['nama' => 'TK A1', 'wali_kelas_id' => $guru->id]);
     Kelas::factory()->create(['nama' => 'TK A9', 'wali_kelas_id' => $guru->id]);
 
-    $response = $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'rahasia123'])
+    $response = $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'rahasia123'])
         ->assertOk()
         ->assertJsonPath('message', 'Berhasil masuk.')
         ->assertJsonPath('data.user', [
@@ -46,7 +46,7 @@ it('memberi izin kelola keuangan ke Kepala Sekolah', function () {
     $kepsek = buatKepalaSekolah();
     $kepsek->update(['password' => 'kepsek2026']);
 
-    $this->postJson('/api/v1/auth/login', ['email' => $kepsek->email, 'password' => 'kepsek2026'])
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $kepsek->email, 'password' => 'kepsek2026'])
         ->assertOk()
         ->assertJsonPath('data.user.role', 'super_admin')
         ->assertJsonPath('data.user.permissions.kelola_keuangan', true);
@@ -56,7 +56,7 @@ it('menamai token sesuai perangkat', function () {
     $guru = buatGuru();
     $guru->user->update(['password' => 'rahasia123']);
 
-    $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'rahasia123', 'perangkat' => 'mobile'])->assertOk();
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'rahasia123', 'perangkat' => 'mobile'])->assertOk();
 
     expect($guru->user->tokens()->sole()->name)->toBe('mobile');
 });
@@ -65,7 +65,7 @@ it('menolak email atau password yang salah tanpa membedakan penyebabnya', functi
     $guru = buatGuru();
     $guru->user->update(['password' => 'rahasia123']);
 
-    $this->postJson('/api/v1/auth/login', $kredensial($guru->user))
+    $this->postJson('/api/v1/auth/staff/login', $kredensial($guru->user))
         ->assertStatus(422)
         ->assertJsonPath('code', 'VALIDATION_ERROR')
         ->assertJsonPath('errors.email', ['Email atau password salah.']);
@@ -79,7 +79,7 @@ it('menolak login akun yang belum atau tidak lagi aktif dengan kode yang sesuai'
     $guru = buatGuru($status, ['alasan_penolakan' => $status === StatusAkun::Ditolak ? 'Ijazah belum dilampirkan.' : null]);
     $guru->user->update(['password' => 'rahasia123']);
 
-    $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'rahasia123'])
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'rahasia123'])
         ->assertForbidden()
         ->assertJsonPath('code', $kode)
         ->assertJsonPath('message', $pesan)
@@ -96,23 +96,54 @@ it('tidak membocorkan status akun kalau passwordnya salah', function () {
     $guru = buatGuru(StatusAkun::Pending);
     $guru->user->update(['password' => 'rahasia123']);
 
-    $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])
         ->assertStatus(422)
         ->assertJsonPath('code', 'VALIDATION_ERROR');
 });
 
-it('membatasi login 5 kali per menit untuk email dan IP yang sama', function () {
+it('membalas akun wali murid di login staff persis sama dengan password salah', function () {
+    User::factory()->waliMurid()->create(['email' => 'dewi.lestari@wali.tkta8.test', 'password' => 'rahasia123']);
     $guru = buatGuru();
 
-    foreach (range(1, 5) as $_) {
-        $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])->assertStatus(422);
+    $akunWali = $this->postJson('/api/v1/auth/staff/login', ['email' => 'dewi.lestari@wali.tkta8.test', 'password' => 'rahasia123'])
+        ->assertStatus(422);
+    $passwordSalah = $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])
+        ->assertStatus(422);
+
+    expect($akunWali->json())->toBe($passwordSalah->json());
+});
+
+it('membatasi login staff 3 kali per menit untuk email dan IP yang sama', function () {
+    $this->freezeTime();
+    $guru = buatGuru();
+
+    foreach (range(1, 3) as $_) {
+        $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])->assertStatus(422);
     }
 
-    $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'salahsalah1'])
         ->assertTooManyRequests()
-        ->assertJsonPath('code', 'TOO_MANY_REQUESTS');
+        ->assertHeader('Retry-After', 60)
+        ->assertJsonPath('code', 'TOO_MANY_REQUESTS')
+        ->assertJsonPath('message', 'Terlalu banyak percobaan. Coba lagi dalam 60 detik.');
 
-    $this->postJson('/api/v1/auth/login', ['email' => 'lain@tkta8.test', 'password' => 'salahsalah1'])->assertStatus(422);
+    $this->postJson('/api/v1/auth/staff/login', ['email' => 'lain@tkta8.test', 'password' => 'salahsalah1'])->assertStatus(422);
+});
+
+it('membatasi login staff 10 kali per menit dari satu IP walau emailnya berbeda', function () {
+    $this->freezeTime();
+
+    foreach (range(1, 10) as $ke) {
+        $this->postJson('/api/v1/auth/staff/login', ['email' => "guru{$ke}@tkta8.test", 'password' => 'salahsalah1'])->assertStatus(422);
+    }
+
+    $this->postJson('/api/v1/auth/staff/login', ['email' => 'guru11@tkta8.test', 'password' => 'salahsalah1'])
+        ->assertTooManyRequests()
+        ->assertHeader('Retry-After', 60);
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.30'])
+        ->postJson('/api/v1/auth/staff/login', ['email' => 'guru11@tkta8.test', 'password' => 'salahsalah1'])
+        ->assertStatus(422);
 });
 
 it('menyimpan password sebagai hash', function () {

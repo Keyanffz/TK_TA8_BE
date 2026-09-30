@@ -47,7 +47,7 @@ it('mendaftarkan guru dengan status pending dan memberi tahu Kepala Sekolah', fu
 it('langsung bisa dicoba login dan mendapat ACCOUNT_PENDING', function () {
     $this->postJson('/api/v1/auth/register-guru', dataPendaftaranGuru())->assertCreated();
 
-    $this->postJson('/api/v1/auth/login', ['email' => 'siti.nurhaliza@gmail.com', 'password' => 'mengajar2026'])
+    $this->postJson('/api/v1/auth/staff/login', ['email' => 'siti.nurhaliza@gmail.com', 'password' => 'mengajar2026'])
         ->assertForbidden()
         ->assertJsonPath('code', 'ACCOUNT_PENDING');
 });

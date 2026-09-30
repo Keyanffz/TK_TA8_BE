@@ -55,7 +55,7 @@ it('mengatur password baru dan mencabut semua sesi lama', function () {
     expect(Hash::check('passwordBaru2026', (string) $guru->user->fresh()?->password))->toBeTrue()
         ->and($guru->user->tokens()->count())->toBe(0);
 
-    $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'passwordBaru2026'])->assertOk();
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'passwordBaru2026'])->assertOk();
 });
 
 it('menolak token reset yang salah atau sudah dipakai', function () {

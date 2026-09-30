@@ -115,7 +115,7 @@ it('membuat akun guru aktif dengan password awal yang hanya tampil sekali', func
 
     $this->getJson("/api/v1/guru/{$guru->id}")->assertJsonMissingPath('data.password_awal');
 
-    $this->postJson('/api/v1/auth/login', ['email' => 'nur.aini@gmail.com', 'password' => $passwordAwal])->assertOk();
+    $this->postJson('/api/v1/auth/staff/login', ['email' => 'nur.aini@gmail.com', 'password' => $passwordAwal])->assertOk();
 });
 
 it('menolak email guru yang sudah dipakai akun lain', function () {

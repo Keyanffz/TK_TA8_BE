@@ -18,9 +18,13 @@ use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
-    private const BATAS_LOGIN_PER_MENIT = 5;
+    private const BATAS_LOGIN_STAFF_PER_AKUN_PER_MENIT = 3;
 
-    private const BATAS_LOGIN_WALI_PER_MENIT = 5;
+    private const BATAS_LOGIN_STAFF_PER_IP_PER_MENIT = 10;
+
+    private const BATAS_LOGIN_WALI_PER_AKUN_PER_MENIT = 5;
+
+    private const BATAS_LOGIN_WALI_PER_IP_PER_MENIT = 20;
 
     private const BATAS_TAMBAH_ANAK_PER_MENIT = 5;
 
@@ -64,11 +68,19 @@ class AppServiceProvider extends ServiceProvider
      */
     private function daftarkanRateLimiter(): void
     {
-        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_PER_MENIT)
-            ->by(Str::lower((string) $request->input('email')).'|'.$request->ip()));
+        // Batas per IP mencegah satu sumber mencoba banyak email/NIS berbeda. Batas per IP wali lebih longgar karena
+        // banyak wali bisa berbagi satu IP (wifi sekolah, NAT operator seluler), sedangkan staff hanya belasan orang.
+        RateLimiter::for('login-staff', fn (Request $request) => [
+            Limit::perMinute(self::BATAS_LOGIN_STAFF_PER_AKUN_PER_MENIT)
+                ->by('akun:'.Str::lower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute(self::BATAS_LOGIN_STAFF_PER_IP_PER_MENIT)->by('ip:'.$request->ip()),
+        ]);
 
-        RateLimiter::for('login-wali', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_WALI_PER_MENIT)
-            ->by(LoginWaliRequest::normalkanUsername((string) $request->input('username')).'|'.$request->ip()));
+        RateLimiter::for('login-wali', fn (Request $request) => [
+            Limit::perMinute(self::BATAS_LOGIN_WALI_PER_AKUN_PER_MENIT)
+                ->by('akun:'.LoginWaliRequest::normalkanUsername((string) $request->input('username')).'|'.$request->ip()),
+            Limit::perMinute(self::BATAS_LOGIN_WALI_PER_IP_PER_MENIT)->by('ip:'.$request->ip()),
+        ]);
 
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(self::BATAS_API_PER_MENIT)
             ->by($request->user() === null ? 'ip:'.$request->ip() : 'user:'.$request->user()->getAuthIdentifier()));

@@ -396,7 +396,7 @@ it('membuat akun wali saat pendaftaran tanpa login diterima dan baru memberi not
 
     Notification::assertSentTo($akun, PendaftaranDiprosesNotification::class);
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20270001', 'password' => '14022023'])->assertOk();
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20270001', 'password' => '14022023'])->assertOk();
 });
 
 it('tidak mengirim notifikasi saat pendaftaran tanpa login ditolak', function () {

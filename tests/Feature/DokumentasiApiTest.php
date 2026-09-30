@@ -51,13 +51,32 @@ it('mendokumentasikan respons 403 dari middleware role dan status akun', functio
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}']['put'], 403))
         ->toBe(['FORBIDDEN', 'ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE', 'PASSWORD_WAJIB_DIGANTI'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}']['put'], 404))->toBe(['NOT_FOUND'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login']['post'], 403))
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/staff/login']['post'], 403))
         ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login-wali']['post'], 403))
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/wali/login']['post'], 403))
         ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login-wali']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/wali/login']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/wali/tambah-anak']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/media/{token}']['get'], 403))->toBe(['FORBIDDEN']);
+});
+
+it('mendokumentasikan login staff dan login wali sebagai endpoint terpisah', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+
+    $staff = $dokumen['paths']['/auth/staff/login']['post'];
+    $wali = $dokumen['paths']['/auth/wali/login']['post'];
+
+    expect($staff['requestBody']['content']['application/json']['schema']['$ref'])->toBe('#/components/schemas/LoginStaffRequest')
+        ->and($dokumen['components']['schemas']['LoginStaffRequest']['required'])->toBe(['email', 'password'])
+        ->and($wali['requestBody']['content']['application/json']['schema']['$ref'])->toBe('#/components/schemas/LoginWaliRequest')
+        ->and($dokumen['components']['schemas']['LoginWaliRequest']['required'])->toBe(['username', 'password'])
+        ->and($staff['security'])->toBe([])
+        ->and($wali['security'])->toBe([])
+        ->and(kodeErrorTerdokumentasi($staff, 422))->toBe(['VALIDATION_ERROR'])
+        ->and(kodeErrorTerdokumentasi($staff, 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and($staff['responses'][429]['headers']['Retry-After']['schema']['type'])->toBe('integer')
+        ->and($wali['responses'][429]['headers']['Retry-After']['required'])->toBeTrue()
+        ->and($dokumen['paths'])->not->toHaveKeys(['/auth/login', '/auth/login-wali']);
 });
 
 it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {

@@ -6,7 +6,7 @@ use App\Enums\Perangkat;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class LoginRequest extends FormRequest
+class LoginStaffRequest extends FormRequest
 {
     /**
      * @return array<string, mixed>

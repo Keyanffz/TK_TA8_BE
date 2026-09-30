@@ -44,8 +44,8 @@ Route::get('/health', HealthController::class)->name('health');
 Route::get('/media/{token}', MediaController::class)->middleware('signed:relative')->name('media');
 
 Route::prefix('auth')->middleware('throttle:api')->group(function () {
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
-    Route::post('/login-wali', [AuthController::class, 'loginWali'])->middleware('throttle:login-wali');
+    Route::post('/staff/login', [AuthController::class, 'loginStaff'])->middleware('throttle:login-staff');
+    Route::post('/wali/login', [AuthController::class, 'loginWali'])->middleware('throttle:login-wali');
     Route::post('/register-guru', RegistrasiGuruController::class);
     Route::post('/forgot-password', [ResetPasswordController::class, 'kirimTautan']);
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);

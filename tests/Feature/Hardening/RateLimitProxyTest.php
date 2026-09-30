@@ -25,27 +25,27 @@ it('menghitung limiter api per IP klien asli untuk request lewat server FE', fun
     lewatFe($this, '203.0.113.20')->getJson('/api/v1/public/guru')->assertOk();
 });
 
-it('menghitung limiter login per email dan IP klien asli untuk request lewat server FE', function () {
+it('menghitung limiter login staff per email dan IP klien asli untuk request lewat server FE', function () {
     $guru = buatGuru();
     $data = ['email' => $guru->user->email, 'password' => 'salahsalah1'];
 
-    foreach (range(1, 5) as $_) {
-        lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/login', $data)->assertStatus(422);
+    foreach (range(1, 3) as $_) {
+        lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/staff/login', $data)->assertStatus(422);
     }
 
-    lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/login', $data)->assertTooManyRequests();
-    lewatFe($this, '203.0.113.20')->postJson('/api/v1/auth/login', $data)->assertStatus(422);
+    lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/staff/login', $data)->assertTooManyRequests();
+    lewatFe($this, '203.0.113.20')->postJson('/api/v1/auth/staff/login', $data)->assertStatus(422);
 });
 
 it('menghitung limiter login wali per NIS dan IP klien asli untuk request lewat server FE', function () {
     $data = ['username' => 'TA20260001', 'password' => 'salahsalah1'];
 
     foreach (range(1, 5) as $_) {
-        lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/login-wali', $data)->assertStatus(422);
+        lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/wali/login', $data)->assertStatus(422);
     }
 
-    lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/login-wali', $data)->assertTooManyRequests();
-    lewatFe($this, '203.0.113.20')->postJson('/api/v1/auth/login-wali', $data)->assertStatus(422);
+    lewatFe($this, '203.0.113.10')->postJson('/api/v1/auth/wali/login', $data)->assertTooManyRequests();
+    lewatFe($this, '203.0.113.20')->postJson('/api/v1/auth/wali/login', $data)->assertStatus(422);
 });
 
 it('mengabaikan X-Forwarded-For dari sumber yang tidak ada di TRUSTED_PROXIES', function () {
@@ -53,9 +53,9 @@ it('mengabaikan X-Forwarded-For dari sumber yang tidak ada di TRUSTED_PROXIES', 
     $guru = buatGuru();
     $data = ['email' => $guru->user->email, 'password' => 'salahsalah1'];
 
-    foreach (range(1, 5) as $ke) {
-        lewatFe($this, "203.0.113.{$ke}")->postJson('/api/v1/auth/login', $data)->assertStatus(422);
+    foreach (range(1, 3) as $ke) {
+        lewatFe($this, "203.0.113.{$ke}")->postJson('/api/v1/auth/staff/login', $data)->assertStatus(422);
     }
 
-    lewatFe($this, '203.0.113.99')->postJson('/api/v1/auth/login', $data)->assertTooManyRequests();
+    lewatFe($this, '203.0.113.99')->postJson('/api/v1/auth/staff/login', $data)->assertTooManyRequests();
 });

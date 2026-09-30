@@ -203,6 +203,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -394,6 +403,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -632,6 +650,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -814,6 +841,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -1011,6 +1047,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -1159,15 +1204,24 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
             }
         },
-        "/auth/login": {
+        "/auth/staff/login": {
             "post": {
-                "operationId": "auth.login",
-                "description": "Akun yang belum atau tidak lagi aktif ditolak 403 dengan kode `ACCOUNT_PENDING`,\n`ACCOUNT_REJECTED` (alasan penolakan ada di `message`), atau `ACCOUNT_INACTIVE`.",
+                "operationId": "auth.loginStaff",
+                "description": "Role dikirim di `user.role` (`super_admin` atau `guru`). Email yang tidak terdaftar, password salah, dan akun\nwali murid mendapat balasan yang sama. Akun yang belum atau tidak lagi aktif ditolak 403 dengan kode\n`ACCOUNT_PENDING`, `ACCOUNT_REJECTED` (alasan penolakan ada di `message`), atau `ACCOUNT_INACTIVE`.\nDibatasi 3 percobaan per menit per email dan IP, dan 10 percobaan per menit per IP; balasan 429 membawa\nheader `Retry-After`.",
                 "summary": "Login Kepala Sekolah dan guru dengan email dan password",
                 "tags": [
                     "Auth"
@@ -1177,7 +1231,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
+                                "$ref": "#/components/schemas/LoginStaffRequest"
                             }
                         }
                     }
@@ -1331,16 +1385,25 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
                 "security": []
             }
         },
-        "/auth/login-wali": {
+        "/auth/wali/login": {
             "post": {
                 "operationId": "auth.loginWali",
-                "description": "Password awal akun wali adalah tanggal lahir anak (DDMMYYYY). Selama `user.wajib_ganti_password` bernilai\n`true`, token hanya bisa dipakai untuk `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`;\nendpoint lain membalas 403 `PASSWORD_WAJIB_DIGANTI`. Dibatasi 5 percobaan per menit per NIS dan IP.",
+                "description": "Role dikirim di `user.role` (selalu `wali_murid`). NIS yang tidak terdaftar, password salah, dan akun selain\nwali murid mendapat balasan yang sama. Password awal akun wali adalah tanggal lahir anak (DDMMYYYY). Selama\n`user.wajib_ganti_password` bernilai `true`, token hanya bisa dipakai untuk `GET /auth/me`,\n`PUT /auth/password`, dan `POST /auth/logout`; endpoint lain membalas 403 `PASSWORD_WAJIB_DIGANTI`.\nDibatasi 5 percobaan per menit per NIS dan IP, dan 20 percobaan per menit per IP; balasan 429 membawa\nheader `Retry-After`.",
                 "summary": "Login wali murid dengan NIS anak sebagai `username` dan password",
                 "tags": [
                     "Auth"
@@ -1504,6 +1567,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -1648,6 +1720,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -1789,6 +1870,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -2334,6 +2424,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -2527,6 +2626,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -2671,6 +2779,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -2910,6 +3027,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -3126,6 +3252,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -3385,6 +3520,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -3576,6 +3720,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -3762,6 +3915,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -3998,6 +4160,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -4181,6 +4352,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -4417,6 +4597,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -4674,6 +4863,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -4857,6 +5055,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -5117,6 +5324,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -5310,6 +5526,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -5496,6 +5721,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -5734,6 +5968,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -5952,6 +6195,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -6191,6 +6443,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -6426,6 +6687,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -6674,6 +6944,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -6945,6 +7224,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -7183,6 +7471,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -7401,6 +7698,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -7592,6 +7898,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -7849,6 +8164,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -8086,6 +8410,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -8271,6 +8604,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -8453,6 +8795,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -8690,6 +9041,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -8947,6 +9307,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -9131,6 +9500,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -9323,6 +9701,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -9581,6 +9968,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -9819,6 +10215,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -10037,6 +10442,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -10221,6 +10635,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -10487,6 +10910,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -10678,6 +11110,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -10917,6 +11358,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -11100,6 +11550,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -11445,6 +11904,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -11637,6 +12105,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -11949,6 +12426,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -12205,6 +12691,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -12501,6 +12996,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -12772,6 +13276,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -13011,6 +13524,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -13229,6 +13751,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -13412,6 +13943,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -13613,6 +14153,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -13859,6 +14408,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -14050,6 +14608,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -14284,6 +14851,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -14437,6 +15013,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -14587,6 +15172,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -14774,6 +15368,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -14994,6 +15597,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -15233,6 +15845,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -15468,6 +16089,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -15743,6 +16373,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -15931,6 +16570,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -16097,6 +16745,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -16298,6 +16955,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -16518,6 +17184,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -16756,6 +17431,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -16990,6 +17674,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -17264,6 +17957,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -17456,6 +18158,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -17644,6 +18355,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -17766,6 +18486,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -17934,6 +18663,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -18174,6 +18912,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -18400,6 +19147,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -18646,6 +19402,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -18840,6 +19605,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -19039,6 +19813,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -19247,6 +20030,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -19442,6 +20234,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -19693,6 +20494,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -19930,6 +20740,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -20115,6 +20934,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -20297,6 +21125,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -20492,6 +21329,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -20683,6 +21529,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -20877,6 +21732,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -21166,6 +22030,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -21323,6 +22196,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -21439,6 +22321,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -21566,6 +22457,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -21725,6 +22625,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -21843,6 +22752,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -21920,6 +22838,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -22049,6 +22976,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -22270,6 +23206,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -22510,6 +23455,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -22747,6 +23701,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -22939,6 +23902,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -23230,6 +24202,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -23467,6 +24448,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -23650,6 +24640,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -23898,6 +24897,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -24119,6 +25127,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -24286,6 +25303,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -24408,6 +25434,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -24536,6 +25571,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -24659,6 +25703,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -24867,6 +25920,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -25106,6 +26168,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -25324,6 +26395,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -25563,6 +26643,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -25850,6 +26939,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -26086,6 +27184,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -26269,6 +27376,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -26462,6 +27578,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -26712,6 +27837,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -26948,6 +28082,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -27166,6 +28309,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -27351,6 +28503,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -27604,6 +28765,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -27790,6 +28960,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -28023,6 +29202,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -28262,6 +29450,15 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 }
@@ -28480,6 +29677,15 @@
                                         "code",
                                         "errors"
                                     ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -30070,7 +31276,7 @@
                 ],
                 "title": "LogAktivitasResource"
             },
-            "LoginRequest": {
+            "LoginStaffRequest": {
                 "type": "object",
                 "properties": {
                     "email": {
@@ -30088,7 +31294,7 @@
                     "email",
                     "password"
                 ],
-                "title": "LoginRequest"
+                "title": "LoginStaffRequest"
             },
             "LoginWaliRequest": {
                 "type": "object",

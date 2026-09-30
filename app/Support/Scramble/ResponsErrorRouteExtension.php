@@ -4,9 +4,12 @@ namespace App\Support\Scramble;
 
 use App\Enums\KodeError;
 use Dedoc\Scramble\Extensions\OperationExtension;
+use Dedoc\Scramble\Support\Generator\Header;
 use Dedoc\Scramble\Support\Generator\Operation;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
+use Dedoc\Scramble\Support\Generator\Schema;
+use Dedoc\Scramble\Support\Generator\Types\IntegerType;
 use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Support\Str;
 
@@ -14,7 +17,7 @@ use Illuminate\Support\Str;
  * Melengkapi respons error per operasi:
  * - kode dari konfigurasi route yang tidak terdeteksi Scramble dari isi controller: middleware
  *   `akun.aktif` (ACCOUNT_*), `password.diganti` (PASSWORD_WAJIB_DIGANTI), `role:`, `can:`, dan `signed`
- *   (FORBIDDEN), `throttle:` (TOO_MANY_REQUESTS),
+ *   (FORBIDDEN), `throttle:` (TOO_MANY_REQUESTS, dengan header `Retry-After`),
  *   parameter path yang datanya bisa tidak ada (NOT_FOUND);
  * - beberapa exception dengan status sama (misal 422 VALIDATION_ERROR dan BUSINESS_RULE) digabung
  *   ke satu respons, karena OpenAPI hanya menyimpan satu respons per status.
@@ -62,9 +65,21 @@ class ResponsErrorRouteExtension extends OperationExtension
         foreach ($kodePerStatus as $status => $kode) {
             $kode = array_values(array_unique($kode, SORT_REGULAR));
 
-            if ($kode !== []) {
-                $operation->addResponse(SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)), $status));
+            if ($kode === []) {
+                continue;
             }
+
+            $respons = SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)), $status);
+
+            if ($status === 429) {
+                $respons->addHeader('Retry-After', new Header(
+                    'Jumlah detik sampai boleh mencoba lagi.',
+                    required: true,
+                    schema: Schema::fromType(new IntegerType),
+                ));
+            }
+
+            $operation->addResponse($respons);
         }
     }
 

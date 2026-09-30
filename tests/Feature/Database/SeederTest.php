@@ -134,7 +134,7 @@ it('menyiapkan akun wali demo dengan username NIS sesuai dokumentasi', function 
         ->and(User::query()->where('role', Role::WaliMurid)->where('status', StatusAkun::Nonaktif)->count())->toBe(7)
         ->and(User::query()->where('role', Role::WaliMurid)->where('status', StatusAkun::Aktif)->where('wajib_ganti_password', true)->count())->toBe(10);
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260001', 'password' => SekolahDemoSeeder::PASSWORD_WALI])->assertOk();
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260001', 'password' => SekolahDemoSeeder::PASSWORD_WALI])->assertOk();
 });
 
 it('menolak menjalankan data demo di production', function () {
