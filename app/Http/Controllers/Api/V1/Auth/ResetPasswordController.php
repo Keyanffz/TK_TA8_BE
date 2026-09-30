@@ -14,7 +14,7 @@ class ResetPasswordController extends Controller
     public function __construct(private readonly AuthService $auth) {}
 
     /**
-     * Mengirim tautan reset password ke email Kepala Sekolah atau guru.
+     * Mengirim tautan reset password ke email Kepala Sekolah. Guru tidak punya password (login lewat Google).
      *
      * Respons selalu sama, terdaftar atau tidak, supaya daftar email akun tidak bisa ditebak.
      */
@@ -24,7 +24,7 @@ class ResetPasswordController extends Controller
 
         return ApiResponse::success(
             null,
-            'Jika email ini terdaftar sebagai akun guru atau Kepala Sekolah, tautan untuk mengatur ulang password sudah dikirim. Periksa kotak masuk atau folder spam.',
+            'Jika email ini terdaftar sebagai akun Kepala Sekolah, tautan untuk mengatur ulang password sudah dikirim. Periksa kotak masuk atau folder spam.',
         );
     }
 

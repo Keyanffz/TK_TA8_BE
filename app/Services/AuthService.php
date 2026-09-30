@@ -6,6 +6,7 @@ use App\Enums\Perangkat;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Exceptions\AksesAkunDitolakException;
+use App\Exceptions\LayananTidakTersediaException;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -19,11 +20,15 @@ class AuthService
 {
     private const ROLE_STAFF = [Role::SuperAdmin, Role::Guru];
 
-    public function __construct(private readonly MediaService $media) {}
+    public function __construct(
+        private readonly MediaService $media,
+        private readonly GoogleIdTokenVerifier $google,
+    ) {}
 
     /**
-     * Status akun baru dicek setelah password terbukti benar, supaya orang yang tidak tahu
-     * password tidak bisa mengetahui status akun seseorang.
+     * Login password hanya untuk Kepala Sekolah; guru tidak punya password dan mendapat balasan yang sama dengan
+     * email yang tidak terdaftar. Status akun baru dicek setelah password terbukti benar, supaya orang yang tidak
+     * tahu password tidak bisa mengetahui status akun seseorang.
      *
      * @return array{token: string, user: User}
      *
@@ -31,7 +36,7 @@ class AuthService
      */
     public function loginStaff(string $email, string $password, Perangkat $perangkat): array
     {
-        $user = User::query()->with('guru')->where('email', $email)->whereIn('role', self::ROLE_STAFF)->first();
+        $user = User::query()->with('guru')->where('email', $email)->where('role', Role::SuperAdmin)->first();
 
         if (! $this->passwordCocok($user, $password)) {
             throw ValidationException::withMessages(['email' => ['Email atau password salah.']]);
@@ -64,12 +69,54 @@ class AuthService
     }
 
     /**
+     * Login guru dan Kepala Sekolah dengan ID token Google. Google hanya membuktikan pemilik email; akunnya tetap
+     * harus sudah dibuat Kepala Sekolah, jadi login ini tidak pernah membuat akun. `sub` Google disimpan saat login
+     * pertama, dan login berikutnya harus dari akun Google yang sama.
+     *
+     * @return array{token: string, user: User}
+     *
+     * @throws AksesAkunDitolakException
+     * @throws LayananTidakTersediaException
+     */
+    public function loginGoogle(string $idToken, Perangkat $perangkat): array
+    {
+        $profil = $this->google->verifikasi($idToken);
+
+        if ($profil === null) {
+            throw ValidationException::withMessages(['credential' => ['Login Google tidak valid atau sudah kedaluwarsa. Coba masuk dengan Google lagi.']]);
+        }
+
+        if (! $profil['email_verified']) {
+            throw ValidationException::withMessages(['credential' => ['Email akun Google ini belum terverifikasi. Pakai akun Google yang emailnya sudah terverifikasi.']]);
+        }
+
+        $user = User::query()->with('guru')->where('email', $profil['email'])->whereIn('role', self::ROLE_STAFF)->first();
+
+        if ($user === null) {
+            throw ValidationException::withMessages(['credential' => ['Akun Google ini tidak terdaftar sebagai guru atau Kepala Sekolah. Minta Kepala Sekolah mendaftarkan email Google Anda.']]);
+        }
+
+        // Akun yang terhapus tetap memegang unique index, jadi ikut diperiksa.
+        $subDipakaiAkunLain = User::withTrashed()->where('google_sub', $profil['sub'])->whereKeyNot($user->id)->exists();
+
+        if (($user->google_sub !== null && $user->google_sub !== $profil['sub']) || $subDipakaiAkunLain) {
+            throw ValidationException::withMessages(['credential' => ['Email ini sudah terhubung dengan akun Google lain. Hubungi Kepala Sekolah untuk memperbarui email akun Anda.']]);
+        }
+
+        $this->pastikanAktif($user);
+
+        $user->google_sub ??= $profil['sub'];
+
+        return ['token' => $this->buatToken($user, $perangkat), 'user' => $user];
+    }
+
+    /**
      * @throws AksesAkunDitolakException
      */
     public function pastikanAktif(User $user): void
     {
         if ($user->status !== StatusAkun::Aktif) {
-            throw AksesAkunDitolakException::untuk($user->status, $user->guru?->alasan_penolakan);
+            throw AksesAkunDitolakException::untuk($user->status);
         }
     }
 
@@ -86,8 +133,8 @@ class AuthService
     }
 
     /**
-     * Hanya akun Kepala Sekolah dan guru yang dikirimi tautan; wali murid tidak punya email dan meminta reset
-     * password ke sekolah. Hasilnya tidak dibedakan ke klien supaya keberadaan email tidak bocor.
+     * Hanya Kepala Sekolah yang dikirimi tautan: guru login lewat Google, dan wali murid tidak punya email serta
+     * meminta reset password ke sekolah. Hasilnya tidak dibedakan ke klien supaya keberadaan email tidak bocor.
      */
     public function kirimTautanResetPassword(string $email): void
     {
@@ -182,7 +229,7 @@ class AuthService
     {
         return User::query()
             ->where('email', $email)
-            ->whereIn('role', self::ROLE_STAFF)
+            ->where('role', Role::SuperAdmin)
             ->whereNotNull('password')
             ->first();
     }

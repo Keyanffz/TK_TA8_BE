@@ -9,16 +9,18 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use LogicException;
 
 #[Fillable(['name', 'email', 'username', 'password', 'wajib_ganti_password', 'role', 'status', 'no_hp', 'avatar_path', 'email_verified_at', 'last_login_at'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'google_sub'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -46,6 +48,16 @@ class User extends Authenticatable
             'role' => Role::class,
             'status' => StatusAkun::class,
         ];
+    }
+
+    /**
+     * Email dibandingkan tanpa membedakan huruf besar (login Google, cek unik), jadi selalu disimpan huruf kecil.
+     *
+     * @return Attribute<string|null, string|null>
+     */
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn (?string $email): ?string => $email === null ? null : Str::lower(trim($email)));
     }
 
     /**
