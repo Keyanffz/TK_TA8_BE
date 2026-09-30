@@ -19,6 +19,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Login wali dengan NIS (branch `be/login-nis`) | Selesai, menunggu review |
 | Perbaikan dokumentasi `PUT /kegiatan/{id}` dan `PUT /murid/{id}` (branch `be/fix-kegiatan`) | Selesai, menunggu review |
 | Login staff dan wali murid terpisah (branch `be/login-terpisah`) | Selesai, menunggu review |
+| Tautan login per role di email dan kartu akun (branch `be/tautan-login-per-role`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -376,7 +377,7 @@ DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: mi
 | `QUEUE_CONNECTION` | `database` |
 | `CACHE_STORE` | `database` (rate limiter dan cache pengaturan) |
 | `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
-| `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan di email (`/login`, `/reset-password`) |
+| `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan ke FE: `/staff/login` (email persetujuan guru), `/reset-password` (email reset password), `/login` (kartu akun wali) |
 | `TRUSTED_PROXIES` | IP/CIDR proxy dipisah koma, atau `*`; kosong di lokal. Di server wajib berisi IP server FE (BFF) dan reverse proxy di depan BE. Menentukan apakah header `X-Forwarded-*` dipercaya: IP klien untuk semua rate limiter berbasis IP, serta skema dan host signed URL |
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
@@ -648,6 +649,28 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Tautan login per role di email dan kartu akun (branch `be/tautan-login-per-role`)
+
+FE sekarang punya `/login` (wali murid) dan `/staff/login` (guru dan Kepala Sekolah). Audit semua tautan ke FE yang dibentuk BE:
+
+| Tempat | Penerima | Tautan |
+|---|---|---|
+| `GuruDisetujuiNotification` (email) | guru | `/login` → `/staff/login` |
+| `KartuAkunService` (PDF kartu akun) | wali murid | `/login`, tidak berubah |
+| `ResetPasswordNotification` (email) | guru, Kepala Sekolah | `/reset-password?token=…&email=…`, tidak berubah |
+| `GuruDitolakNotification` (email) | guru | tanpa tautan |
+| Field `url` notifikasi database | semua | path `/dashboard/...` relatif, tidak ada yang ke halaman login |
+
+`POST /auth/reset-password` membalas JSON tanpa tautan; pengalihan ke halaman login setelah reset berhasil ditentukan FE (harus `/staff/login`, karena lupa password hanya untuk guru dan Kepala Sekolah).
+
+- `app/Enums/Role.php`: `halamanLogin()` memetakan role ke path login FE (`super_admin`, `guru` → `/staff/login`; `wali_murid` → `/login`). Dipakai email persetujuan guru dan kartu akun, sehingga path login hanya ditulis di satu tempat.
+- `app/Notifications/GuruDisetujuiNotification.php`, `app/Services/KartuAkunService.php`: memakai `Role::halamanLogin()`.
+- Test: `Guru/PersetujuanGuruTest` membandingkan tautan email persetujuan persis dengan `http://localhost:3000/staff/login` (sebelumnya hanya awalan `/login`, jadi bug ini lolos; dicoba gagal dulu dengan notifikasi versi lama). `Murid/KartuAkunTest` memastikan kartu berisi `Masuk di: https://tkta8.test/login` dan tidak memuat `/staff/login`.
+
+Kontrak API dan `api.json` tidak berubah.
+
+Hasil pengecekan: 691 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak dijalankan ke MariaDB karena tidak ada perubahan migration, query, atau seeder, dan tidak diuji lewat curl karena tidak ada endpoint yang berubah.
 
 ### Login staff dan wali murid terpisah (branch `be/login-terpisah`)
 
