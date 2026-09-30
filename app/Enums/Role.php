@@ -16,4 +16,16 @@ enum Role: string
             self::WaliMurid => 'Wali Murid',
         };
     }
+
+    /**
+     * Path halaman login FE. Staff dan wali murid punya halaman login sendiri, jadi tautan di email dan kartu akun
+     * harus mengikuti role penerimanya.
+     */
+    public function halamanLogin(): string
+    {
+        return match ($this) {
+            self::SuperAdmin, self::Guru => '/staff/login',
+            self::WaliMurid => '/login',
+        };
+    }
 }

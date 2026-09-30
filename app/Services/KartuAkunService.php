@@ -53,7 +53,7 @@ class KartuAkunService
             'sekolah' => $this->pengaturan->kopSekolah(),
             'murid' => $murid,
             'kelas' => $murid->loadMissing('kelasAktif')->kelasAktif->first(),
-            'alamat_website' => rtrim((string) config('app.frontend_url'), '/').'/login',
+            'alamat_website' => rtrim((string) config('app.frontend_url'), '/').Role::WaliMurid->halamanLogin(),
         ];
     }
 

@@ -23,7 +23,7 @@ it('mengunduh kartu akun wali murid sebagai PDF', function () {
         ->and(substr((string) $response->getContent(), 0, 4))->toBe('%PDF');
 });
 
-it('memuat nama anak, kelas, NIS, keterangan password awal, dan alamat website tanpa menulis password', function () {
+it('memuat nama anak, kelas, NIS, keterangan password awal, dan alamat login wali tanpa menulis password', function () {
     $kelas = Kelas::factory()->for(TahunAjaran::factory()->aktif())->create(['nama' => 'TK A2']);
     $this->murid->kelas()->attach($kelas);
 
@@ -32,7 +32,8 @@ it('memuat nama anak, kelas, NIS, keterangan password awal, dan alamat website t
         ->assertSee('TK A2')
         ->assertSee('TA20260031')
         ->assertSee('Password awal: tanggal lahir anak (DDMMYYYY), wajib diganti saat login pertama.')
-        ->assertSee('https://tkta8.test/login')
+        ->assertSee('Masuk di: https://tkta8.test/login')
+        ->assertDontSee('/staff/login')
         ->assertDontSee('09032022')
         ->assertDontSee('2022-03-09');
 });
