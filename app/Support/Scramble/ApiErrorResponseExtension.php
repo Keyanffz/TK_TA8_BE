@@ -5,6 +5,7 @@ namespace App\Support\Scramble;
 use App\Enums\KodeError;
 use App\Exceptions\AksesAkunDitolakException;
 use App\Exceptions\BusinessRuleException;
+use App\Exceptions\LayananTidakTersediaException;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
@@ -26,19 +27,23 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
  */
 class ApiErrorResponseExtension extends ExceptionToResponseExtension
 {
-    private const AKUN_TIDAK_AKTIF = [KodeError::AccountPending, KodeError::AccountRejected, KodeError::AccountInactive];
-
     /** @var array<class-string, non-empty-list<KodeError>> */
     private const KODE_PER_EXCEPTION = [
         ValidationException::class => [KodeError::ValidationError],
         BusinessRuleException::class => [KodeError::BusinessRule],
-        AksesAkunDitolakException::class => self::AKUN_TIDAK_AKTIF,
+        AksesAkunDitolakException::class => [KodeError::AccountInactive],
         AuthenticationException::class => [KodeError::Unauthenticated],
         AuthorizationException::class => [KodeError::Forbidden],
         AccessDeniedHttpException::class => [KodeError::Forbidden],
         RecordsNotFoundException::class => [KodeError::NotFound],
         NotFoundHttpException::class => [KodeError::NotFound],
         TooManyRequestsHttpException::class => [KodeError::TooManyRequests],
+        LayananTidakTersediaException::class => [KodeError::ServerError],
+    ];
+
+    /** @var array<class-string, int> Exception yang statusnya berbeda dari status bawaan kodenya. */
+    private const STATUS_PER_EXCEPTION = [
+        LayananTidakTersediaException::class => LayananTidakTersediaException::STATUS,
     ];
 
     public function shouldHandle(Type $type): bool
@@ -54,7 +59,14 @@ class ApiErrorResponseExtension extends ExceptionToResponseExtension
             return null;
         }
 
-        return SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)));
+        $status = null;
+        foreach (self::STATUS_PER_EXCEPTION as $class => $statusKhusus) {
+            if ($type instanceof ObjectType && $type->isInstanceOf($class)) {
+                $status = $statusKhusus;
+            }
+        }
+
+        return SkemaErrorA7::respons($kode, implode(' / ', array_map(fn (KodeError $k) => $k->value, $kode)), $status);
     }
 
     public function reference(ObjectType $type): Reference

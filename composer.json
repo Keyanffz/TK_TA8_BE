@@ -8,6 +8,7 @@
         "php": "^8.4",
         "barryvdh/laravel-dompdf": "^3.1",
         "dedoc/scramble": "^0.13",
+        "firebase/php-jwt": "^7.2",
         "intervention/image": "^4.3",
         "laravel/framework": "^13.17",
         "laravel/sanctum": "^4.3",

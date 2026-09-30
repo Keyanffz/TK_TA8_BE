@@ -22,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
 
     private const BATAS_LOGIN_STAFF_PER_IP_PER_MENIT = 10;
 
+    private const BATAS_LOGIN_GOOGLE_PER_IP_PER_MENIT = 10;
+
     private const BATAS_LOGIN_WALI_PER_AKUN_PER_MENIT = 5;
 
     private const BATAS_LOGIN_WALI_PER_IP_PER_MENIT = 20;
@@ -75,6 +77,10 @@ class AppServiceProvider extends ServiceProvider
                 ->by('akun:'.Str::lower((string) $request->input('email')).'|'.$request->ip()),
             Limit::perMinute(self::BATAS_LOGIN_STAFF_PER_IP_PER_MENIT)->by('ip:'.$request->ip()),
         ]);
+
+        // Email baru diketahui setelah ID token diverifikasi, jadi login Google hanya bisa dibatasi per IP.
+        RateLimiter::for('login-google', fn (Request $request) => Limit::perMinute(self::BATAS_LOGIN_GOOGLE_PER_IP_PER_MENIT)
+            ->by('ip:'.$request->ip()));
 
         RateLimiter::for('login-wali', fn (Request $request) => [
             Limit::perMinute(self::BATAS_LOGIN_WALI_PER_AKUN_PER_MENIT)
