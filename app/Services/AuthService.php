@@ -8,6 +8,7 @@ use App\Enums\StatusAkun;
 use App\Exceptions\AksesAkunDitolakException;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -32,7 +33,7 @@ class AuthService
     {
         $user = User::query()->with('guru')->where('email', $email)->whereIn('role', self::ROLE_STAFF)->first();
 
-        if ($user === null || $user->password === null || ! Hash::check($password, $user->password)) {
+        if (! $this->passwordCocok($user, $password)) {
             throw ValidationException::withMessages(['email' => ['Email atau password salah.']]);
         }
 
@@ -53,7 +54,7 @@ class AuthService
     {
         $user = User::query()->where('username', $username)->where('role', Role::WaliMurid)->first();
 
-        if ($user === null || $user->password === null || ! Hash::check($password, $user->password)) {
+        if (! $this->passwordCocok($user, $password)) {
             throw ValidationException::withMessages(['username' => ['NIS atau password salah.']]);
         }
 
@@ -149,6 +150,32 @@ class AuthService
         $user->forceFill(['password' => $passwordBaru, 'wajib_ganti_password' => false])->save();
 
         $user->tokens()->whereKeyNot($user->currentAccessToken()->getKey())->delete();
+    }
+
+    /**
+     * Akun yang tidak ditemukan (termasuk role yang bukan milik endpoint login) atau tanpa password tetap melewati
+     * Hash::check terhadap hash palsu, supaya waktu respons tidak membedakan akun ada dan tidak ada.
+     *
+     * @phpstan-assert-if-true User $user
+     */
+    private function passwordCocok(?User $user, string $password): bool
+    {
+        $hashAkun = $user?->password;
+        $cocok = Hash::check($password, $hashAkun ?? $this->hashPalsu());
+
+        return $cocok && $hashAkun !== null;
+    }
+
+    /**
+     * Dibuat sekali lalu disimpan di cache: membuat hash di setiap request justru membuat jalur akun tidak ada
+     * dua kali lebih lambat. Cost ada di kunci cache, jadi hash ikut dibuat ulang kalau BCRYPT_ROUNDS berubah.
+     */
+    private function hashPalsu(): string
+    {
+        return Cache::rememberForever(
+            'auth:hash-palsu:'.Hash::getDefaultDriver().':'.config('hashing.bcrypt.rounds'),
+            fn (): string => Hash::make(Str::random(40)),
+        );
     }
 
     private function akunPassword(string $email): ?User
