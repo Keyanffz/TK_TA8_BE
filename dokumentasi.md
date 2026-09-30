@@ -18,13 +18,14 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Revisi audit dashboard FE Fase 3 (branch `be/revisi-audit`) | Selesai, direview; revisi setelah review menunggu review |
 | Login wali dengan NIS (branch `be/login-nis`) | Selesai, menunggu review |
 | Perbaikan dokumentasi `PUT /kegiatan/{id}` dan `PUT /murid/{id}` (branch `be/fix-kegiatan`) | Selesai, menunggu review |
+| Login staff dan wali murid terpisah (branch `be/login-terpisah`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
 | Kelompok | Endpoint |
 |---|---|
 | Umum | `GET /health`, `GET /media/{token}` (signed URL file private) |
-| Auth publik | `POST /auth/login`, `POST /auth/login-wali`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
+| Auth publik | `POST /auth/staff/login`, `POST /auth/wali/login`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
 | Auth (login) | `GET /auth/me`, `POST /auth/logout`, `PUT /auth/password` (semua; tetap terbuka saat wajib ganti password), `PUT /auth/profil` |
 | Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, `PATCH /guru/{id}/status` |
 | Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PUT /wali-murid/{id}`, `PATCH /wali-murid/{id}/status`, `POST /wali-murid/{id}/reset-password` |
@@ -59,6 +60,18 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Login staff dan wali murid terpisah (branch `be/login-terpisah`). Perubahan path diminta pemilik repo; detail di bawah diputuskan saat pengerjaan:
+
+1. Path mengikuti prefix yang sudah ada: `POST /api/v1/auth/staff/login` dan `POST /api/v1/auth/wali/login` (permintaan menulis `/api/auth/...` tanpa `v1`). `POST /auth/login` dan `POST /auth/login-wali` dihapus, tidak di-deprecate, karena API belum dipakai di luar lokal dan FE memang harus diperbarui untuk halaman login yang terpisah. Request ke path lama sekarang 404 `NOT_FOUND`.
+2. Body tidak berubah: staff `{ email, password, perangkat? }`, wali `{ username, password, perangkat? }` dengan `username` = NIS anak. Role dikirim lewat `user.role` yang sudah ada di respons; tidak ada field `role` tambahan di tingkat atas supaya bentuk `{ token, user }` tetap sama dengan `GET /auth/me`.
+3. Sebelum branch ini, kedua endpoint sudah menolak role yang salah dengan pesan yang sama seperti kredensial salah (query dibatasi role, jadi akun role lain diperlakukan seperti tidak terdaftar). Yang ditambahkan hanya test yang membandingkan seluruh JSON balasan role salah dengan balasan password salah.
+4. Limiter `login` diganti `login-staff`: 3/menit per email + IP dan 10/menit per IP. `login-wali`: 5/menit per NIS + IP dan 20/menit per IP. Batas per IP wali lebih longgar karena banyak wali bisa berbagi satu IP (wifi sekolah, NAT operator seluler); staff hanya belasan orang. Kedua batas dihitung untuk setiap percobaan, termasuk yang berhasil. Kunci per akun dan per IP diberi awalan berbeda (`akun:`, `ip:`) karena `ThrottleRequests` menggabungkan nama limiter dengan kunci.
+5. Pesan 429 tetap dari `ApiExceptionRenderer` ("Terlalu banyak percobaan. Coba lagi dalam N detik.") dengan header `Retry-After`. `ResponsErrorRouteExtension` sekarang menulis header `Retry-After` (integer, wajib) di setiap respons 429 OpenAPI; karena semua route memakai `throttle:api`, header ini muncul di semua operasi (sebab utama `api.json` bertambah ±1.200 baris).
+6. Otorisasi per role tidak diubah: semua route khusus staff sudah memakai `role:` atau `can:kelola-keuangan`, dan route khusus wali memakai `role:wali_murid`. Test baru `AksesSilangRoleTest` mengunci daftar route login tanpa `role:`/`can:` ke 26 route bersama yang memang dipakai semua role dengan data yang di-scope; route baru yang lupa dibatasi akan membuat test itu gagal.
+7. Nama kode ikut diganti supaya sesuai path: `LoginRequest` → `LoginStaffRequest` (skema OpenAPI ikut berganti nama), `AuthController::login` → `loginStaff` (operationId `auth.loginStaff`), `AuthService::loginEmail` → `loginStaff`.
+8. Bagian A `PROMPT_BE_TK.md` (A7 Auth) berubah, jadi Bagian A `PROMPT_FE_TK.md` belum identik sampai disalin di repo FE. A6 (flowchart `/login` → pilih jenis pengguna) tidak diubah karena menggambarkan halaman FE.
+9. Belum ditangani: waktu respons login masih berbeda antara akun yang ada (password di-hash ulang untuk dicek) dan yang tidak ada, sehingga keberadaan email/NIS masih bisa ditebak lewat pengukuran waktu. Kondisi ini sudah ada sebelum branch ini.
 
 Login wali dengan NIS (branch `be/login-nis`). Perubahan kontrak dan skema sudah disetujui pemilik repo; yang di bawah ini detail yang diputuskan saat pengerjaan dan sudah ditulis ke Bagian A. Nomor 1–14 sudah disetujui; nomor 20 menunggu review:
 
@@ -411,13 +424,13 @@ Middleware:
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
 - Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Setelah `findOrFail`, controller memanggil `Jangkauan::pastikanTerlihat($model)` untuk Policy `view` yang hanya membalas 404, dan `Gate::authorize(...)` untuk aksi yang bisa membalas 403.
 - `signed:relative`: hanya di `GET /media/{token}`.
-- Rate limiter (`AppServiceProvider`): `login` 5/menit per email + IP, `login-wali` 5/menit per username + IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
+- Rate limiter (`AppServiceProvider`): `login-staff` 3/menit per email + IP dan 10/menit per IP, `login-wali` 5/menit per username + IP dan 20/menit per IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
 
 ## Auth dan akun
 
 - Token Sanctum dikirim sebagai `Authorization: Bearer`, berlaku 30 hari, nama token = `perangkat` (`web` | `mobile`). Logout mencabut token yang sedang dipakai; ganti password mencabut token lain; reset password dan penonaktifan akun mencabut semua token.
-- Login email hanya untuk Kepala Sekolah dan guru. Email tidak terdaftar, password salah, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
-- Login wali (`POST /auth/login-wali`) dengan NIS anak sebagai username (dinormalkan ke huruf besar tanpa spasi). NIS tidak terdaftar, password salah, dan akun bukan wali mendapat pesan yang sama ("NIS atau password salah."). Status dicek setelah password benar. Akun wali tidak punya email.
+- Login staff (`POST /auth/staff/login`) dengan email, hanya untuk Kepala Sekolah dan guru. Email tidak terdaftar, password salah, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
+- Login wali (`POST /auth/wali/login`) dengan NIS anak sebagai username (dinormalkan ke huruf besar tanpa spasi). NIS tidak terdaftar, password salah, dan akun bukan wali mendapat pesan yang sama ("NIS atau password salah."). Status dicek setelah password benar. Akun wali tidak punya email.
 - Akun wali otomatis (`WaliMuridService::buatAkunOtomatis()`) dibuat saat `POST /murid` dan saat pendaftar PPDB tanpa login diterima: username NIS, password `tanggal_lahir` format `dmY`, `wajib_ganti_password = true`, nama "Wali <nama panggilan>", `profil_lengkap = false`, kontak utama. `lepasAkunOtomatisBelumDipakai()` menonaktifkan akun itu saat anaknya ditambahkan ke akun lain atau murid dihapus. `resetPassword()` mengembalikan password ke tanggal lahir anak kontak utama.
 - Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya email; reset lewat Kepala Sekolah). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
@@ -504,6 +517,10 @@ Login wali dengan NIS (branch `be/login-nis`, disetujui pemilik repo sebelum dik
 33. PPDB tanpa login: `POST /public/pendaftaran`, `GET /public/pendaftaran/status`; pendaftar yang diterima dibuatkan akun wali (A2.3, A3, A6, A7, B6.11).
 34. `PUT /wali/profil` dengan `nama` dan `no_hp` wajib (A7).
 35. Skema: `users.username`, `users.wajib_ganti_password`, `users.email` nullable, `users.google_id` dan `murid.kode_tautan`/`kode_tautan_expired_at` dihapus, `pendaftaran.wali_murid_id` nullable (A4).
+
+Login staff dan wali murid terpisah (branch `be/login-terpisah`, diminta pemilik repo; Bagian A `PROMPT_FE_TK.md` belum disalin):
+
+36. `POST /auth/login` menjadi `POST /auth/staff/login` dan `POST /auth/login-wali` menjadi `POST /auth/wali/login`; batas percobaan per IP ditambahkan di kedua endpoint, login staff 3/menit per email + IP; balasan role salah sama persis dengan kredensial salah; 429 membawa `Retry-After` (A7, B4, B6.8, B7).
 
 ## Keputusan teknis
 
@@ -632,6 +649,18 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Login staff dan wali murid terpisah (branch `be/login-terpisah`)
+
+- `routes/api.php`: `POST /auth/staff/login` (`throttle:login-staff`) dan `POST /auth/wali/login` (`throttle:login-wali`) menggantikan `POST /auth/login` dan `POST /auth/login-wali`.
+- `app/Http/Requests/Auth/LoginRequest.php` diganti nama menjadi `LoginStaffRequest.php`; `AuthController::login` menjadi `loginStaff`, `AuthService::loginEmail` menjadi `loginStaff`. Deskripsi OpenAPI kedua endpoint menyebut role di `user.role`, balasan role salah, dan batas percobaan.
+- `app/Providers/AppServiceProvider.php`: limiter `login-staff` dan `login-wali` masing-masing berisi batas per akun + IP dan batas per IP.
+- `app/Support/Scramble/ResponsErrorRouteExtension.php`: header `Retry-After` di respons 429.
+- Test: `tests/Feature/Auth/AksesSilangRoleTest.php` (baru; token wali ke 14 endpoint staff, token guru dan Kepala Sekolah ke 4 endpoint wali, token guru ke 4 endpoint khusus Kepala Sekolah, semuanya 403 `FORBIDDEN`, token diambil lewat endpoint login baru; audit route login tanpa `role:`/`can:`). `LoginTest` dan `LoginWaliTest`: balasan role salah identik dengan password salah, batas per akun dengan header `Retry-After` dan pesan 429, batas per IP. `DokumentasiApiTest`: kedua endpoint dan header `Retry-After` di OpenAPI, path lama tidak ada. `RateLimitProxyTest` mengikuti batas staff 3. Path lama di test lain diganti.
+- `storage/api-docs/api.json`: diekspor ulang. Selain header `Retry-After`, yang berubah hanya path login, deskripsinya, dan skema `LoginRequest` → `LoginStaffRequest` (dibandingkan per path dengan ekspor sebelumnya).
+- `PROMPT_BE_TK.md`: A7 Auth, B4, B6.8, B7.
+
+Hasil pengecekan: 686 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak dijalankan ke MariaDB karena tidak ada perubahan migration, query, atau seeder. Uji manual lewat curl ke `php artisan serve`: 429 dengan `Retry-After: 60` pada percobaan ke-4 login staff (database lokal MariaDB); login guru dan wali wajib ganti password (`wajib_ganti_password: true`), guru `pending` (403 `ACCOUNT_PENDING`), dan path lama (404) ke database SQLite sementara berisi `DemoSeeder`, karena database MariaDB lokal belum diisi data demo dan tidak saya ubah.
 
 ### Perbaikan dokumentasi `PUT /kegiatan/{id}` dan `PUT /murid/{id}` (branch `be/fix-kegiatan`)
 
