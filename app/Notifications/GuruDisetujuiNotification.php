@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\Role;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -25,7 +26,7 @@ class GuruDisetujuiNotification extends Notification implements ShouldQueue
             ->subject('Akun guru Anda sudah disetujui')
             ->greeting("Yth. {$notifiable->name},")
             ->line('Kepala Sekolah sudah menyetujui pendaftaran akun guru Anda. Silakan masuk dengan email dan password yang Anda buat saat mendaftar.')
-            ->action('Masuk ke Dashboard', config('app.frontend_url').'/login')
+            ->action('Masuk ke Dashboard', config('app.frontend_url').Role::Guru->halamanLogin())
             ->salutation('Salam, '.config('app.name'));
     }
 }
