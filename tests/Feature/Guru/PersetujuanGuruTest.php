@@ -12,7 +12,7 @@ beforeEach(function () {
     $this->kepsek = buatKepalaSekolah();
 });
 
-it('menyetujui guru pending dan mengirim email berisi tautan ke halaman login staff', function () {
+it('menyetujui guru pending dan mengirim email berisi tautan ke halaman login mudarris', function () {
     $guru = Guru::factory()->menungguPersetujuan()->create();
 
     $this->actingAs($this->kepsek)->postJson("/api/v1/guru/{$guru->id}/setujui")
@@ -25,7 +25,7 @@ it('menyetujui guru pending dan mengirim email berisi tautan ke halaman login st
         ->and(Activity::query()->where('log_name', 'guru')->sole()->event)->toBe('disetujui');
 
     Notification::assertSentTo($guru->user, GuruDisetujuiNotification::class, function (GuruDisetujuiNotification $notifikasi) use ($guru): bool {
-        return $notifikasi->toMail($guru->user)->actionUrl === 'http://localhost:3000/staff/login';
+        return $notifikasi->toMail($guru->user)->actionUrl === 'http://localhost:3000/mudarris/login';
     });
 });
 

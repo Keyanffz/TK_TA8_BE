@@ -121,7 +121,7 @@ it('menerima pendaftaran dari wali, menyimpan dokumen, dan memberi tahu Kepala S
         'jenis' => 'pendaftaran_baru',
         'judul' => 'Pendaftar PPDB baru',
         'pesan' => 'Nadia Putri Rahma didaftarkan ke Kelompok A (PPDB-2027-0001). Periksa dokumennya.',
-        'url' => "/dashboard/ppdb/{$pendaftaran->id}",
+        'url' => "/mudarris/ppdb/{$pendaftaran->id}",
     ]);
 });
 

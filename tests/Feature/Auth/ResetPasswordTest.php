@@ -21,7 +21,7 @@ it('mengirim tautan reset yang mengarah ke halaman frontend', function () {
         $email = $notifikasi->toMail($guru->user);
 
         return $email->subject === 'Atur ulang password'
-            && str_starts_with((string) $email->actionUrl, 'http://localhost:3000/reset-password?token=')
+            && str_starts_with((string) $email->actionUrl, 'http://localhost:3000/mudarris/reset-password?token=')
             && str_contains((string) $email->actionUrl, 'email='.urlencode($guru->user->email));
     });
 });

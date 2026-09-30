@@ -42,6 +42,6 @@ class TagihanTertundaNotification extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return '/dashboard/tahun-ajaran';
+        return $this->halaman($notifiable, '/tahun-ajaran');
     }
 }

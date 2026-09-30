@@ -41,6 +41,6 @@ class PengumumanBaruNotification extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return "/dashboard/pengumuman/{$this->pengumumanId}";
+        return $this->halaman($notifiable, "/pengumuman/{$this->pengumumanId}");
     }
 }

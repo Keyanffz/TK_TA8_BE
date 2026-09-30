@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Enums\JenisNotifikasi;
+use App\Enums\Role;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -23,6 +25,17 @@ abstract class NotifikasiDatabase extends Notification implements ShouldQueue
     abstract protected function pesan(object $notifiable): string;
 
     abstract protected function url(object $notifiable): string;
+
+    /**
+     * Path halaman FE di area penerima (`/mudarris/...` atau `/dashboard/...`). Notifikasi database hanya
+     * dikirim ke `User`; penerima lain tidak punya area, jadi dianggap wali.
+     */
+    protected function halaman(object $notifiable, string $path): string
+    {
+        $beranda = $notifiable instanceof User ? $notifiable->role->beranda() : Role::WaliMurid->beranda();
+
+        return $beranda.$path;
+    }
 
     /**
      * @return list<string>

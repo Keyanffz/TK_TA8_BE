@@ -28,6 +28,6 @@ class GuruBaruNotification extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return "/dashboard/guru/{$this->guruId}";
+        return $this->halaman($notifiable, "/guru/{$this->guruId}");
     }
 }

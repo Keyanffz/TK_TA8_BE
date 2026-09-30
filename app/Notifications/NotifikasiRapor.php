@@ -34,6 +34,6 @@ abstract class NotifikasiRapor extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return "/dashboard/rapor/{$this->raporId}";
+        return $this->halaman($notifiable, "/rapor/{$this->raporId}");
     }
 }

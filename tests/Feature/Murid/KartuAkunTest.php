@@ -33,7 +33,7 @@ it('memuat nama anak, kelas, NIS, keterangan password awal, dan alamat login wal
         ->assertSee('TA20260031')
         ->assertSee('Password awal: tanggal lahir anak (DDMMYYYY), wajib diganti saat login pertama.')
         ->assertSee('Masuk di: https://tkta8.test/login')
-        ->assertDontSee('/staff/login')
+        ->assertDontSee('/mudarris/login')
         ->assertDontSee('09032022')
         ->assertDontSee('2022-03-09');
 });

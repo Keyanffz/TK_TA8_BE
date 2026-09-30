@@ -90,13 +90,12 @@ it('memberi tahu Kepala Sekolah dan guru berizin keuangan, bukan guru lain, saat
     Notification::assertNotSentTo($this->buAini->user, PembayaranMasukNotification::class);
 });
 
-it('mengarahkan notifikasi pembayaran untuk petugas keuangan dan wali ke halaman detail tagihan', function () {
+it('mengarahkan notifikasi pembayaran ke halaman detail tagihan di area petugas keuangan dan di area wali', function () {
     $pembayaran = unggahBukti($this, $this->ibu, $this->tagihan);
     $this->actingAs($this->kepsek)->postJson("/api/v1/pembayaran/{$pembayaran->id}/tolak", ['alasan' => 'Foto buram.'])->assertOk();
-    $url = "/dashboard/tagihan/{$this->tagihan->id}";
 
-    Notification::assertSentTo($this->kepsek, PembayaranMasukNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->kepsek)['url'] === $url);
-    Notification::assertSentTo($this->ibu->user, PembayaranDitolakNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibu->user)['url'] === $url);
+    Notification::assertSentTo($this->kepsek, PembayaranMasukNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->kepsek)['url'] === "/mudarris/tagihan/{$this->tagihan->id}");
+    Notification::assertSentTo($this->ibu->user, PembayaranDitolakNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibu->user)['url'] === "/dashboard/tagihan/{$this->tagihan->id}");
 });
 
 it('menolak unggahan kedua selama masih ada bukti yang menunggu verifikasi', function () {

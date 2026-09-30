@@ -61,6 +61,6 @@ class PendaftaranDiprosesNotification extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return "/dashboard/ppdb/{$this->pendaftaranId}";
+        return $this->halaman($notifiable, "/ppdb/{$this->pendaftaranId}");
     }
 }

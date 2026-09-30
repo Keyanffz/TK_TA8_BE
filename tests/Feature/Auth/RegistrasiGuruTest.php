@@ -39,7 +39,7 @@ it('mendaftarkan guru dengan status pending dan memberi tahu Kepala Sekolah', fu
             'jenis' => 'guru_baru',
             'judul' => 'Pendaftaran guru baru',
             'pesan' => 'Siti Nurhaliza mendaftar sebagai guru dan menunggu persetujuan Anda.',
-            'url' => "/dashboard/guru/{$user->guru?->id}",
+            'url' => "/mudarris/guru/{$user->guru?->id}",
         ];
     });
 });
