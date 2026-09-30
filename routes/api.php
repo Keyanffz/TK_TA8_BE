@@ -66,6 +66,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::get('/guru/{id}', [GuruController::class, 'show']);
         Route::put('/guru/{id}', [GuruController::class, 'update']);
         Route::patch('/guru/{id}/status', [GuruController::class, 'ubahStatus']);
+        Route::post('/guru/{id}/reset-google', [GuruController::class, 'resetGoogle']);
 
         Route::get('/wali-murid', [WaliMuridController::class, 'index']);
         Route::get('/wali-murid/{id}', [WaliMuridController::class, 'show']);

@@ -32,6 +32,8 @@ class GuruResource extends JsonResource
             'foto_url' => app(MediaService::class)->urlPublik($this->foto_path),
             'bisa_kelola_keuangan' => $this->bisa_kelola_keuangan,
             'tampil_di_landing' => $this->tampil_di_landing,
+            /** Sudah pernah masuk dengan Google (akun Google terikat). Nilai `sub` Google tidak dikirim. */
+            'terhubung_google' => $this->user->google_sub !== null,
             'created_at' => $this->created_at,
         ];
     }

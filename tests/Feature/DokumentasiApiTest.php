@@ -92,6 +92,8 @@ it('mendokumentasikan login Google staff dan tidak lagi memuat pendaftaran atau 
         ->and(kodeErrorTerdokumentasi($google, 503))->toBe(['SERVER_ERROR'])
         ->and($google['responses'][429]['headers']['Retry-After']['required'])->toBeTrue()
         ->and($dokumen['paths'])->not->toHaveKeys(['/auth/register-guru', '/guru/{id}/setujui', '/guru/{id}/tolak'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}/reset-google']['post'], 422))->toBe(['BUSINESS_RULE'])
+        ->and($dokumen['components']['schemas']['GuruResource']['required'])->toContain('terhubung_google')
         ->and($dokumen['components']['schemas']['GuruResource']['properties'])->not->toHaveKeys(['password_awal', 'disetujui_oleh', 'alasan_penolakan'])
         ->and($dokumen['components']['schemas']['JenisNotifikasi']['enum'])->not->toContain('guru_baru');
 });

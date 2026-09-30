@@ -93,6 +93,27 @@ class GuruService
     }
 
     /**
+     * Melepas akun Google yang terikat, misalnya karena guru membuat ulang akun Google dengan email yang sama. Login
+     * Google berikutnya dengan email itu mengikat akun Google yang dipakai saat itu. Sesi yang sedang berjalan tidak
+     * dicabut; untuk itu nonaktifkan akunnya.
+     *
+     * @throws BusinessRuleException
+     */
+    public function resetGoogle(Guru $guru, User $kepalaSekolah): Guru
+    {
+        if ($guru->user->google_sub === null) {
+            throw new BusinessRuleException("{$guru->user->name} belum pernah masuk dengan Google, jadi tidak ada tautan Google yang perlu direset.");
+        }
+
+        $guru->user->forceFill(['google_sub' => null])->save();
+
+        activity('akun')->causedBy($kepalaSekolah)->performedOn($guru->user)->event('google_direset')
+            ->log("Mereset tautan Google akun {$guru->user->name}");
+
+        return $guru;
+    }
+
+    /**
      * Menonaktifkan akun mencabut semua tokennya (B4), sehingga guru langsung keluar dari semua perangkat.
      *
      * @throws BusinessRuleException

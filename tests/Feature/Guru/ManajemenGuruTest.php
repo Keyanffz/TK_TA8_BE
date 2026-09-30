@@ -46,6 +46,7 @@ it('hanya bisa diakses Kepala Sekolah', function (Closure $akun, string $metode,
     'tambah' => ['POST', fn () => '/api/v1/guru'],
     'ubah' => ['PUT', fn () => '/api/v1/guru/'.buatGuru()->id],
     'ubah status' => ['PATCH', fn () => '/api/v1/guru/'.buatGuru()->id.'/status'],
+    'reset tautan Google' => ['POST', fn () => '/api/v1/guru/'.buatGuru(atributGuru: ['user_id' => User::factory()->create(['google_sub' => '109876543210987654321'])])->id.'/reset-google'],
 ]);
 
 it('menampilkan daftar guru tanpa profil Kepala Sekolah, urut nama', function () {
@@ -263,3 +264,48 @@ it('tidak menyediakan hapus guru, pendaftaran mandiri, dan persetujuan guru', fu
     'setujui guru' => ['POST', fn (Guru $guru) => "/api/v1/guru/{$guru->id}/setujui"],
     'tolak guru' => ['POST', fn (Guru $guru) => "/api/v1/guru/{$guru->id}/tolak"],
 ]);
+
+it('mereset tautan Google guru dan mencatat siapa yang melakukannya', function () {
+    $guru = buatGuru(atributGuru: ['user_id' => User::factory()->create(['email' => 'nur.aini@gmail.com', 'google_sub' => '109876543210987654321'])]);
+
+    $this->actingAs($this->kepsek)->getJson("/api/v1/guru/{$guru->id}")->assertJsonPath('data.terhubung_google', true);
+
+    $this->postJson("/api/v1/guru/{$guru->id}/reset-google")
+        ->assertOk()
+        ->assertJsonPath('data.terhubung_google', false)
+        ->assertJsonMissingPath('data.user.google_sub');
+
+    $log = Activity::query()->where('log_name', 'akun')->sole();
+    expect($guru->user->fresh()?->google_sub)->toBeNull()
+        ->and($log->event)->toBe('google_direset')
+        ->and($log->causer_id)->toBe($this->kepsek->id)
+        ->and($log->subject_id)->toBe($guru->user_id)
+        ->and($log->created_at)->not->toBeNull();
+});
+
+it('menolak reset tautan Google untuk guru yang belum pernah masuk dengan Google', function () {
+    $guru = buatGuru();
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/guru/{$guru->id}/reset-google")
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+
+    expect(Activity::query()->where('log_name', 'akun')->exists())->toBeFalse();
+});
+
+it('membiarkan guru masuk dengan akun Google baru beremail sama setelah tautannya direset', function () {
+    palsukanGoogle($this);
+    $guru = buatGuru(atributGuru: ['user_id' => User::factory()->create(['email' => 'nur.aini@gmail.com', 'google_sub' => '100000000000000000001'])]);
+    $akunGoogleBaru = idTokenGoogle(['email' => 'nur.aini@gmail.com', 'sub' => '100000000000000000002']);
+
+    $this->postJson('/api/v1/auth/staff/google', ['credential' => $akunGoogleBaru])->assertStatus(422);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/guru/{$guru->id}/reset-google")->assertOk();
+    $this->app['auth']->forgetGuards();
+
+    $this->postJson('/api/v1/auth/staff/google', ['credential' => $akunGoogleBaru])
+        ->assertOk()
+        ->assertJsonPath('data.user.id', $guru->user_id);
+
+    expect($guru->user->fresh()?->google_sub)->toBe('100000000000000000002');
+});

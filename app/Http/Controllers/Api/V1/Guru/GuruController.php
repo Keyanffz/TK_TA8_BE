@@ -95,6 +95,22 @@ class GuruController extends Controller
         return ApiResponse::success(new GuruResource($guru), "Akun {$guru->user->name} sekarang berstatus {$guru->user->status->label()}.");
     }
 
+    /**
+     * Melepas akun Google yang terikat ke guru, supaya guru bisa masuk dengan akun Google baru beremail sama.
+     *
+     * Ditolak 422 `BUSINESS_RULE` kalau guru belum pernah masuk dengan Google (`terhubung_google` false). Sesi yang
+     * sedang berjalan tidak dicabut. Dicatat di log aktivitas `akun` (event `google_direset`).
+     */
+    public function resetGoogle(int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    {
+        $guru = $this->guruService->resetGoogle($this->cariGuru($id), $kepalaSekolah);
+
+        return ApiResponse::success(
+            new GuruResource($guru),
+            "Tautan Google {$guru->user->name} direset. Login Google berikutnya dengan {$guru->user->email} memakai akun Google yang dipilih saat itu.",
+        );
+    }
+
     private function cariGuru(int $id): Guru
     {
         return Guru::query()->with('user')->findOrFail($id);
