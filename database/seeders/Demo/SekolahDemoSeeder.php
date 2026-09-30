@@ -3,7 +3,6 @@
 namespace Database\Seeders\Demo;
 
 use App\Enums\Hubungan;
-use App\Enums\JenisKelamin;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Enums\Tingkat;
@@ -18,13 +17,11 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Tahun ajaran 2026/2027, 6 guru aktif + 2 menunggu persetujuan, 4 kelas @15 murid, dan akun wali per murid.
+ * Tahun ajaran 2026/2027, 6 guru aktif + 1 guru nonaktif, 4 kelas @15 murid, dan akun wali per murid.
  * 10 keluarga punya dua anak, 3 keluarga menautkan ayah dan ibu, 9 keluarga belum pernah login (password awal).
  */
 class SekolahDemoSeeder extends Seeder
 {
-    public const PASSWORD_GURU = 'guru2026';
-
     /** Password akun wali demo yang sudah mengganti password awalnya. */
     public const PASSWORD_WALI = 'wali2026';
 
@@ -40,10 +37,8 @@ class SekolahDemoSeeder extends Seeder
         ['Rina Kusumawati, A.Md.', 'rina.kusumawati', false],
     ];
 
-    private const GURU_PENDING = [
-        ['Fitri Handayani', 'fitri.handayani'],
-        ['Ahmad Fauzi', 'ahmad.fauzi'],
-    ];
+    /** Guru yang sudah tidak mengajar: akunnya dinonaktifkan, bukan dihapus. */
+    private const GURU_NONAKTIF = ['Fitri Handayani, S.Pd.', 'fitri.handayani'];
 
     private const MURID_PER_KELAS = 15;
 
@@ -81,30 +76,22 @@ class SekolahDemoSeeder extends Seeder
                 ->for(User::factory()->create([
                     'name' => $nama,
                     'email' => $email.'@guru.tkta8.test',
-                    'password' => self::PASSWORD_GURU,
                     'role' => Role::Guru,
                     'status' => StatusAkun::Aktif,
                 ]))
                 ->create([
                     'bisa_kelola_keuangan' => $kelolaKeuangan,
                     'tampil_di_landing' => true,
-                    'disetujui_oleh' => User::query()->where('role', Role::SuperAdmin)->value('id'),
-                    'disetujui_at' => '2026-06-20 09:00:00',
                 ]);
         }
 
-        foreach (self::GURU_PENDING as [$nama, $email]) {
-            Guru::factory()
-                ->for(User::factory()->status(StatusAkun::Pending)->create([
-                    'name' => $nama,
-                    'email' => $email.'@guru.tkta8.test',
-                    'password' => self::PASSWORD_GURU,
-                ]))
-                ->create([
-                    'jenis_kelamin' => $nama === 'Ahmad Fauzi' ? JenisKelamin::L : JenisKelamin::P,
-                    'jabatan' => 'Guru',
-                ]);
-        }
+        [$nama, $email] = self::GURU_NONAKTIF;
+        Guru::factory()
+            ->for(User::factory()->status(StatusAkun::Nonaktif)->create([
+                'name' => $nama,
+                'email' => $email.'@guru.tkta8.test',
+            ]))
+            ->create(['jabatan' => 'Guru Kelas']);
 
         return $guru;
     }

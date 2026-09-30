@@ -45,16 +45,16 @@ it('mendokumentasikan respons 403 dari middleware role dan status akun', functio
     $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
 
     expect(kodeErrorTerdokumentasi($dokumen['paths']['/auth/me']['get'], 403))
-        ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
+        ->toBe(['ACCOUNT_INACTIVE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/password']['put'], 403))
-        ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
+        ->toBe(['FORBIDDEN', 'ACCOUNT_INACTIVE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}']['put'], 403))
-        ->toBe(['FORBIDDEN', 'ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE', 'PASSWORD_WAJIB_DIGANTI'])
+        ->toBe(['FORBIDDEN', 'ACCOUNT_INACTIVE', 'PASSWORD_WAJIB_DIGANTI'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}']['put'], 404))->toBe(['NOT_FOUND'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/staff/login']['post'], 403))
-        ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
+        ->toBe(['ACCOUNT_INACTIVE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/wali/login']['post'], 403))
-        ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
+        ->toBe(['ACCOUNT_INACTIVE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/wali/login']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/wali/tambah-anak']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/media/{token}']['get'], 403))->toBe(['FORBIDDEN']);
@@ -77,6 +77,23 @@ it('mendokumentasikan login staff dan login wali sebagai endpoint terpisah', fun
         ->and($staff['responses'][429]['headers']['Retry-After']['schema']['type'])->toBe('integer')
         ->and($wali['responses'][429]['headers']['Retry-After']['required'])->toBeTrue()
         ->and($dokumen['paths'])->not->toHaveKeys(['/auth/login', '/auth/login-wali']);
+});
+
+it('mendokumentasikan login Google staff dan tidak lagi memuat pendaftaran atau persetujuan guru', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $google = $dokumen['paths']['/auth/staff/google']['post'];
+
+    expect($google['requestBody']['content']['application/json']['schema']['$ref'])->toBe('#/components/schemas/LoginGoogleRequest')
+        ->and($dokumen['components']['schemas']['LoginGoogleRequest']['required'])->toBe(['credential'])
+        ->and($google['security'])->toBe([])
+        ->and(kodeErrorTerdokumentasi($google, 403))->toBe(['ACCOUNT_INACTIVE'])
+        ->and(kodeErrorTerdokumentasi($google, 422))->toBe(['VALIDATION_ERROR'])
+        ->and(kodeErrorTerdokumentasi($google, 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and(kodeErrorTerdokumentasi($google, 503))->toBe(['SERVER_ERROR'])
+        ->and($google['responses'][429]['headers']['Retry-After']['required'])->toBeTrue()
+        ->and($dokumen['paths'])->not->toHaveKeys(['/auth/register-guru', '/guru/{id}/setujui', '/guru/{id}/tolak'])
+        ->and($dokumen['components']['schemas']['GuruResource']['properties'])->not->toHaveKeys(['password_awal', 'disetujui_oleh', 'alasan_penolakan'])
+        ->and($dokumen['components']['schemas']['JenisNotifikasi']['enum'])->not->toContain('guru_baru');
 });
 
 it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {
@@ -173,7 +190,7 @@ it('mewajibkan field relasi yang selalu dikirim dan membiarkan opsional hanya fi
         ->and($opsional('MuridDetailResource'))->toBe([])
         ->and($opsional('RaporResource'))->toBe(['catatan_revisi'])
         ->and($opsional('PengumumanResource'))->toBe(['kelas', 'murid'])
-        ->and($opsional('GuruResource'))->toBe(['password_awal']);
+        ->and($opsional('GuruResource'))->toBe([]);
 });
 
 it('mendokumentasikan jenis notifikasi sebagai enum dan rapor PDF sebagai file', function () {

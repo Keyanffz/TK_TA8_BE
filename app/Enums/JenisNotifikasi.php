@@ -14,7 +14,6 @@ enum JenisNotifikasi: string
     case PembayaranMasuk = 'pembayaran_masuk';
     case PembayaranDiterima = 'pembayaran_diterima';
     case PembayaranDitolak = 'pembayaran_ditolak';
-    case GuruBaru = 'guru_baru';
     case RaporDiajukan = 'rapor_diajukan';
     case RaporRevisi = 'rapor_revisi';
     case RaporTerbit = 'rapor_terbit';
@@ -33,7 +32,6 @@ enum JenisNotifikasi: string
             self::PembayaranMasuk => 'Pembayaran masuk',
             self::PembayaranDiterima => 'Pembayaran diterima',
             self::PembayaranDitolak => 'Pembayaran ditolak',
-            self::GuruBaru => 'Guru baru',
             self::RaporDiajukan => 'Rapor diajukan',
             self::RaporRevisi => 'Rapor perlu revisi',
             self::RaporTerbit => 'Rapor terbit',

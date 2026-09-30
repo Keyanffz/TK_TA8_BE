@@ -55,7 +55,7 @@ class DashboardService
      *     statistik: array{murid_aktif: int, guru_aktif: int, kelas: int, wali_murid: int},
      *     keuangan_bulan_ini: array{total_tagihan: int, terbayar: int, belum_terbayar: int, persen_lunas: float},
      *     grafik_pemasukan: list<array{bulan: string, total: int}>,
-     *     tertunda: array{guru_pending: int, pembayaran_menunggu: int, rapor_diajukan: int, pendaftaran_baru: int},
+     *     tertunda: array{pembayaran_menunggu: int, rapor_diajukan: int, pendaftaran_baru: int},
      *     pengumuman_terbaru: AnonymousResourceCollection,
      *     agenda_mendatang: AnonymousResourceCollection
      * }
@@ -83,7 +83,6 @@ class DashboardService
             /** @var list<array{bulan: string, total: int}> */
             'grafik_pemasukan' => array_map(fn (array $bulan): array => ['bulan' => $bulan['bulan'], 'total' => $bulan['pemasukan']], $grafik),
             'tertunda' => [
-                'guru_pending' => User::query()->where('role', Role::Guru)->where('status', StatusAkun::Pending)->count(),
                 'pembayaran_menunggu' => Pembayaran::query()->where('status', StatusPembayaran::Menunggu)->count(),
                 'rapor_diajukan' => Rapor::query()->where('status', StatusRapor::Diajukan)->count(),
                 'pendaftaran_baru' => Pendaftaran::query()->where('status', StatusPendaftaran::Diajukan)->count(),

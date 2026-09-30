@@ -2,7 +2,6 @@
 
 use App\Enums\Role;
 use App\Models\User;
-use App\Notifications\GuruBaruNotification;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -25,7 +24,7 @@ it('mencocokkan respons GET setiap role dengan dokumentasi OpenAPI', function ()
         'bendahara' => User::query()->where('email', 'siti.rahmawati@guru.tkta8.test')->firstOrFail(),
         'wali' => User::query()->where('role', Role::WaliMurid)->whereHas('waliMurid', fn ($wali) => $wali->has('murid', '>=', 2))->firstOrFail(),
     ];
-    $pengguna['kepsek']->notify(new GuruBaruNotification(1, 'Fitri Handayani'));
+    $pengguna['kepsek']->notify(notifikasiPendaftarBaru(1, 'Fitri Handayani'));
 
     $ambil = function (?User $user, string $url) {
         // Sesi actingAs tetap menempel sampai guard dilupakan, jadi request publik harus membersihkannya dulu.

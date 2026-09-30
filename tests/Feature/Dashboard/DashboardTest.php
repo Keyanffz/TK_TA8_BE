@@ -64,7 +64,7 @@ beforeEach(function () {
 });
 
 it('mengisi beranda Kepala Sekolah dengan statistik, keuangan, grafik, dan tindakan tertunda', function () {
-    buatGuru(StatusAkun::Pending);
+    buatGuru(StatusAkun::Nonaktif);
     User::factory()->waliMurid()->status(StatusAkun::Nonaktif)->create();
     Rapor::factory()->for($this->citra)->for($this->kelasB1)->create(['status' => StatusRapor::Diajukan, 'dibuat_oleh' => $this->buSri->id]);
     Pendaftaran::factory()->for($this->ibu)->create();
@@ -77,7 +77,7 @@ it('mengisi beranda Kepala Sekolah dengan statistik, keuangan, grafik, dan tinda
         ->assertOk()
         ->assertJsonPath('data.statistik', ['murid_aktif' => 3, 'guru_aktif' => 2, 'kelas' => 2, 'wali_murid' => 1])
         ->assertJsonPath('data.keuangan_bulan_ini', ['total_tagihan' => 450000, 'terbayar' => 150000, 'belum_terbayar' => 300000, 'persen_lunas' => 33.3])
-        ->assertJsonPath('data.tertunda', ['guru_pending' => 1, 'pembayaran_menunggu' => 1, 'rapor_diajukan' => 1, 'pendaftaran_baru' => 1])
+        ->assertJsonPath('data.tertunda', ['pembayaran_menunggu' => 1, 'rapor_diajukan' => 1, 'pendaftaran_baru' => 1])
         ->assertJsonCount(1, 'data.pengumuman_terbaru')
         ->assertJsonCount(1, 'data.agenda_mendatang');
 

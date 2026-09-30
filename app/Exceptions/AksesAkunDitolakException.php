@@ -7,8 +7,8 @@ use App\Enums\StatusAkun;
 use RuntimeException;
 
 /**
- * Login dengan kredensial benar, tetapi akun belum atau tidak lagi aktif (B6.7).
- * Dirender sebagai 403 dengan kode ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE.
+ * Login dengan kredensial benar, tetapi akun sudah dinonaktifkan (B6.7).
+ * Dirender sebagai 403 dengan kode ACCOUNT_INACTIVE.
  */
 class AksesAkunDitolakException extends RuntimeException
 {
@@ -17,14 +17,8 @@ class AksesAkunDitolakException extends RuntimeException
         parent::__construct($pesan);
     }
 
-    public static function untuk(StatusAkun $status, ?string $alasanPenolakan = null): self
+    public static function untuk(StatusAkun $status): self
     {
-        $pesan = $status->pesanAksesDitolak();
-
-        if ($status === StatusAkun::Ditolak && filled($alasanPenolakan)) {
-            $pesan .= ' Alasan: '.$alasanPenolakan;
-        }
-
-        return new self($status->kodeErrorAkses(), $pesan);
+        return new self($status->kodeErrorAkses(), $status->pesanAksesDitolak());
     }
 }
