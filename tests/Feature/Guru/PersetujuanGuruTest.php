@@ -45,7 +45,7 @@ it('menolak guru pending beserta alasan yang terkirim lewat email dan pesan logi
         return in_array('Data NUPTK tidak ditemukan di Dapodik.', $notifikasi->toMail($guru->user)->introLines, true);
     });
 
-    $this->postJson('/api/v1/auth/login', ['email' => $guru->user->email, 'password' => 'password'])
+    $this->postJson('/api/v1/auth/staff/login', ['email' => $guru->user->email, 'password' => 'password'])
         ->assertForbidden()
         ->assertJsonPath('message', 'Pendaftaran akun Anda ditolak. Alasan: Data NUPTK tidak ditemukan di Dapodik.');
 });

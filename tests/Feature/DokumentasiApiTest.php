@@ -51,11 +51,11 @@ it('mendokumentasikan respons 403 dari middleware role dan status akun', functio
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}']['put'], 403))
         ->toBe(['FORBIDDEN', 'ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE', 'PASSWORD_WAJIB_DIGANTI'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/guru/{id}']['put'], 404))->toBe(['NOT_FOUND'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login']['post'], 403))
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/staff/login']['post'], 403))
         ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login-wali']['post'], 403))
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/wali/login']['post'], 403))
         ->toBe(['ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE'])
-        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/login-wali']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/auth/wali/login']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/wali/tambah-anak']['post'], 429))->toBe(['TOO_MANY_REQUESTS'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/media/{token}']['get'], 403))->toBe(['FORBIDDEN']);
 });

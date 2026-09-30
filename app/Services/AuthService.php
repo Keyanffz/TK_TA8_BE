@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
-    private const ROLE_LOGIN_EMAIL = [Role::SuperAdmin, Role::Guru];
+    private const ROLE_STAFF = [Role::SuperAdmin, Role::Guru];
 
     public function __construct(private readonly MediaService $media) {}
 
@@ -28,9 +28,9 @@ class AuthService
      *
      * @throws AksesAkunDitolakException
      */
-    public function loginEmail(string $email, string $password, Perangkat $perangkat): array
+    public function loginStaff(string $email, string $password, Perangkat $perangkat): array
     {
-        $user = User::query()->with('guru')->where('email', $email)->whereIn('role', self::ROLE_LOGIN_EMAIL)->first();
+        $user = User::query()->with('guru')->where('email', $email)->whereIn('role', self::ROLE_STAFF)->first();
 
         if ($user === null || $user->password === null || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages(['email' => ['Email atau password salah.']]);
@@ -155,7 +155,7 @@ class AuthService
     {
         return User::query()
             ->where('email', $email)
-            ->whereIn('role', self::ROLE_LOGIN_EMAIL)
+            ->whereIn('role', self::ROLE_STAFF)
             ->whereNotNull('password')
             ->first();
     }

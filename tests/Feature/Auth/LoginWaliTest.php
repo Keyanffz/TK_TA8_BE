@@ -21,7 +21,7 @@ beforeEach(function () {
 });
 
 it('memberi token dan data user saat wali login dengan NIS dan password awal', function () {
-    $response = $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260007', 'password' => '15032021', 'perangkat' => 'mobile'])
+    $response = $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => '15032021', 'perangkat' => 'mobile'])
         ->assertOk()
         ->assertJsonPath('message', 'Berhasil masuk.')
         ->assertJsonPath('data.user.id', $this->user->id)
@@ -38,13 +38,13 @@ it('memberi token dan data user saat wali login dengan NIS dan password awal', f
 });
 
 it('menerima NIS yang diketik dengan huruf kecil atau spasi', function () {
-    $this->postJson('/api/v1/auth/login-wali', ['username' => ' ta2026 0007 ', 'password' => '15032021'])
+    $this->postJson('/api/v1/auth/wali/login', ['username' => ' ta2026 0007 ', 'password' => '15032021'])
         ->assertOk()
         ->assertJsonPath('data.user.username', 'TA20260007');
 });
 
 it('menolak NIS atau password yang salah tanpa membedakan penyebabnya', function (Closure $kredensial) {
-    $this->postJson('/api/v1/auth/login-wali', $kredensial())
+    $this->postJson('/api/v1/auth/wali/login', $kredensial())
         ->assertStatus(422)
         ->assertJsonPath('code', 'VALIDATION_ERROR')
         ->assertJsonPath('errors.username', ['NIS atau password salah.']);
@@ -62,26 +62,58 @@ it('menolak NIS atau password yang salah tanpa membedakan penyebabnya', function
 it('menolak akun wali nonaktif hanya setelah password benar', function () {
     $this->user->update(['status' => StatusAkun::Nonaktif]);
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260007', 'password' => 'salahSalah1'])
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => 'salahSalah1'])
         ->assertStatus(422);
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260007', 'password' => '15032021'])
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => '15032021'])
         ->assertForbidden()
         ->assertJsonPath('code', 'ACCOUNT_INACTIVE');
 
     expect($this->user->tokens()->count())->toBe(0);
 });
 
+it('membalas akun guru di login wali persis sama dengan password salah', function () {
+    $guru = buatGuru();
+    $guru->user->update(['username' => 'TA20260099', 'password' => 'rahasia123']);
+
+    $akunGuru = $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260099', 'password' => 'rahasia123'])
+        ->assertStatus(422);
+    $passwordSalah = $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => '16032021'])
+        ->assertStatus(422);
+
+    expect($akunGuru->json())->toBe($passwordSalah->json());
+});
+
 it('membatasi login wali 5 kali per menit untuk NIS dan IP yang sama', function () {
+    $this->freezeTime();
+
     foreach (range(1, 5) as $_) {
-        $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260007', 'password' => 'salahSalah1'])->assertStatus(422);
+        $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => 'salahSalah1'])->assertStatus(422);
     }
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => 'ta20260007', 'password' => '15032021'])
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'ta20260007', 'password' => '15032021'])
         ->assertTooManyRequests()
-        ->assertJsonPath('code', 'TOO_MANY_REQUESTS');
+        ->assertHeader('Retry-After', 60)
+        ->assertJsonPath('code', 'TOO_MANY_REQUESTS')
+        ->assertJsonPath('message', 'Terlalu banyak percobaan. Coba lagi dalam 60 detik.');
 
-    $this->postJson('/api/v1/auth/login-wali', ['username' => 'TA20260008', 'password' => 'salahSalah1'])->assertStatus(422);
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260008', 'password' => 'salahSalah1'])->assertStatus(422);
+});
+
+it('membatasi login wali 20 kali per menit dari satu IP walau NIS-nya berbeda', function () {
+    $this->freezeTime();
+
+    foreach (range(1, 20) as $ke) {
+        $this->postJson('/api/v1/auth/wali/login', ['username' => sprintf('TA2026%04d', 100 + $ke), 'password' => 'salahSalah1'])->assertStatus(422);
+    }
+
+    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => '15032021'])
+        ->assertTooManyRequests()
+        ->assertHeader('Retry-After', 60);
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.30'])
+        ->postJson('/api/v1/auth/wali/login', ['username' => 'TA20260007', 'password' => '15032021'])
+        ->assertOk();
 });
 
 it('membatasi akun yang wajib ganti password ke /auth/me, ganti password, dan logout', function () {
