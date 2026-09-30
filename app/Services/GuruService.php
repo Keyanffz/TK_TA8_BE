@@ -94,8 +94,8 @@ class GuruService
 
     /**
      * Melepas akun Google yang terikat, misalnya karena guru membuat ulang akun Google dengan email yang sama. Login
-     * Google berikutnya dengan email itu mengikat akun Google yang dipakai saat itu. Sesi yang sedang berjalan tidak
-     * dicabut; untuk itu nonaktifkan akunnya.
+     * Google berikutnya dengan email itu mengikat akun Google yang dipakai saat itu. Semua sesi dicabut, karena sesi
+     * itu dibuat lewat akun Google yang tautannya baru saja dilepas.
      *
      * @throws BusinessRuleException
      */
@@ -105,7 +105,10 @@ class GuruService
             throw new BusinessRuleException("{$guru->user->name} belum pernah masuk dengan Google, jadi tidak ada tautan Google yang perlu direset.");
         }
 
-        $guru->user->forceFill(['google_sub' => null])->save();
+        DB::transaction(function () use ($guru): void {
+            $guru->user->forceFill(['google_sub' => null])->save();
+            $guru->user->tokens()->delete();
+        });
 
         activity('akun')->causedBy($kepalaSekolah)->performedOn($guru->user)->event('google_direset')
             ->log("Mereset tautan Google akun {$guru->user->name}");

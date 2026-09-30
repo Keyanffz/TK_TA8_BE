@@ -283,6 +283,26 @@ it('mereset tautan Google guru dan mencatat siapa yang melakukannya', function (
         ->and($log->created_at)->not->toBeNull();
 });
 
+it('mencabut semua sesi guru saat tautan Google direset sehingga token lama ditolak 401', function () {
+    $guru = buatGuru(atributGuru: ['user_id' => User::factory()->create(['google_sub' => '109876543210987654321'])]);
+    $tokenWeb = $guru->user->createToken('web')->plainTextToken;
+    $tokenMobile = $guru->user->createToken('mobile')->plainTextToken;
+
+    $this->withToken($tokenWeb)->getJson('/api/v1/auth/me')->assertOk();
+    $this->app['auth']->forgetGuards();
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/guru/{$guru->id}/reset-google")->assertOk();
+    $this->app['auth']->forgetGuards();
+
+    expect($guru->user->tokens()->count())->toBe(0);
+    foreach ([$tokenWeb, $tokenMobile] as $tokenLama) {
+        $this->withToken($tokenLama)->getJson('/api/v1/auth/me')
+            ->assertUnauthorized()
+            ->assertJsonPath('code', 'UNAUTHENTICATED');
+        $this->app['auth']->forgetGuards();
+    }
+});
+
 it('menolak reset tautan Google untuk guru yang belum pernah masuk dengan Google', function () {
     $guru = buatGuru();
 
