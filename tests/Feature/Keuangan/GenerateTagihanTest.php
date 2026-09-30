@@ -259,7 +259,7 @@ it('memberi tahu Kepala Sekolah saat generate terjadwal melewati bulan di luar t
         return $isi['jenis'] === 'tagihan_tertunda'
             && $isi['judul'] === 'Tagihan Juli 2027 belum dibuat'
             && $isi['pesan'] === 'Tagihan bulanan Juli 2027 belum dibuat karena bulan itu di luar tahun ajaran aktif 2026/2027. Aktifkan tahun ajaran yang sesuai, lalu buat tagihannya lewat generate tagihan manual.'
-            && $isi['url'] === '/dashboard/tahun-ajaran';
+            && $isi['url'] === '/mudarris/tahun-ajaran';
     });
     Notification::assertNotSentTo($kepsekNonaktif, TagihanTertundaNotification::class);
 });

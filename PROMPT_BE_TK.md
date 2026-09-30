@@ -42,7 +42,7 @@ Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mob
   | `wali_murid` | Orang tua / wali | User |
 - **Murid TIDAK punya akun login.** Murid hanya data. Semua akses anak lewat akun wali murid (1 wali bisa punya beberapa anak, 1 anak bisa punya beberapa wali, misal ayah & ibu).
 - **Tidak ada modul absensi.**
-- Satu **dashboard bersama** (`/dashboard`) untuk semua role; menu, isi beranda, dan aksi menyesuaikan role.
+- **Dua area dashboard terpisah**: wali murid di `/dashboard/...`, guru dan Kepala Sekolah di `/mudarris/...` (termasuk halaman akun guru: `/mudarris/login`, `/mudarris/daftar`, `/mudarris/lupa-password`, `/mudarris/reset-password`, `/mudarris/menunggu-persetujuan`). Di dalam `/mudarris`, menu, isi beranda, dan aksi menyesuaikan role (Kepala Sekolah, guru, petugas keuangan).
 - **Hanya super admin** yang bisa mengubah konten website publik (landing page, profil sekolah, galeri) dan pengaturan sistem.
 
 ## A2. Keputusan Desain Penting
@@ -280,7 +280,7 @@ Semua tabel punya `id` (bigint PK) dan `created_at/updated_at` kecuali pivot yan
 
 ```mermaid
 flowchart TD
-    A([Buka /login]) --> B{Jenis pengguna}
+    A([Buka /login atau /mudarris/login]) --> B{Jenis pengguna}
     B -->|Guru / Kepsek| C[Isi email + password]
     C --> D{Kredensial valid?}
     D -->|Tidak| C
@@ -310,7 +310,7 @@ flowchart TD
     R -->|Sudah| R2[Anak tertaut ke kedua akun]
     R1 --> S[Anak tertaut ke akun yang login]
     R2 --> S
-    T([Guru daftar di /daftar-guru]) --> U[Akun dibuat status pending]
+    T([Guru daftar di /mudarris/daftar]) --> U[Akun dibuat status pending]
     U --> V[Notifikasi ke Kepsek]
     V --> W{Kepsek memutuskan}
     W -->|Setujui| X[Status aktif + notifikasi email ke guru]
@@ -437,7 +437,7 @@ Status HTTP di luar daftar di atas dipetakan ke kode terdekat: 405 (metode HTTP 
 - Akun yang tidak terdaftar, password salah, dan akun dengan role yang bukan milik endpoint itu mendapat balasan 422 yang sama persis (staff: "Email atau password salah." di field `email`; wali: "NIS atau password salah." di field `username`). Status akun dicek setelah password benar. Balasan 429 membawa header `Retry-After` (detik).
 - `perangkat`: `web` | `mobile`, opsional, default `web`; dipakai sebagai nama token Sanctum.
 - `POST /auth/register-guru` — Pub — `{ name, email, password, password_confirmation, no_hp, jenis_kelamin }` → 201, pesan menunggu persetujuan
-- `POST /auth/forgot-password` — Pub — `{ email }` (hanya guru dan Kepala Sekolah; wali meminta reset ke sekolah)
+- `POST /auth/forgot-password` — Pub — `{ email }` (hanya guru dan Kepala Sekolah; wali meminta reset ke sekolah). Email berisi tautan ke halaman FE `/mudarris/reset-password?token=&email=`
 - `POST /auth/reset-password` — Pub — `{ token, email, password, password_confirmation }`
 - `GET /auth/me` — semua — user + profil (guru/wali) + untuk W: daftar anak ringkas
 - `POST /auth/logout` — semua
@@ -546,7 +546,7 @@ Untuk W: `"email": null`, `"username": "TA20260001"` (NIS anak), `wajib_ganti_pa
 - `GET /agenda?bulan=YYYY-MM` — semua. `POST|PUT|DELETE` — SA
 - `GET /notifikasi` — semua. `GET /notifikasi/belum-dibaca` → `{ jumlah }`. `POST /notifikasi/{id}/baca`. `POST /notifikasi/baca-semua`
 
-**Bentuk notifikasi:** `{ id, jenis, judul, pesan, url (path FE tujuan, misal "/dashboard/tagihan/12"), dibaca_at, created_at }`. Jenis: `tagihan_baru`, `tagihan_tertunda` (ke Kepsek: generate terjadwal dilewati karena bulan di luar tahun ajaran aktif), `pengingat_tagihan`, `tagihan_terlambat`, `pembayaran_masuk`, `pembayaran_diterima`, `pembayaran_ditolak`, `guru_baru`, `rapor_diajukan`, `rapor_revisi` (juga saat rapor terbit ditarik), `rapor_terbit`, `pengumuman_baru`, `pendaftaran_baru`, `pendaftaran_diproses`, `anak_tertaut`.
+**Bentuk notifikasi:** `{ id, jenis, judul, pesan, url, dibaca_at, created_at }`. `url` adalah path halaman FE di area penerima: `/dashboard/...` untuk wali murid, `/mudarris/...` untuk guru dan Kepala Sekolah (misal `/dashboard/tagihan/12` dan `/mudarris/tagihan/12`). Jenis: `tagihan_baru`, `tagihan_tertunda` (ke Kepsek: generate terjadwal dilewati karena bulan di luar tahun ajaran aktif), `pengingat_tagihan`, `tagihan_terlambat`, `pembayaran_masuk`, `pembayaran_diterima`, `pembayaran_ditolak`, `guru_baru`, `rapor_diajukan`, `rapor_revisi` (juga saat rapor terbit ditarik), `rapor_terbit`, `pengumuman_baru`, `pendaftaran_baru`, `pendaftaran_diproses`, `anak_tertaut`.
 
 ### PPDB
 - `POST /pendaftaran` — W — multipart (data + `hubungan` + dokumen), untuk kakak/adik dari wali yang sudah punya akun. Tahun ajaran diambil dari `ppdb.tahun_ajaran_id`. Tolak jika PPDB tutup / kuota penuh / NIK anak sudah punya pendaftaran selain `ditolak` atau sudah menjadi murid (pendaftar yang pernah ditolak boleh daftar ulang)

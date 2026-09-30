@@ -38,7 +38,7 @@ class AnakTertautNotification extends NotifikasiDatabase
     protected function url(object $notifiable): string
     {
         return $notifiable instanceof User && $notifiable->role === Role::SuperAdmin
-            ? "/dashboard/murid/{$this->muridId}"
-            : '/dashboard/anak';
+            ? $this->halaman($notifiable, "/murid/{$this->muridId}")
+            : $this->halaman($notifiable, '/anak');
     }
 }

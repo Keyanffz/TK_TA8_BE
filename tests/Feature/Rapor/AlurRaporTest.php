@@ -122,7 +122,8 @@ it('membolehkan Kepala Sekolah membuat rapor hanya untuk kelas yang dia ampu', f
 
 it('menjalankan alur lengkap rapor sampai terbit dan memberi tahu pihak terkait', function () {
     $rapor = buatDraftRapor($this);
-    $url = "/dashboard/rapor/{$rapor->id}";
+    $urlStaff = "/mudarris/rapor/{$rapor->id}";
+    $urlWali = "/dashboard/rapor/{$rapor->id}";
 
     $this->actingAs($this->buAini->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))
         ->assertOk()
@@ -134,12 +135,12 @@ it('menjalankan alur lengkap rapor sampai terbit dan memberi tahu pihak terkait'
         ->assertOk()
         ->assertJsonPath('data.status', 'diajukan')
         ->assertJsonPath('data.diajukan_at', '2026-12-10T13:00:00+07:00');
-    Notification::assertSentTo($this->kepsek, RaporDiajukanNotification::class, function ($notifikasi) use ($url) {
+    Notification::assertSentTo($this->kepsek, RaporDiajukanNotification::class, function ($notifikasi) use ($urlStaff) {
         $isi = $notifikasi->toDatabase($this->kepsek);
 
         return $isi['jenis'] === 'rapor_diajukan'
             && $isi['pesan'] === "Rapor semester 1 Aisyah Putri (TK A1) diajukan {$this->buAini->user->name} dan menunggu review Anda."
-            && $isi['url'] === $url;
+            && $isi['url'] === $urlStaff;
     });
 
     $this->actingAs($this->buAini->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))
@@ -168,7 +169,7 @@ it('menjalankan alur lengkap rapor sampai terbit dan memberi tahu pihak terkait'
 
     expect($rapor->fresh()?->disetujui_oleh)->toBe($this->kepsek->id);
     Notification::assertSentTo([$this->ibu->user, $this->ayah->user], RaporTerbitNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibu->user)
-        === ['jenis' => 'rapor_terbit', 'judul' => 'Rapor sudah terbit', 'pesan' => 'Rapor semester 1 tahun ajaran 2026/2027 untuk Aisyah sudah terbit dan bisa diunduh.', 'url' => $url]);
+        === ['jenis' => 'rapor_terbit', 'judul' => 'Rapor sudah terbit', 'pesan' => 'Rapor semester 1 tahun ajaran 2026/2027 untuk Aisyah sudah terbit dan bisa diunduh.', 'url' => $urlWali]);
     expect(Activity::query()->where('log_name', 'rapor')->pluck('event')->all())->toBe(['revisi', 'terbit']);
 });
 
@@ -262,7 +263,7 @@ it('menarik rapor terbit kembali ke revisi, memberi tahu guru pembuat, dan menye
         'jenis' => 'rapor_revisi',
         'judul' => 'Rapor terbit ditarik untuk revisi',
         'pesan' => 'Kepala Sekolah menarik rapor semester 1 Aisyah Putri (TK A1) yang sudah terbit: Berat badan salah ketik. Perbaiki lalu ajukan lagi.',
-        'url' => "/dashboard/rapor/{$rapor->id}",
+        'url' => "/mudarris/rapor/{$rapor->id}",
     ]);
     $log = Activity::query()->where('log_name', 'rapor')->where('event', 'ditarik')->sole();
     expect($log->causer_id)->toBe($this->kepsek->id)

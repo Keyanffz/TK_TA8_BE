@@ -32,6 +32,6 @@ abstract class NotifikasiTagihan extends NotifikasiDatabase
 
     protected function url(object $notifiable): string
     {
-        return "/dashboard/tagihan/{$this->tagihanId}";
+        return $this->halaman($notifiable, "/tagihan/{$this->tagihanId}");
     }
 }

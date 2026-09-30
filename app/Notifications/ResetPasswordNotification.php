@@ -8,7 +8,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Tautan mengarah ke halaman FE `/reset-password`, bukan route backend.
+ * Tautan mengarah ke halaman FE `/mudarris/reset-password`, bukan route backend.
  */
 class ResetPasswordNotification extends Notification implements ShouldQueue
 {
@@ -26,7 +26,7 @@ class ResetPasswordNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $url = config('app.frontend_url').'/reset-password?'.http_build_query([
+        $url = config('app.frontend_url').'/mudarris/reset-password?'.http_build_query([
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
         ]);

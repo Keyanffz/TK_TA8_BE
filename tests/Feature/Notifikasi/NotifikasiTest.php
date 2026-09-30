@@ -21,10 +21,10 @@ it('menampilkan notifikasi pengguna dalam bentuk A7, terbaru lebih dulu', functi
         ->assertJsonPath('data.0.jenis', 'guru_baru')
         ->assertJsonPath('data.0.judul', 'Pendaftaran guru baru')
         ->assertJsonPath('data.0.pesan', 'Ahmad Fauzi mendaftar sebagai guru dan menunggu persetujuan Anda.')
-        ->assertJsonPath('data.0.url', '/dashboard/guru/8')
+        ->assertJsonPath('data.0.url', '/mudarris/guru/8')
         ->assertJsonPath('data.0.dibaca_at', null)
         ->assertJsonPath('data.0.created_at', '2026-10-02T09:30:00+07:00')
-        ->assertJsonPath('data.1.url', '/dashboard/guru/7');
+        ->assertJsonPath('data.1.url', '/mudarris/guru/7');
 });
 
 it('tidak menampilkan notifikasi milik pengguna lain', function () {
@@ -44,7 +44,7 @@ it('menghitung, menandai satu, lalu menandai semua notifikasi sudah dibaca', fun
         ->assertJsonPath('data.dibaca_at', '2026-10-02T09:30:00+07:00');
 
     $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi/belum-dibaca')->assertJsonPath('data.jumlah', 1);
-    $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi?filter[dibaca]=0')->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.url', '/dashboard/guru/7');
+    $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi?filter[dibaca]=0')->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.url', '/mudarris/guru/7');
 
     $this->actingAs($this->kepsek)->postJson('/api/v1/notifikasi/baca-semua')
         ->assertOk()

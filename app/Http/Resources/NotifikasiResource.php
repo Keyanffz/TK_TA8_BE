@@ -25,7 +25,7 @@ class NotifikasiResource extends JsonResource
             'jenis' => JenisNotifikasi::from((string) $this->data['jenis']),
             'judul' => (string) $this->data['judul'],
             'pesan' => (string) $this->data['pesan'],
-            /** Path halaman FE tujuan, misalnya `/dashboard/tagihan/12`. */
+            /** Path halaman FE tujuan di area penerima, misalnya `/dashboard/tagihan/12` (wali) atau `/mudarris/tagihan/12` (staff). */
             'url' => (string) $this->data['url'],
             'dibaca_at' => $this->read_at,
             'created_at' => $this->created_at,

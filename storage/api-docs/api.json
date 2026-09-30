@@ -31670,7 +31670,7 @@
                     },
                     "url": {
                         "type": "string",
-                        "description": "Path halaman FE tujuan, misalnya `/dashboard/tagihan/12`."
+                        "description": "Path halaman FE tujuan di area penerima, misalnya `/dashboard/tagihan/12` (wali) atau `/mudarris/tagihan/12` (staff)."
                     },
                     "dibaca_at": {
                         "type": [

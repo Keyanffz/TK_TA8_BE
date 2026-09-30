@@ -24,8 +24,20 @@ enum Role: string
     public function halamanLogin(): string
     {
         return match ($this) {
-            self::SuperAdmin, self::Guru => '/staff/login',
+            self::SuperAdmin, self::Guru => '/mudarris/login',
             self::WaliMurid => '/login',
+        };
+    }
+
+    /**
+     * Awalan path halaman FE setelah login: guru dan Kepala Sekolah di `/mudarris`, wali murid di `/dashboard`.
+     * Dipakai untuk `url` notifikasi, jadi tautan mengikuti role penerimanya.
+     */
+    public function beranda(): string
+    {
+        return match ($this) {
+            self::SuperAdmin, self::Guru => '/mudarris',
+            self::WaliMurid => '/dashboard',
         };
     }
 }
