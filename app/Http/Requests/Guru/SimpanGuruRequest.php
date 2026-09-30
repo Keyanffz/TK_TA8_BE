@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Guru;
 
 use App\Enums\JenisKelamin;
+use App\Http\Requests\Concerns\MenormalkanEmail;
 use App\Models\Guru;
 use App\Rules\NomorHp;
 use App\Services\MediaService;
@@ -12,9 +13,12 @@ use Illuminate\Validation\Rule;
 
 /**
  * Dipakai `POST /guru` dan `PUT /guru/{id}`; saat memperbarui, email boleh sama dengan milik guru itu sendiri.
+ * `email` adalah alamat akun Google yang dipakai guru untuk login.
  */
 class SimpanGuruRequest extends FormRequest
 {
+    use MenormalkanEmail;
+
     /**
      * @return array<string, mixed>
      */

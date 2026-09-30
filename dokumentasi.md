@@ -21,15 +21,16 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Login staff dan wali murid terpisah (branch `be/login-terpisah`) | Selesai, menunggu review |
 | Tautan login per role di email dan kartu akun (branch `be/tautan-login-per-role`) | Selesai, menunggu review |
 | Area `/mudarris` untuk guru dan Kepala Sekolah (branch `be/rute-mudarris`) | Selesai, menunggu review |
+| Login Google staff, guru dikelola Kepala Sekolah tanpa pendaftaran mandiri (branch `be/login-google-staff`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
 | Kelompok | Endpoint |
 |---|---|
 | Umum | `GET /health`, `GET /media/{token}` (signed URL file private) |
-| Auth publik | `POST /auth/staff/login`, `POST /auth/wali/login`, `POST /auth/register-guru`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
-| Auth (login) | `GET /auth/me`, `POST /auth/logout`, `PUT /auth/password` (semua; tetap terbuka saat wajib ganti password), `PUT /auth/profil` |
-| Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, `PATCH /guru/{id}/status` |
+| Auth publik | `POST /auth/staff/google` (guru, Kepala Sekolah), `POST /auth/staff/login`, `POST /auth/forgot-password`, `POST /auth/reset-password` (Kepala Sekolah), `POST /auth/wali/login` |
+| Auth (login) | `GET /auth/me`, `POST /auth/logout` (semua), `PUT /auth/password` (Kepala Sekolah, wali murid; tetap terbuka saat wajib ganti password), `PUT /auth/profil` (semua) |
+| Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `PATCH /guru/{id}/status` (tanpa hapus), `POST /guru/{id}/reset-google` |
 | Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PUT /wali-murid/{id}`, `PATCH /wali-murid/{id}/status`, `POST /wali-murid/{id}/reset-password` |
 | Wali (W) | `PUT /wali/profil`, `POST /wali/tambah-anak`, `GET /wali/anak` |
 | Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
@@ -62,6 +63,20 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Login Google staff dan guru tanpa pendaftaran mandiri (branch `be/login-google-staff`). Perubahan kontrak diminta pemilik repo dan sudah ditulis ke Bagian A dan B; yang di bawah ini diputuskan saat pengerjaan:
+
+1. Verifikasi ID token memakai `firebase/php-jwt` 7.2.1 (dirawat tim googleapis, dipakai juga oleh `google/auth`). `google/auth` sempat dicoba: `AccessToken::verify()` butuh `phpseclib/phpseclib` tambahan dan mengunduh kunci publik Google di setiap request karena cache bawaannya hanya di memori. Tanda tangan, `exp`, `nbf`, dan `iat` diperiksa library; `iss` (`accounts.google.com` atau `https://accounts.google.com`), `aud` = `GOOGLE_CLIENT_ID`, keberadaan `exp`/`sub`/`email`, dan `email_verified === true` diperiksa `GoogleIdTokenVerifier`. Kunci publik dari `https://www.googleapis.com/oauth2/v3/certs` disimpan di cache Laravel (`google:kunci-publik`) selama `max-age` dari Google (bawaan 1 jam), unduhan dibatasi 5 detik. Tidak ada toleransi selisih jam (`JWT::$leeway` 0).
+2. Balasan `POST /auth/staff/google`: token tidak sah (tanda tangan, `aud`, `iss`, kedaluwarsa, bukan JWT) → 422 di `credential` "Login Google tidak valid atau sudah kedaluwarsa. …"; email belum terverifikasi → 422 dengan pesan sendiri; email tidak terdaftar (termasuk email milik akun wali) → 422 "Akun Google ini tidak terdaftar sebagai guru atau Kepala Sekolah. …", selalu sama; `sub` berbeda dari yang tersimpan, atau `sub` itu sudah terikat ke akun lain (termasuk yang di-soft delete) → 422 "Email ini sudah terhubung dengan akun Google lain. …"; akun nonaktif → 403 `ACCOUNT_INACTIVE` tanpa menyimpan `sub`. Urutan: verifikasi token, email terverifikasi, cari akun, cek `sub`, cek status, simpan `sub`.
+3. `GOOGLE_CLIENT_ID` kosong atau kunci publik Google gagal diunduh → 503 `SERVER_ERROR` lewat `LayananTidakTersediaException` (penyebab teknis tercatat di log). Kelas ini menggantikan `LayananBelumDikonfigurasiException` yang dihapus di `be/login-nis`, dengan nama yang juga mencakup gangguan layanan luar.
+4. Limiter `login-google` 10/menit per IP saja, karena email baru diketahui setelah token diverifikasi.
+5. Selain yang diminta, ikut dihapus karena tidak lagi punya jalur: status `ditolak` dan kode `ACCOUNT_REJECTED` (StatusAkun sekarang `aktif`, `nonaktif`), jenis notifikasi `guru_baru`, `tertunda.guru_pending` di dashboard Kepala Sekolah, dan kolom `guru.disetujui_oleh`, `disetujui_at`, `alasan_penolakan` (riwayat persetujuan lama tetap di log aktivitas `guru`). `GuruResource` tidak lagi memuat ketiga kolom itu dan `password_awal`.
+6. Migration data `2026_09_30_100001`: akun berstatus `pending`/`ditolak` dijadikan `nonaktif` (tidak dihapus, profil guru tetap) dan tokennya dicabut, supaya Kepala Sekolah bisa mengaktifkannya lewat `PATCH /guru/{id}/status` kalau orangnya memang guru. Password dan `remember_token` semua guru dikosongkan, token reset password milik email guru dihapus, email Kepala Sekolah dan guru dijadikan huruf kecil, dan notifikasi `GuruBaruNotification` dihapus (jenis `guru_baru` tidak ada lagi di enum sehingga `GET /notifikasi` akan gagal membacanya). Id akun yang dinonaktifkan dicatat di `storage/logs/laravel.log`. `down()` sengaja kosong: status asal dan hash password tidak disimpan.
+7. `PUT /auth/password` diberi `role:super_admin,wali_murid`; guru mendapat 403 `FORBIDDEN`. Route ini keluar dari daftar route bersama di `AksesSilangRoleTest`.
+8. Email disimpan huruf kecil lewat mutator `User::email()` dan dinormalkan di request (`MenormalkanEmail`: `POST/PUT /guru`, login password, lupa dan reset password), sehingga unik tanpa membedakan huruf besar juga di SQLite. `SuperAdminSeeder` ikut menormalkan `SUPERADMIN_EMAIL`.
+9. `PUT /guru/{id}` yang mengganti email mengosongkan `google_sub`. **Tambahan setelah review:** `POST /guru/{id}/reset-google` (SA) mengosongkan `google_sub` tanpa mengganti email, misalnya untuk guru yang membuat ulang akun Google dengan email yang sama. Ditolak `BUSINESS_RULE` kalau guru belum terhubung; semua token guru dicabut dalam transaksi yang sama (diminta pemilik repo setelah review, karena sesi itu dibuat lewat akun Google yang tautannya dilepas); dicatat di log aktivitas `akun` event `google_direset` (pelaku dan waktu dari `causer` dan `created_at`). Data guru memuat `terhubung_google` (bool) untuk FE; nilai `sub` tidak dikirim. Endpoint ini juga berlaku untuk profil guru milik Kepala Sekolah.
+10. `POST /guru` membalas pesan "Akun guru … dibuat. Guru bisa masuk dengan akun Google …" dan tidak mengirim email. Pembuatan guru tidak dicatat di log aktivitas (sama seperti sebelumnya).
+11. `UserFactory` bawaan (role guru) tanpa password; state `superAdmin()` dan `waliMurid()` memakai password `password`. `DemoSeeder`: 6 guru aktif tanpa password dan 1 guru nonaktif (`fitri.handayani@guru.tkta8.test`); dua guru pending dihapus dari data demo.
 
 Login staff dan wali murid terpisah (branch `be/login-terpisah`). Perubahan path diminta pemilik repo; detail di bawah diputuskan saat pengerjaan:
 
@@ -215,6 +230,7 @@ Fase 5:
 | laravel/framework | 13.33.0 |
 | laravel/sanctum | 4.3.3 |
 | dedoc/scramble | 0.13.45 |
+| firebase/php-jwt | 7.2.1 (verifikasi ID token Google) |
 | spatie/laravel-query-builder | 7.3.5 |
 | spatie/laravel-activitylog | 5.1.1 |
 | barryvdh/laravel-dompdf | 3.1.2 |
@@ -348,7 +364,7 @@ php artisan schedule:work  # scheduler; dibutuhkan mulai Fase 5 (tagihan otomati
 Di server produksi:
 
 - Worker queue: `php artisan queue:work` (notifikasi dan email lewat queue driver `database`).
-- `TRUSTED_PROXIES` **wajib berisi IP server FE (Next.js)**, ditambah IP reverse proxy di depan BE kalau ada (dipisah koma). FE memakai pola BFF, jadi semua request tanpa login datang dari IP server FE. Laravel hanya membaca IP asli klien dari `X-Forwarded-For` kalau request datang dari proxy yang terdaftar; tanpa itu, semua pengunjung dihitung sebagai satu IP dan berbagi satu kuota limiter `api` (120/menit), `login` (5/menit per email), dan `login-google` (10/menit). Server FE harus meneruskan IP klien di `X-Forwarded-For`.
+- `TRUSTED_PROXIES` **wajib berisi IP server FE (Next.js)**, ditambah IP reverse proxy di depan BE kalau ada (dipisah koma). FE memakai pola BFF, jadi semua request tanpa login datang dari IP server FE. Laravel hanya membaca IP asli klien dari `X-Forwarded-For` kalau request datang dari proxy yang terdaftar; tanpa itu, semua pengunjung dihitung sebagai satu IP dan berbagi satu kuota limiter `api` (120/menit), `login-staff` (10/menit per IP), dan `login-google` (10/menit per IP). Server FE harus meneruskan IP klien di `X-Forwarded-For`.
 - Scheduler: cron `* * * * * cd /path/ke/app && php artisan schedule:run >> /dev/null 2>&1`.
 - `php.ini`: `upload_max_filesize` minimal `5M` (batas per file di B5) dan `post_max_size` cukup untuk unggahan terbanyak dalam satu request (kegiatan: 10 foto, jadi minimal `55M`). Request yang melewati `post_max_size` dibalas 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file.".
 
@@ -377,8 +393,9 @@ DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: mi
 | `SESSION_DRIVER` | `file`; session hanya dipakai halaman `/docs/api` |
 | `QUEUE_CONNECTION` | `database` |
 | `CACHE_STORE` | `database` (rate limiter dan cache pengaturan) |
-| `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email persetujuan/penolakan guru dan reset password dikirim sejak Fase 3 |
-| `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan ke FE: `/mudarris/login` (email persetujuan guru), `/mudarris/reset-password` (email reset password), `/login` (kartu akun wali) |
+| `MAIL_MAILER`, `MAIL_FROM_ADDRESS` | `MAIL_MAILER=log` di `.env.example` untuk development (email ditulis ke `storage/logs/laravel.log`). `MAIL_FROM_ADDRESS` sengaja kosong di `.env.example` dan wajib diisi, juga dengan mailer `log`, karena email reset password Kepala Sekolah dikirim lewat queue |
+| `FRONTEND_URL` | Satu-satunya origin yang diizinkan CORS; juga dasar tautan ke FE: `/mudarris/reset-password` (email reset password Kepala Sekolah), `/login` (kartu akun wali) |
+| `GOOGLE_CLIENT_ID` | Client ID OAuth jenis Web application dari Google Cloud Console, sama dengan `NEXT_PUBLIC_GOOGLE_CLIENT_ID` di FE. `aud` ID token harus sama dengan nilai ini. Kosong → `POST /auth/staff/google` membalas 503 |
 | `TRUSTED_PROXIES` | IP/CIDR proxy dipisah koma, atau `*`; kosong di lokal. Di server wajib berisi IP server FE (BFF) dan reverse proxy di depan BE. Menentukan apakah header `X-Forwarded-*` dipercaya: IP klien untuk semua rate limiter berbasis IP, serta skema dan host signed URL |
 | `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Akun Kepala Sekolah untuk `SuperAdminSeeder` (lewat `config/superadmin.php`). Password minimal 8 karakter berisi huruf dan angka; seeder berhenti dengan pesan jelas kalau kosong atau tidak valid |
 
@@ -389,7 +406,7 @@ DB_CONNECTION=mariadb DB_DATABASE=TK_TA8 php artisan test   # lalu isi ulang: mi
 - UI: `GET /docs/api` (Stoplight Elements), JSON: `GET /docs/api.json`. Hanya terbuka di environment selain `production` (Gate `viewApiDocs`).
 - Spec hasil export dikomit di `storage/api-docs/api.json` untuk generate tipe TypeScript di FE. Server di spec: `{APP_URL}/api/v1`, path relatif terhadap prefix itu (misal `/health`).
 - Route dengan middleware `auth:sanctum` otomatis bertanda Bearer; route lain `security: []`.
-- Respons error ditulis inline per operasi dengan skema A7 dan `code` berupa enum. `ApiErrorResponseExtension` memetakan exception yang terdeteksi Scramble (termasuk `@throws` di service) ke kode A7. `ResponsErrorRouteExtension` menambahkan respons dari middleware yang tidak terdeteksi otomatis: 403 `FORBIDDEN` (`role:`, `signed`), 403 `ACCOUNT_PENDING`/`ACCOUNT_REJECTED`/`ACCOUNT_INACTIVE` (`akun.aktif`), 404 `NOT_FOUND` (route berparameter), 429 `TOO_MANY_REQUESTS` (`throttle:`). `ResponsFileExtension` membuang entri `application/json` kosong di respons file. Beberapa kode pada status yang sama digabung dalam satu enum, misal 422 `BUSINESS_RULE` + `VALIDATION_ERROR`.
+- Respons error ditulis inline per operasi dengan skema A7 dan `code` berupa enum. `ApiErrorResponseExtension` memetakan exception yang terdeteksi Scramble (termasuk `@throws` di service) ke kode A7. `ResponsErrorRouteExtension` menambahkan respons dari middleware yang tidak terdeteksi otomatis: 403 `FORBIDDEN` (`role:`, `signed`), 403 `ACCOUNT_INACTIVE` (`akun.aktif`), 404 `NOT_FOUND` (route berparameter), 429 `TOO_MANY_REQUESTS` (`throttle:`). `ResponsFileExtension` membuang entri `application/json` kosong di respons file. Beberapa kode pada status yang sama digabung dalam satu enum, misal 422 `BUSINESS_RULE` + `VALIDATION_ERROR`.
 
 ## Pola respons
 
@@ -406,7 +423,8 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 | `AuthenticationException` | 401 | `UNAUTHENTICATED` |
 | `BusinessRuleException` | 422 | `BUSINESS_RULE` |
 | `AuthorizationException` / 403 | 403 | `FORBIDDEN` |
-| `AksesAkunDitolakException` (login dengan akun belum/tidak aktif) | 403 | `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE` |
+| `AksesAkunDitolakException` (login dengan akun nonaktif) | 403 | `ACCOUNT_INACTIVE` |
+| `LayananTidakTersediaException` (`GOOGLE_CLIENT_ID` kosong, kunci publik Google gagal diunduh) | 503 | `SERVER_ERROR` |
 | `InvalidSignatureException` (signed URL media kedaluwarsa atau diubah) | 403 | `FORBIDDEN` ("Tautan file sudah kedaluwarsa atau tidak valid. …") |
 | `ModelNotFoundException` / `abort(404)` di route yang ada | 404 | `NOT_FOUND` ("Data tidak ditemukan.") |
 | Route tidak ada, metode HTTP salah (405) | 404 | `NOT_FOUND` ("Endpoint tidak ditemukan. …") |
@@ -420,22 +438,23 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 Middleware:
 
 - `ForceJsonResponse`: dipasang di grup `api`, memaksa `Accept: application/json`.
-- `akun.aktif` (`EnsureAccountActive`): token milik akun selain `aktif` ditolak 403 dengan `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_INACTIVE`.
+- `akun.aktif` (`EnsureAccountActive`): token milik akun `nonaktif` ditolak 403 `ACCOUNT_INACTIVE`.
 - `password.diganti` (`EnsurePasswordDiganti`): akun dengan `wajib_ganti_password` ditolak 403 `PASSWORD_WAJIB_DIGANTI`. Dipasang di semua route login kecuali `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout` (grup route terpisah di `routes/api.php`). Terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
 - Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Setelah `findOrFail`, controller memanggil `Jangkauan::pastikanTerlihat($model)` untuk Policy `view` yang hanya membalas 404, dan `Gate::authorize(...)` untuk aksi yang bisa membalas 403.
 - `signed:relative`: hanya di `GET /media/{token}`.
-- Rate limiter (`AppServiceProvider`): `login-staff` 3/menit per email + IP dan 10/menit per IP, `login-wali` 5/menit per username + IP dan 20/menit per IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
+- Rate limiter (`AppServiceProvider`): `login-staff` 3/menit per email + IP dan 10/menit per IP, `login-google` 10/menit per IP, `login-wali` 5/menit per username + IP dan 20/menit per IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
 
 ## Auth dan akun
 
 - Token Sanctum dikirim sebagai `Authorization: Bearer`, berlaku 30 hari, nama token = `perangkat` (`web` | `mobile`). Logout mencabut token yang sedang dipakai; ganti password mencabut token lain; reset password dan penonaktifan akun mencabut semua token.
-- Login staff (`POST /auth/staff/login`) dengan email, hanya untuk Kepala Sekolah dan guru. Email tidak terdaftar, password salah, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
+- Login Google (`POST /auth/staff/google`) untuk guru dan Kepala Sekolah: `AuthService::loginGoogle()` memakai `GoogleIdTokenVerifier`, mencocokkan email dari token dengan akun yang ada (tidak pernah membuat akun), menyimpan `users.google_sub` saat login pertama, dan menolak akun Google lain dengan email yang sama. Guru hanya bisa login dengan cara ini.
+- Login password (`POST /auth/staff/login`) hanya untuk Kepala Sekolah. Email tidak terdaftar, password salah, akun guru, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
 - Login wali (`POST /auth/wali/login`) dengan NIS anak sebagai username (dinormalkan ke huruf besar tanpa spasi). NIS tidak terdaftar, password salah, dan akun bukan wali mendapat pesan yang sama ("NIS atau password salah."). Status dicek setelah password benar. Akun wali tidak punya email.
 - Akun wali otomatis (`WaliMuridService::buatAkunOtomatis()`) dibuat saat `POST /murid` dan saat pendaftar PPDB tanpa login diterima: username NIS, password `tanggal_lahir` format `dmY`, `wajib_ganti_password = true`, nama "Wali <nama panggilan>", `profil_lengkap = false`, kontak utama. `lepasAkunOtomatisBelumDipakai()` menonaktifkan akun itu saat anaknya ditambahkan ke akun lain atau murid dihapus. `resetPassword()` mengembalikan password ke tanggal lahir anak kontak utama.
-- Lupa password tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun wali murid (tidak punya email; reset lewat Kepala Sekolah). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
+- Lupa dan reset password hanya untuk Kepala Sekolah. Balasan tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun guru (login lewat Google) atau wali murid (tidak punya email; reset lewat Kepala Sekolah). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
-- Password baru (registrasi, ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
+- Password baru (ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
 - Gate `kelola-keuangan` memakai `User::bisaKelolaKeuangan()`; endpoint khusus petugas keuangan memakai middleware `can:kelola-keuangan` (403 `FORBIDDEN`, terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`). Pembatasan per role lewat middleware `role:`.
 
 ## File dan media
@@ -476,9 +495,9 @@ Semua sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B) dan Bagian A `PROMPT_F
 3. Kepala Sekolah punya profil `guru` (jabatan "Kepala Sekolah") yang dibuat `SuperAdminSeeder`, supaya bisa mencatat kegiatan kelas (`kegiatan_kelas.guru_id` mengarah ke `guru`). Profil ini tidak muncul di `GET /guru`, tidak bisa dinonaktifkan, dan tidak dihitung di statistik `guru_aktif`.
 4. Kunci pengaturan baru `ppdb.tahun_ajaran_id` sebagai tahun ajaran tujuan PPDB. `ppdb.dibuka = true` ditolak kalau kunci ini kosong atau tahun ajarannya tidak ada. Kuota dihitung per tahun ajaran tersebut.
 5. Kolom baru `pendaftaran.hubungan` (enum Hubungan), diisi wali saat `POST /pendaftaran`, dipakai saat menautkan ketika diterima.
-6. `ACCOUNT_REJECTED` saat login membawa alasan penolakan di `message`.
+6. `ACCOUNT_REJECTED` saat login membawa alasan penolakan di `message`. **Dihapus di `be/login-google-staff`** bersama status `ditolak`.
 7. Payload dashboard guru mendapat `pembayaran_menunggu` (int untuk guru `bisa_kelola_keuangan`, `null` untuk guru lain).
-8. `POST /guru` mengembalikan `password_awal` sekali di respons 201; tidak dikirim lewat email dan tidak disimpan sebagai teks biasa.
+8. `POST /guru` mengembalikan `password_awal` sekali di respons 201; tidak dikirim lewat email dan tidak disimpan sebagai teks biasa. **Dihapus di `be/login-google-staff`**: guru tidak punya password.
 9. Field opsional `perangkat` (`web` | `mobile`, default `web`) di `POST /auth/login` dan `POST /auth/google` (sejak `be/login-nis`: `POST /auth/login-wali`), dipakai sebagai nama token.
 10. Field gambar di respons pengaturan mendapat pasangan `*_url` (`profil.logo_url`, `landing.hero.gambar_url`, `landing.fasilitas[].gambar_url`); diabaikan saat `PUT /pengaturan`.
 11. `POST /tagihan` (tagihan sekali) melewati murid yang sudah punya tagihan jenis itu (selain `dibatalkan`) dan mengembalikan `{ dibuat, dilewati }`.
@@ -524,13 +543,19 @@ Login staff dan wali murid terpisah (branch `be/login-terpisah`, diminta pemilik
 36. `POST /auth/login` menjadi `POST /auth/staff/login` dan `POST /auth/login-wali` menjadi `POST /auth/wali/login`; batas percobaan per IP ditambahkan di kedua endpoint, login staff 3/menit per email + IP; balasan role salah sama persis dengan kredensial salah; 429 membawa `Retry-After` (A7, B4, B6.8, B7).
 37. Satu dashboard bersama `/dashboard` (A1) dipisah: wali murid tetap di `/dashboard/...`, guru dan Kepala Sekolah di `/mudarris/...` termasuk halaman akun guru. `url` notifikasi dan tautan email mengikuti area penerima (A1, A6, A7).
 
+Login Google staff (branch `be/login-google-staff`, diminta pemilik repo; Bagian A disalin identik ke `PROMPT_FE_TK.md` di branch `fe/login-google-staff` repo FE):
+
+38. Guru dan Kepala Sekolah login dengan Google (`POST /auth/staff/google`), Kepala Sekolah juga dengan password; guru tidak punya password. Lupa/reset password dan `PUT /auth/password` hanya untuk Kepala Sekolah (dan wali murid untuk ganti password) (A2.1, A3, A6, A7, B6.7, B6.8, B7).
+39. Pendaftaran guru mandiri dan persetujuan/penolakan dihapus: `POST /auth/register-guru`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, status `pending`/`ditolak`, `ACCOUNT_PENDING`, `ACCOUNT_REJECTED`, notifikasi `guru_baru`, `tertunda.guru_pending`, halaman `/mudarris/daftar` dan `/mudarris/menunggu-persetujuan` (A1, A3, A5, A6, A7).
+40. Skema: `users.google_sub`, email disimpan huruf kecil, `guru.disetujui_oleh`/`disetujui_at`/`alasan_penolakan` dihapus (A4). Guru tidak dihapus, hanya dinonaktifkan.
+
 ## Keputusan teknis
 
 Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
 
 - Kolom yang tidak diisi saat akun dibuat bersifat nullable: guru (nip, nuptk, tempat/tanggal lahir, alamat, pendidikan terakhir, foto; `jabatan` default "Guru"), wali murid (pekerjaan, alamat; diisi saat onboarding).
 - Resource yang tidak dirinci A7 berisi kolom tabel tanpa password, token, `deleted_at`; `*_path` diganti `*_url`; relasi di-nest.
-- Email hanya untuk persetujuan/penolakan guru dan reset password. Notifikasi lain lewat database.
+- Email hanya untuk reset password (sejak `be/login-google-staff` hanya Kepala Sekolah; email persetujuan/penolakan guru dihapus). Notifikasi lain lewat database.
 - Link reset password: `{FRONTEND_URL}/mudarris/reset-password?token=…&email=…`. Field `url` notifikasi mengikuti peta route FE B4 di area penerima (`Role::beranda()`: `/mudarris` untuk Kepala Sekolah dan guru, `/dashboard` untuk wali murid).
 - Wali tidak mengisi `jumlah` pembayaran; server mengisi `jumlah = total` tagihan (juga untuk tunai).
 - Pembatalan tagihan ditolak kalau tagihan `lunas` atau masih ada pembayaran `menunggu`; alasan disimpan di `catatan` dan activity log.
@@ -539,7 +564,7 @@ Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
 - Kode `INV-YYYYMM` tagihan sekali memakai bulan pembuatan. NIS memakai tahun `tanggal_masuk`, nomor urut mulai lagi tiap tahun.
 - Tautkan anak dibatasi 5 percobaan per menit per user. Wali pertama yang tertaut menjadi kontak utama. Sejak `be/login-nis` berlaku untuk tambah anak dengan NIS.
 - Login mengecek status akun hanya setelah password benar.
-- `PATCH /guru/{id}/status` hanya untuk guru `aktif`/`nonaktif`; guru `pending` diproses lewat setujui/tolak.
+- `PATCH /guru/{id}/status` hanya untuk guru `aktif`/`nonaktif`. Sejak `be/login-google-staff` tidak ada lagi status `pending`/`ditolak`.
 - `GET /pengaturan` dan `GET /public/profil` mengembalikan objek datar dengan kunci lengkap (`"profil.visi": …`), sama seperti format `PUT /pengaturan`.
 - Enum disimpan sebagai kolom `string` (bukan ENUM MySQL) dan di-cast ke enum PHP.
 - Aturan yang tidak bisa dijaga index MySQL (tepat 1 tahun ajaran aktif, 1 kelas per tahun ajaran, maksimal 1 pembayaran `menunggu`/`diterima` per tagihan) dijaga di service dalam transaksi dengan lock baris.
@@ -604,7 +629,7 @@ Diambil selama Fase 3:
 - Parameter route ditulis `{id}` persis seperti A7 (`Route::pattern('id', '[0-9]+')`), sehingga id bukan angka langsung 404. Controller mengambil data dengan `findOrFail`, bukan route model binding.
 - `GET /wali/anak` (A7 tidak merinci bentuknya) memakai `AnakWaliResource`: `id, nis, nama_lengkap, nama_panggilan, jenis_kelamin, tanggal_lahir, kelas {id, nama} | null, foto_url, hubungan, is_kontak_utama`. `catatan_khusus` dan data sensitif lain (NIK, alamat) tidak ikut; data lengkap murid ada di `GET /murid/{id}` (Fase 4). Resource yang sama dipakai untuk `anak` di `GET /wali-murid/{id}` dan respons `POST /wali/tautkan-anak`.
 - Notifikasi `anak_tertaut` dikirim ke Kepala Sekolah (url `/mudarris/murid/{id}`) dan wali lain yang sudah tertaut ke anak yang sama (url `/dashboard/anak`), supaya penautan oleh orang yang tidak dikenal cepat ketahuan. Wali yang menautkan tidak dikirimi.
-- `guru_baru` dikirim ke Kepala Sekolah aktif dengan url `/mudarris/guru/{id}`. Semua notifikasi database memakai kelas dasar `App\Notifications\NotifikasiDatabase` (bentuk `{ jenis, judul, pesan, url }`) dan lewat queue; `url` dibentuk `halaman($notifiable, $path)` dari role penerima.
+- `guru_baru` dikirim ke Kepala Sekolah aktif dengan url `/mudarris/guru/{id}` (**dihapus di `be/login-google-staff`** bersama pendaftaran guru). Semua notifikasi database memakai kelas dasar `App\Notifications\NotifikasiDatabase` (bentuk `{ jenis, judul, pesan, url }`) dan lewat queue; `url` dibentuk `halaman($notifiable, $path)` dari role penerima.
 - Kode tautan dinormalisasi sebelum validasi (huruf besar, spasi dan tanda hubung dibuang), karena kode sering disalin dari pesan WhatsApp. Kode salah, kedaluwarsa, dan tanggal lahir tidak cocok dibalas 422 `VALIDATION_ERROR` dengan pesan berbeda di field `kode` / `tanggal_lahir`; anak yang sudah tertaut dibalas `BUSINESS_RULE`. **Dihapus di `be/login-nis`.**
 - `GET /guru` dan `GET /wali-murid` menerima `sort` (`nama`, `created_at`, awali `-` untuk menurun; bawaan `nama`), `per_page` (bawaan 15, maksimal 100), dan `search`. Parameter di luar daftar ditolak 422.
 - `PATCH /wali-murid/{id}/status` mencabut semua token saat menonaktifkan, sama seperti guru, dan dicatat di activity log `akun`.
@@ -624,7 +649,7 @@ Diambil selama Fase 3:
 ## Akun seed
 
 - Kepala Sekolah: email dan password dari `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` di `.env`.
-- Guru demo (`DemoSeeder`), password `guru2026`:
+- Guru demo (`DemoSeeder`), tanpa password; guru hanya bisa login dengan Google. Untuk mencoba login guru di lokal, Kepala Sekolah mengganti email salah satu guru demo ke alamat Gmail sendiri lewat `PUT /guru/{id}` (halaman Guru di `/mudarris`), lalu masuk dengan akun Google itu. `GOOGLE_CLIENT_ID` di BE dan `NEXT_PUBLIC_GOOGLE_CLIENT_ID` di FE harus terisi.
 
 | Email | Keterangan |
 |---|---|
@@ -634,7 +659,7 @@ Diambil selama Fase 3:
 | `sri.wahyuni@guru.tkta8.test` | wali kelas TK B1 |
 | `endang.susilowati@guru.tkta8.test` | wali kelas TK B2 |
 | `rina.kusumawati@guru.tkta8.test` | guru pendamping TK A1 |
-| `fitri.handayani@guru.tkta8.test`, `ahmad.fauzi@guru.tkta8.test` | status `pending` (menunggu persetujuan) |
+| `fitri.handayani@guru.tkta8.test` | status `nonaktif` |
 
 - Wali murid demo (`DemoSeeder`): setiap murid punya akun wali dengan username NIS. Akun yang sudah dipakai memakai password `wali2026`; akun yang belum pernah login memakai password awal tanggal lahir anak (DDMMYYYY, lihat `tanggal_lahir` di `GET /murid/{id}`).
 
@@ -651,6 +676,37 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Login Google staff dan guru tanpa pendaftaran mandiri (branch `be/login-google-staff`)
+
+Diminta pemilik repo. Kontrak ditulis ke Bagian A (A1, A2.1, A3, A4, A5, A6, A7) dan Bagian B (B1, B4, B6.7, B6.8, B7, B8) `PROMPT_BE_TK.md`, lalu Bagian A disalin identik ke `PROMPT_FE_TK.md`. Keputusan detail ada di "Keputusan menunggu review".
+
+Baru:
+
+- `app/Services/GoogleIdTokenVerifier.php`: verifikasi ID token Google (tanda tangan RS256, `exp`, `iss`, `aud`, `email_verified`) dengan kunci publik Google yang di-cache.
+- `app/Http/Requests/Auth/LoginGoogleRequest.php` (`credential`, `perangkat`), `app/Http/Requests/Concerns/MenormalkanEmail.php`, `app/Exceptions/LayananTidakTersediaException.php` (503).
+- Migration `2026_09_30_100000_tambah_google_sub_ke_users_table.php`, `2026_09_30_100001_nonaktifkan_akun_guru_pending_dan_ditolak.php` (data), `2026_09_30_100002_hapus_kolom_persetujuan_dari_guru_table.php`.
+- Test: `tests/Feature/Auth/LoginGoogleTest.php` (22 test: token valid, Kepala Sekolah lewat Google, email beda huruf besar, login ulang dengan sub sama, sub berbeda, sub milik akun lain, tujuh bentuk token tidak sah termasuk `aud` salah dan kedaluwarsa, email belum terverifikasi, email tidak terdaftar tanpa membuat akun, akun nonaktif, cache kunci, 503 konfigurasi dan gangguan Google, rate limit dengan `Retry-After`), `tests/Feature/Database/MigrasiAkunGuruTest.php` (3 test migration data). Kunci RSA uji dilayani `Http::fake` di alamat kunci publik Google (`palsukanGoogle()` di `tests/Pest.php`), jadi verifier benar-benar memeriksa tanda tangan; test `aud` dicoba gagal dulu dengan pengecekan `aud` dihapus.
+
+Diubah:
+
+- `app/Services/AuthService.php`: `loginGoogle()`; `loginStaff()` dan tautan/reset password hanya untuk Kepala Sekolah; `pastikanAktif()` tanpa alasan penolakan.
+- `app/Http/Controllers/Api/V1/Auth/AuthController.php` (`loginGoogle`, deskripsi `loginStaff`), `ProfilController.php`, `ResetPasswordController.php` (pesan hanya Kepala Sekolah).
+- `app/Services/GuruService.php`: `buat()` tanpa password dan tanpa `password_awal`; `perbarui()` mengosongkan `google_sub` kalau email berubah; `daftar()`, `setujui()`, `tolak()` dihapus. `app/Http/Controllers/Api/V1/Guru/GuruController.php`, `app/Http/Resources/GuruResource.php`, `app/Models/Guru.php` (relasi `penyetuju` dihapus), `app/Http/Requests/Guru/SimpanGuruRequest.php`.
+- `app/Models/User.php`: mutator email huruf kecil, `google_sub` disembunyikan dari serialisasi.
+- `app/Enums/{StatusAkun, KodeError, JenisNotifikasi}.php`, `app/Exceptions/{AksesAkunDitolakException, ApiExceptionRenderer}.php`, `app/Support/Scramble/{ApiErrorResponseExtension, ResponsErrorRouteExtension}.php`, `app/Services/DashboardService.php` (`guru_pending` dihapus).
+- `app/Providers/AppServiceProvider.php` (limiter `login-google`), `routes/api.php`, `config/services.php` dan `.env.example` (`GOOGLE_CLIENT_ID`), `lang/id/validation.php` (atribut `credential`), `composer.json`/`composer.lock` (`firebase/php-jwt` ^7.2).
+- `database/factories/{UserFactory, GuruFactory}.php`, `database/seeders/SuperAdminSeeder.php` (email huruf kecil), `database/seeders/Demo/SekolahDemoSeeder.php` (guru tanpa password, 1 guru nonaktif).
+- Test yang diubah: `Auth/{LoginTest, ResetPasswordTest, SesiDanProfilTest, AksesSilangRoleTest}` (login password hanya Kepala Sekolah, guru ditolak dengan balasan identik dengan password salah, token guru diambil lewat login Google), `Guru/ManajemenGuruTest` (CRUD dan ubah status hanya Kepala Sekolah untuk lima endpoint, guru tanpa password, email unik tanpa membedakan huruf besar, ganti email melepas akun Google, nonaktif tanpa hapus, endpoint hapus/daftar/setujui/tolak 404), `MiddlewareAksesTest`, `Dashboard/DashboardTest`, `Kelas/KelasTest`, `Database/SeederTest`, `DokumentasiApiTest`, `Unit/EnumKontrakTest`, dan `Notifikasi/NotifikasiTest`, `FilterBooleanTest`, `Hardening/KesesuaianDokumentasiTest` (memakai notifikasi pendaftar PPDB sebagai contoh notifikasi).
+- `storage/api-docs/api.json`: diekspor ulang. Path baru `/auth/staff/google`; `/auth/register-guru`, `/guru/{id}/setujui`, `/guru/{id}/tolak` hilang; skema berubah `GuruResource`, `SimpanGuruRequest`, `StatusAkun`, `JenisNotifikasi`, `LoginGoogleRequest` (baru), `RegistrasiGuruRequest` (hilang). 83 path lain hanya berubah di enum 403 (`ACCOUNT_PENDING`/`ACCOUNT_REJECTED` hilang).
+
+Tambahan setelah review (reset tautan Google): `routes/api.php` (`POST /guru/{id}/reset-google`), `GuruController::resetGoogle`, `GuruService::resetGoogle()` (log `akun`/`google_direset`, semua token dicabut), `GuruResource` (`terhubung_google`), test di `Guru/ManajemenGuruTest` (Kepala Sekolah berhasil dengan log pelaku, guru dan wali 403 lewat dataset akses, guru belum terhubung 422, token lama `web` dan `mobile` ditolak 401 setelah reset (dicoba gagal dulu tanpa pencabutan token), setelah reset guru masuk dengan akun Google baru beremail sama yang sebelumnya ditolak) dan `DokumentasiApiTest`; `api.json` diekspor ulang (path baru, `GuruResource.terhubung_google` wajib). 731 test lulus di SQLite; Pint, PHPStan, `check:slop` bersih. Tidak ada migration, query berat, atau seeder baru, jadi tidak diulang ke MariaDB.
+
+Dihapus: `app/Http/Controllers/Api/V1/Auth/RegistrasiGuruController.php`, `app/Http/Requests/Auth/RegistrasiGuruRequest.php`, `app/Notifications/{GuruBaruNotification, GuruDisetujuiNotification, GuruDitolakNotification}.php`, `tests/Feature/Auth/RegistrasiGuruTest.php`, `tests/Feature/Guru/PersetujuanGuruTest.php` (test status guru dipindah ke `ManajemenGuruTest`).
+
+Data guru `pending` di database: dijadikan `nonaktif`, tidak dihapus. Dicoba di MariaDB 12.3.3 di atas data demo versi `main` (6 guru aktif, 2 guru `pending`, semua guru ber-password): setelah migrate, 2 akun pending menjadi `nonaktif` (id tercatat di log), 9 profil guru tetap ada, 0 guru ber-password, password Kepala Sekolah tetap, kolom persetujuan hilang. `migrate:rollback --step=3` lalu `migrate` lagi lancar (kolom dan foreign key `disetujui_oleh` kembali saat rollback). Data demo lalu diisi ulang dengan seeder baru.
+
+Hasil pengecekan: 724 test lulus di SQLite (`--parallel`) dan di MariaDB 12.3.3; Pint, PHPStan, dan `check:slop` tanpa temuan. Uji manual lewat curl ke `php artisan serve` dengan `GOOGLE_CLIENT_ID` uji: token palsu dibalas 422 setelah kunci publik Google asli terunduh dan tersimpan di cache (2 kunci RS256), percobaan ke-11 dalam semenit dibalas 429 dengan `Retry-After`, login password guru demo ditolak dengan pesan umum, lupa password guru tidak mengirim apa pun, login password Kepala Sekolah dengan email huruf besar berhasil, `POST /guru` dengan `Wulan.Sari@Gmail.com` tersimpan huruf kecil dan email yang sama dengan huruf besar ditolak, `PATCH /guru/{id}/status` nonaktif berhasil, `DELETE /guru/{id}` dan `POST /auth/register-guru` 404. Login Google dengan ID token asli dari Google belum bisa dicoba karena belum ada Client ID OAuth; verifikasi token asli diuji dengan kunci RSA uji.
 
 ### Area `/mudarris` untuk guru dan Kepala Sekolah (branch `be/rute-mudarris`)
 

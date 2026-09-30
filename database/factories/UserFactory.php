@@ -25,7 +25,8 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             // Domain .test tidak bisa menerima email sungguhan, jadi email dari antrean lokal tidak nyasar.
             'email' => fake()->unique()->userName().'@guru.tkta8.test',
-            'password' => static::$password ??= Hash::make('password'),
+            // Guru tidak punya password; login lewat Google.
+            'password' => null,
             'role' => Role::Guru,
             'status' => StatusAkun::Aktif,
             'no_hp' => fake()->numerify('081#########'),
@@ -39,6 +40,7 @@ class UserFactory extends Factory
         return $this->state(fn (): array => [
             'role' => Role::SuperAdmin,
             'email' => fake()->unique()->userName().'@tkta8.test',
+            'password' => static::$password ??= Hash::make('password'),
         ]);
     }
 
@@ -47,6 +49,7 @@ class UserFactory extends Factory
         return $this->state(fn (): array => [
             'role' => Role::WaliMurid,
             'email' => null,
+            'password' => static::$password ??= Hash::make('password'),
             'username' => 'TA'.fake()->unique()->numerify('2026####'),
             'email_verified_at' => null,
         ]);

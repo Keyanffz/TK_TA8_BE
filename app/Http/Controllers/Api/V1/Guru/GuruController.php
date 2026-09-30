@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1\Guru;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\AlasanRequest;
 use App\Http\Requests\Guru\DaftarGuruRequest;
 use App\Http\Requests\Guru\SimpanGuruRequest;
 use App\Http\Requests\UbahStatusAkunRequest;
@@ -26,7 +25,7 @@ class GuruController extends Controller
     /**
      * Daftar guru (tanpa profil guru milik Kepala Sekolah).
      *
-     * Filter `filter[status]` = `pending` | `aktif` | `ditolak` | `nonaktif`. Urutan `sort` = `nama` | `created_at`
+     * Filter `filter[status]` = `aktif` | `nonaktif`. Urutan `sort` = `nama` | `created_at`
      * (awali `-` untuk menurun). `search` mencari nama, email, NIP, dan NUPTK.
      */
     public function index(DaftarGuruRequest $request): JsonResponse
@@ -58,21 +57,24 @@ class GuruController extends Controller
     /**
      * Membuat akun guru yang langsung aktif. Kirim sebagai `multipart/form-data` jika menyertakan foto.
      *
-     * `password_awal` hanya muncul di respons ini; sampaikan ke guru yang bersangkutan.
+     * `email` adalah alamat akun Google guru (disimpan huruf kecil, unik tanpa membedakan huruf besar). Guru tidak
+     * punya password; guru masuk lewat `POST /auth/staff/google` dengan akun Google beremail itu.
      */
-    public function store(SimpanGuruRequest $request, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function store(SimpanGuruRequest $request): JsonResponse
     {
-        $hasil = $this->guruService->buat($request->validated(), $request->foto(), $kepalaSekolah);
+        $guru = $this->guruService->buat($request->validated(), $request->foto());
 
         return ApiResponse::success(
-            GuruResource::make($hasil['guru'])->denganPasswordAwal($hasil['password_awal']),
-            'Akun guru dibuat. Sampaikan password awal ke guru; password ini hanya ditampilkan sekali.',
+            new GuruResource($guru),
+            "Akun guru {$guru->user->name} dibuat. Guru bisa masuk dengan akun Google {$guru->user->email}.",
             status: 201,
         );
     }
 
     /**
      * Mengubah data guru, termasuk izin kelola keuangan dan tampil di landing page.
+     *
+     * Mengganti `email` melepas akun Google yang sebelumnya terikat, jadi guru masuk dengan akun Google email baru.
      */
     public function update(SimpanGuruRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
@@ -82,33 +84,31 @@ class GuruController extends Controller
     }
 
     /**
-     * Menyetujui pendaftaran guru. Guru mendapat email pemberitahuan.
-     */
-    public function setujui(int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
-    {
-        $guru = $this->guruService->setujui($this->cariGuru($id), $kepalaSekolah);
-
-        return ApiResponse::success(new GuruResource($guru), "Pendaftaran {$guru->user->name} disetujui.");
-    }
-
-    /**
-     * Menolak pendaftaran guru beserta alasannya. Guru mendapat email berisi alasan.
-     */
-    public function tolak(AlasanRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
-    {
-        $guru = $this->guruService->tolak($this->cariGuru($id), $request->alasan(), $kepalaSekolah);
-
-        return ApiResponse::success(new GuruResource($guru), "Pendaftaran {$guru->user->name} ditolak.");
-    }
-
-    /**
-     * Mengaktifkan atau menonaktifkan akun guru. Menonaktifkan mencabut semua sesi login guru.
+     * Mengaktifkan atau menonaktifkan akun guru. Menonaktifkan mencabut semua sesi login guru dan menolak login
+     * berikutnya (403 `ACCOUNT_INACTIVE`). Akun guru tidak pernah dihapus, supaya riwayat kelas, kegiatan, dan rapor
+     * tetap utuh.
      */
     public function ubahStatus(UbahStatusAkunRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
         $guru = $this->guruService->ubahStatus($this->cariGuru($id), $request->status(), $kepalaSekolah);
 
         return ApiResponse::success(new GuruResource($guru), "Akun {$guru->user->name} sekarang berstatus {$guru->user->status->label()}.");
+    }
+
+    /**
+     * Melepas akun Google yang terikat ke guru, supaya guru bisa masuk dengan akun Google baru beremail sama.
+     *
+     * Semua sesi login guru itu dicabut, jadi guru harus masuk lagi dengan Google. Ditolak 422 `BUSINESS_RULE` kalau
+     * guru belum pernah masuk dengan Google (`terhubung_google` false). Dicatat di log aktivitas `akun` (event `google_direset`).
+     */
+    public function resetGoogle(int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    {
+        $guru = $this->guruService->resetGoogle($this->cariGuru($id), $kepalaSekolah);
+
+        return ApiResponse::success(
+            new GuruResource($guru),
+            "Tautan Google {$guru->user->name} direset dan semua sesinya dikeluarkan. Login Google berikutnya dengan {$guru->user->email} memakai akun Google yang dipilih saat itu.",
+        );
     }
 
     private function cariGuru(int $id): Guru

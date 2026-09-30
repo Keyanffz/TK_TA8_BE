@@ -126,7 +126,7 @@ it('memvalidasi isian kelas', function (Closure $data, string $field) {
 })->with([
     'nama sudah dipakai di tahun ajaran yang sama' => [fn () => ['nama' => 'TK A1'], 'nama'],
     'tingkat tidak dikenal' => [fn () => ['tingkat' => 'C'], 'tingkat'],
-    'wali kelas belum disetujui' => [fn () => ['wali_kelas_id' => buatGuru(StatusAkun::Pending)->id], 'wali_kelas_id'],
+    'wali kelas nonaktif' => [fn () => ['wali_kelas_id' => buatGuru(StatusAkun::Nonaktif)->id], 'wali_kelas_id'],
     'pendamping sama dengan wali kelas' => [fn () => ['wali_kelas_id' => $this->buSri->id, 'guru_pendamping_id' => $this->buSri->id], 'guru_pendamping_id'],
     'kapasitas nol' => [fn () => ['kapasitas' => 0], 'kapasitas'],
 ]);

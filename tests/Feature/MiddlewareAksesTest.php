@@ -13,22 +13,18 @@ beforeEach(function () {
     });
 });
 
-it('menolak token akun yang belum aktif dengan kode sesuai statusnya', function (StatusAkun $status, string $kode) {
-    Sanctum::actingAs(User::factory()->status($status)->create());
+it('menolak token akun nonaktif dengan ACCOUNT_INACTIVE', function () {
+    Sanctum::actingAs(User::factory()->status(StatusAkun::Nonaktif)->create());
 
     $this->getJson('/api/v1/_uji/akun')
         ->assertForbidden()
         ->assertJson([
             'success' => false,
-            'code' => $kode,
-            'message' => $status->pesanAksesDitolak(),
+            'code' => 'ACCOUNT_INACTIVE',
+            'message' => 'Akun Anda sudah dinonaktifkan. Hubungi pihak sekolah untuk mengaktifkannya kembali.',
             'errors' => null,
         ]);
-})->with([
-    'pending' => [StatusAkun::Pending, 'ACCOUNT_PENDING'],
-    'ditolak' => [StatusAkun::Ditolak, 'ACCOUNT_REJECTED'],
-    'nonaktif' => [StatusAkun::Nonaktif, 'ACCOUNT_INACTIVE'],
-]);
+});
 
 it('meloloskan token akun aktif', function () {
     Sanctum::actingAs(User::factory()->create());

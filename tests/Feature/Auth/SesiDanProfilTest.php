@@ -81,10 +81,10 @@ it('membolehkan wali murid memperbarui profil akunnya', function () {
 });
 
 it('mengganti password dan mengeluarkan sesi di perangkat lain', function () {
-    $guru = buatGuru();
-    $guru->user->update(['password' => 'rahasia123']);
-    $tokenIni = $guru->user->createToken('web')->plainTextToken;
-    $guru->user->createToken('mobile');
+    $kepsek = buatKepalaSekolah();
+    $kepsek->update(['password' => 'rahasia123']);
+    $tokenIni = $kepsek->createToken('web')->plainTextToken;
+    $kepsek->createToken('mobile');
 
     $this->withToken($tokenIni)->putJson('/api/v1/auth/password', [
         'current_password' => 'rahasia123',
@@ -92,17 +92,17 @@ it('mengganti password dan mengeluarkan sesi di perangkat lain', function () {
         'password_confirmation' => 'rahasiaBaru456',
     ])->assertOk();
 
-    expect(Hash::check('rahasiaBaru456', (string) $guru->user->fresh()?->password))->toBeTrue()
-        ->and($guru->user->tokens()->pluck('name')->all())->toBe(['web']);
+    expect(Hash::check('rahasiaBaru456', (string) $kepsek->fresh()?->password))->toBeTrue()
+        ->and($kepsek->tokens()->pluck('name')->all())->toBe(['web']);
 
     $this->withToken($tokenIni)->getJson('/api/v1/auth/me')->assertOk();
 });
 
 it('menolak ganti password dengan password lama yang salah atau sama', function (array $data, string $field) {
-    $guru = buatGuru();
-    $guru->user->update(['password' => 'rahasia123']);
+    $kepsek = buatKepalaSekolah();
+    $kepsek->update(['password' => 'rahasia123']);
 
-    $this->withToken($guru->user->createToken('web')->plainTextToken)
+    $this->withToken($kepsek->createToken('web')->plainTextToken)
         ->putJson('/api/v1/auth/password', $data)
         ->assertStatus(422)
         ->assertJsonValidationErrors([$field]);
@@ -112,10 +112,21 @@ it('menolak ganti password dengan password lama yang salah atau sama', function 
 ]);
 
 it('memakai istilah password di pesan password lama yang salah', function () {
-    $guru = buatGuru();
-    $guru->user->update(['password' => 'rahasia123']);
+    $kepsek = buatKepalaSekolah();
+    $kepsek->update(['password' => 'rahasia123']);
 
-    $this->withToken($guru->user->createToken('web')->plainTextToken)
+    $this->withToken($kepsek->createToken('web')->plainTextToken)
         ->putJson('/api/v1/auth/password', ['current_password' => 'bukanItu99', 'password' => 'rahasiaBaru456', 'password_confirmation' => 'rahasiaBaru456'])
         ->assertJsonPath('errors.current_password', ['Password salah.']);
+});
+
+it('menolak ganti password untuk guru karena guru login lewat Google', function () {
+    $guru = buatGuru()->user;
+
+    $this->withToken($guru->createToken('web')->plainTextToken)
+        ->putJson('/api/v1/auth/password', ['current_password' => 'apaSaja123', 'password' => 'rahasiaBaru456', 'password_confirmation' => 'rahasiaBaru456'])
+        ->assertForbidden()
+        ->assertJsonPath('code', 'FORBIDDEN');
+
+    expect($guru->fresh()?->password)->toBeNull();
 });

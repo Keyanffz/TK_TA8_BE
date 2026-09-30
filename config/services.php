@@ -14,6 +14,11 @@ return [
     |
     */
 
+    'google' => [
+        // Client ID OAuth yang sama dengan NEXT_PUBLIC_GOOGLE_CLIENT_ID di FE; `aud` ID token harus sama dengan nilai ini.
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

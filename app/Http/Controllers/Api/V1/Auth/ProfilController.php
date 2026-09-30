@@ -29,6 +29,8 @@ class ProfilController extends Controller
     /**
      * Mengganti password. Sesi login di perangkat lain dicabut; sesi ini tetap berlaku.
      *
+     * Hanya untuk Kepala Sekolah dan wali murid; guru tidak punya password (login lewat Google) dan ditolak 403.
+     *
      * Untuk wali murid, password baru tidak boleh sama dengan tanggal lahir anak (DDMMYYYY), dan
      * `wajib_ganti_password` menjadi `false` setelah berhasil.
      */

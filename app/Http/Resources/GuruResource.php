@@ -12,18 +12,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class GuruResource extends JsonResource
 {
-    private ?string $passwordAwal = null;
-
-    /**
-     * Hanya dipakai di respons `POST /guru`; password ini tidak disimpan sebagai teks biasa.
-     */
-    public function denganPasswordAwal(string $password): static
-    {
-        $this->passwordAwal = $password;
-
-        return $this;
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -44,12 +32,9 @@ class GuruResource extends JsonResource
             'foto_url' => app(MediaService::class)->urlPublik($this->foto_path),
             'bisa_kelola_keuangan' => $this->bisa_kelola_keuangan,
             'tampil_di_landing' => $this->tampil_di_landing,
-            'disetujui_oleh' => $this->disetujui_oleh,
-            'disetujui_at' => $this->disetujui_at,
-            'alasan_penolakan' => $this->alasan_penolakan,
+            /** Sudah pernah masuk dengan Google (akun Google terikat). Nilai `sub` Google tidak dikirim. */
+            'terhubung_google' => $this->user->google_sub !== null,
             'created_at' => $this->created_at,
-            /** Hanya ada di respons `POST /guru`. */
-            'password_awal' => $this->when($this->passwordAwal !== null, fn () => $this->passwordAwal),
         ];
     }
 }

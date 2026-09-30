@@ -97,7 +97,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -113,8 +113,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -300,7 +298,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -315,8 +313,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -511,7 +507,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -527,8 +523,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -743,7 +737,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -759,8 +753,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -940,7 +932,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -956,8 +948,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -1137,7 +1127,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1153,8 +1143,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -1221,8 +1209,8 @@
         "/auth/staff/login": {
             "post": {
                 "operationId": "auth.loginStaff",
-                "description": "Role dikirim di `user.role` (`super_admin` atau `guru`). Email yang tidak terdaftar, password salah, dan akun\nwali murid mendapat balasan yang sama. Akun yang belum atau tidak lagi aktif ditolak 403 dengan kode\n`ACCOUNT_PENDING`, `ACCOUNT_REJECTED` (alasan penolakan ada di `message`), atau `ACCOUNT_INACTIVE`.\nDibatasi 3 percobaan per menit per email dan IP, dan 10 percobaan per menit per IP; balasan 429 membawa\nheader `Retry-After`.",
-                "summary": "Login Kepala Sekolah dan guru dengan email dan password",
+                "description": "Hanya untuk Kepala Sekolah (`user.role` = `super_admin`). Guru tidak punya password dan masuk lewat\n`POST /auth/staff/google`. Email yang tidak terdaftar, password salah, akun guru, dan akun wali murid mendapat\nbalasan yang sama. Akun nonaktif ditolak 403 `ACCOUNT_INACTIVE`. Dibatasi 3 percobaan per menit per email dan\nIP, dan 10 percobaan per menit per IP; balasan 429 membawa header `Retry-After`.",
+                "summary": "Login Kepala Sekolah dengan email dan password",
                 "tags": [
                     "Auth"
                 ],
@@ -1281,7 +1269,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "description": "ACCOUNT_INACTIVE",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1296,8 +1284,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE"
                                             ]
                                         },
@@ -1400,6 +1386,219 @@
                 "security": []
             }
         },
+        "/auth/staff/google": {
+            "post": {
+                "operationId": "auth.loginGoogle",
+                "description": "`credential` adalah ID token dari Google Identity Services. Server memverifikasi tanda tangan, `aud`\n(GOOGLE_CLIENT_ID), `iss`, `exp`, dan `email_verified`, lalu mencocokkan email di token dengan akun guru atau\nKepala Sekolah. Akun Google yang dipakai pertama kali diikat ke akun itu; login berikutnya dari akun Google lain\ndengan email yang sama ditolak. Endpoint ini tidak pernah membuat akun: email yang tidak terdaftar ditolak 422\ndi field `credential`. Akun nonaktif ditolak 403 `ACCOUNT_INACTIVE`. Kalau GOOGLE_CLIENT_ID belum diisi atau\nkunci publik Google tidak bisa diunduh, balasannya 503 `SERVER_ERROR`. Dibatasi 10 percobaan per menit per IP;\nbalasan 429 membawa header `Retry-After`.",
+                "summary": "Login guru dan Kepala Sekolah dengan akun Google",
+                "tags": [
+                    "Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginGoogleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Berhasil masuk."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string"
+                                                },
+                                                "user": {
+                                                    "$ref": "#/components/schemas/UserResource"
+                                                }
+                                            },
+                                            "required": [
+                                                "token",
+                                                "user"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "ACCOUNT_INACTIVE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "ACCOUNT_INACTIVE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "SERVER_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "SERVER_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
         "/auth/wali/login": {
             "post": {
                 "operationId": "auth.loginWali",
@@ -1463,7 +1662,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "description": "ACCOUNT_INACTIVE",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1478,8 +1677,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE"
                                             ]
                                         },
@@ -1655,7 +1852,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "description": "ACCOUNT_INACTIVE",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1670,8 +1867,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE"
                                             ]
                                         },
@@ -1807,7 +2002,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "description": "ACCOUNT_INACTIVE",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1822,8 +2017,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE"
                                             ]
                                         },
@@ -1995,10 +2188,6 @@
                                                         "tertunda": {
                                                             "type": "object",
                                                             "properties": {
-                                                                "guru_pending": {
-                                                                    "type": "integer",
-                                                                    "minimum": 0
-                                                                },
                                                                 "pembayaran_menunggu": {
                                                                     "type": "integer",
                                                                     "minimum": 0
@@ -2013,7 +2202,6 @@
                                                                 }
                                                             },
                                                             "required": [
-                                                                "guru_pending",
                                                                 "pembayaran_menunggu",
                                                                 "rapor_diajukan",
                                                                 "pendaftaran_baru"
@@ -2286,7 +2474,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2301,8 +2489,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -2520,7 +2706,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2536,8 +2722,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -2714,7 +2898,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2730,8 +2914,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -2888,7 +3070,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2904,8 +3086,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -3121,7 +3301,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3137,8 +3317,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -3414,7 +3592,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3430,8 +3608,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -3614,7 +3790,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3630,8 +3806,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -3817,7 +3991,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3833,8 +4007,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -4021,7 +4193,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4037,8 +4209,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -4254,7 +4424,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4270,8 +4440,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -4460,7 +4628,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4476,8 +4644,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -4724,7 +4890,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4740,8 +4906,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -4957,7 +5121,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4973,8 +5137,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -5074,7 +5236,7 @@
         "/guru": {
             "get": {
                 "operationId": "guru.index",
-                "description": "Filter `filter[status]` = `pending` | `aktif` | `ditolak` | `nonaktif`. Urutan `sort` = `nama` | `created_at`\n(awali `-` untuk menurun). `search` mencari nama, email, NIP, dan NUPTK.",
+                "description": "Filter `filter[status]` = `aktif` | `nonaktif`. Urutan `sort` = `nama` | `created_at`\n(awali `-` untuk menurun). `search` mencari nama, email, NIP, dan NUPTK.",
                 "summary": "Daftar guru (tanpa profil guru milik Kepala Sekolah)",
                 "tags": [
                     "Guru"
@@ -5218,7 +5380,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5234,8 +5396,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -5339,7 +5499,7 @@
             },
             "post": {
                 "operationId": "guru.store",
-                "description": "`password_awal` hanya muncul di respons ini; sampaikan ke guru yang bersangkutan.",
+                "description": "`email` adalah alamat akun Google guru (disimpan huruf kecil, unik tanpa membedakan huruf besar). Guru tidak\npunya password; guru masuk lewat `POST /auth/staff/google` dengan akun Google beremail itu.",
                 "summary": "Membuat akun guru yang langsung aktif. Kirim sebagai `multipart/form-data` jika menyertakan foto",
                 "tags": [
                     "Guru"
@@ -5366,8 +5526,7 @@
                                             "type": "boolean"
                                         },
                                         "message": {
-                                            "type": "string",
-                                            "const": "Akun guru dibuat. Sampaikan password awal ke guru; password ini hanya ditampilkan sekali."
+                                            "type": "string"
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/GuruResource"
@@ -5420,7 +5579,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5436,8 +5595,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -5623,7 +5780,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5639,8 +5796,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -5738,6 +5893,7 @@
             },
             "put": {
                 "operationId": "guru.update",
+                "description": "Mengganti `email` melepas akun Google yang sebelumnya terikat, jadi guru masuk dengan akun Google email baru.",
                 "summary": "Mengubah data guru, termasuk izin kelola keuangan dan tampil di landing page",
                 "tags": [
                     "Guru"
@@ -5828,7 +5984,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5844,483 +6000,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
-                                                "ACCOUNT_INACTIVE",
-                                                "PASSWORD_WAJIB_DIGANTI"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "NOT_FOUND"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "BUSINESS_RULE",
-                                                "VALIDATION_ERROR"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "TOO_MANY_REQUESTS",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "TOO_MANY_REQUESTS"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Retry-After": {
-                                "description": "Jumlah detik sampai boleh mencoba lagi.",
-                                "required": true,
-                                "schema": {
-                                    "type": "integer"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/guru/{id}/setujui": {
-            "post": {
-                "operationId": "guru.setujui",
-                "summary": "Menyetujui pendaftaran guru. Guru mendapat email pemberitahuan",
-                "tags": [
-                    "Guru"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/GuruResource"
-                                        },
-                                        "meta": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data",
-                                        "meta"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHENTICATED",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "UNAUTHENTICATED"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
-                                                "ACCOUNT_INACTIVE",
-                                                "PASSWORD_WAJIB_DIGANTI"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "NOT_FOUND"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "BUSINESS_RULE",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "BUSINESS_RULE"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "TOO_MANY_REQUESTS",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "TOO_MANY_REQUESTS"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Retry-After": {
-                                "description": "Jumlah detik sampai boleh mencoba lagi.",
-                                "required": true,
-                                "schema": {
-                                    "type": "integer"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/guru/{id}/tolak": {
-            "post": {
-                "operationId": "guru.tolak",
-                "summary": "Menolak pendaftaran guru beserta alasannya. Guru mendapat email berisi alasan",
-                "tags": [
-                    "Guru"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AlasanRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/GuruResource"
-                                        },
-                                        "meta": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data",
-                                        "meta"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHENTICATED",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "UNAUTHENTICATED"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -6460,7 +6139,7 @@
         "/guru/{id}/status": {
             "patch": {
                 "operationId": "guru.ubahStatus",
-                "summary": "Mengaktifkan atau menonaktifkan akun guru. Menonaktifkan mencabut semua sesi login guru",
+                "summary": "Mengaktifkan atau menonaktifkan akun guru. Menonaktifkan mencabut semua sesi login guru dan menolak login\nberikutnya (403 `ACCOUNT_INACTIVE`). Akun guru tidak pernah dihapus, supaya riwayat kelas, kegiatan, dan rapor\ntetap utuh",
                 "tags": [
                     "Guru"
                 ],
@@ -6549,7 +6228,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6565,8 +6244,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -6646,6 +6323,234 @@
                                                     "type": "string"
                                                 }
                                             }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/guru/{id}/reset-google": {
+            "post": {
+                "operationId": "guru.resetGoogle",
+                "description": "Semua sesi login guru itu dicabut, jadi guru harus masuk lagi dengan Google. Ditolak 422 `BUSINESS_RULE` kalau\nguru belum pernah masuk dengan Google (`terhubung_google` false). Dicatat di log aktivitas `akun` (event `google_direset`).",
+                "summary": "Melepas akun Google yang terikat ke guru, supaya guru bisa masuk dengan akun Google baru beremail sama",
+                "tags": [
+                    "Guru"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/GuruResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
@@ -6840,7 +6745,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6856,8 +6761,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -7118,7 +7021,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7134,8 +7037,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -7331,7 +7232,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7347,8 +7248,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -7565,7 +7464,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7581,8 +7480,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -7794,7 +7691,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7810,8 +7707,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -8059,7 +7954,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8074,8 +7969,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -8271,7 +8164,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8287,8 +8180,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -8504,7 +8395,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8520,8 +8411,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -8698,7 +8587,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8713,8 +8602,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -8903,7 +8790,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8919,8 +8806,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -9168,7 +9053,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9184,8 +9069,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -9402,7 +9285,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9418,8 +9301,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -9597,7 +9478,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9613,8 +9494,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -9862,7 +9741,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9878,8 +9757,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -10075,7 +9952,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10091,8 +9968,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -10309,7 +10184,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10325,8 +10200,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -10537,7 +10410,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10553,8 +10426,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -10804,7 +10675,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10820,8 +10691,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -11005,7 +10874,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11021,8 +10890,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -11218,7 +11085,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11234,8 +11101,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -11452,7 +11317,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11468,8 +11333,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -11798,7 +11661,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11814,8 +11677,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -12001,7 +11862,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12017,8 +11878,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -12320,7 +12179,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12336,8 +12195,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -12587,7 +12444,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12603,8 +12460,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -12889,7 +12744,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12905,8 +12760,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -13171,7 +13024,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -13186,8 +13039,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -13384,7 +13235,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -13400,8 +13251,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -13618,7 +13467,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -13634,8 +13483,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -13846,7 +13693,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -13861,8 +13708,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -14022,7 +13867,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14038,8 +13883,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -14268,7 +14111,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14284,8 +14127,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -14510,7 +14351,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14526,8 +14367,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -14746,7 +14585,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14761,8 +14600,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -14947,7 +14784,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14962,8 +14799,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -15108,7 +14943,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15123,8 +14958,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -15271,7 +15104,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15286,8 +15119,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -15466,7 +15297,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15482,8 +15313,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -15705,7 +15534,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15721,8 +15550,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -15951,7 +15778,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15967,8 +15794,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -16267,7 +16092,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16283,8 +16108,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -16470,7 +16293,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16486,8 +16309,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -16647,7 +16468,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16663,8 +16484,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -16824,7 +16643,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16840,8 +16659,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -17053,7 +16870,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -17069,8 +16886,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -17291,7 +17106,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -17307,8 +17122,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -17536,7 +17349,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -17552,8 +17365,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -17851,7 +17662,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -17867,8 +17678,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -18051,7 +17860,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -18067,8 +17876,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -18255,7 +18062,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -18271,8 +18078,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -18772,7 +18577,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -18788,8 +18593,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -19016,7 +18819,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -19032,8 +18835,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -19262,7 +19063,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -19278,8 +19079,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -19500,7 +19299,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -19516,8 +19315,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -19709,7 +19506,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -19725,8 +19522,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -19924,7 +19719,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -19940,8 +19735,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -20130,7 +19923,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20146,8 +19939,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -20389,7 +20180,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20404,8 +20195,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -20601,7 +20390,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20617,8 +20406,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -20834,7 +20621,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20850,8 +20637,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -21028,7 +20813,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -21043,8 +20828,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -21144,7 +20927,7 @@
         "/auth/password": {
             "put": {
                 "operationId": "profil.gantiPassword",
-                "description": "Untuk wali murid, password baru tidak boleh sama dengan tanggal lahir anak (DDMMYYYY), dan\n`wajib_ganti_password` menjadi `false` setelah berhasil.",
+                "description": "Hanya untuk Kepala Sekolah dan wali murid; guru tidak punya password (login lewat Google) dan ditolak 403.\n\nUntuk wali murid, password baru tidak boleh sama dengan tanggal lahir anak (DDMMYYYY), dan\n`wajib_ganti_password` menjadi `false` setelah berhasil.",
                 "summary": "Mengganti password. Sesi login di perangkat lain dicabut; sesi ini tetap berlaku",
                 "tags": [
                     "Profil"
@@ -21225,7 +21008,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -21240,8 +21023,7 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
+                                                "FORBIDDEN",
                                                 "ACCOUNT_INACTIVE"
                                             ]
                                         },
@@ -21426,7 +21208,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -21441,8 +21223,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -21628,7 +21408,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -21644,8 +21424,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -23075,7 +22853,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23091,8 +22869,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -23315,7 +23091,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23331,8 +23107,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -23561,7 +23335,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23577,8 +23351,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -23797,7 +23569,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23813,8 +23585,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -24097,7 +23867,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -24112,8 +23882,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -24308,7 +24076,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -24324,8 +24092,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -24543,7 +24309,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -24558,8 +24324,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -24757,7 +24521,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -24773,8 +24537,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -24994,7 +24756,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -25010,8 +24772,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -25204,7 +24964,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -25219,8 +24979,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -25317,145 +25075,11 @@
                 }
             }
         },
-        "/auth/register-guru": {
-            "post": {
-                "operationId": "auth.registrasiGuru",
-                "summary": "Pendaftaran akun guru. Akun berstatus `pending` sampai disetujui Kepala Sekolah",
-                "tags": [
-                    "RegistrasiGuru"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegistrasiGuruRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Pendaftaran terkirim. Akun Anda menunggu persetujuan Kepala Sekolah; kami kirim email setelah disetujui."
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        },
-                                        "meta": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data",
-                                        "meta"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "VALIDATION_ERROR",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "VALIDATION_ERROR"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "TOO_MANY_REQUESTS",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "TOO_MANY_REQUESTS"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Retry-After": {
-                                "description": "Jumlah detik sampai boleh mencoba lagi.",
-                                "required": true,
-                                "schema": {
-                                    "type": "integer"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": []
-            }
-        },
         "/auth/forgot-password": {
             "post": {
                 "operationId": "resetPassword.kirimTautan",
                 "description": "Respons selalu sama, terdaftar atau tidak, supaya daftar email akun tidak bisa ditebak.",
-                "summary": "Mengirim tautan reset password ke email Kepala Sekolah atau guru",
+                "summary": "Mengirim tautan reset password ke email Kepala Sekolah. Guru tidak punya password (login lewat Google)",
                 "tags": [
                     "ResetPassword"
                 ],
@@ -25482,7 +25106,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "const": "Jika email ini terdaftar sebagai akun guru atau Kepala Sekolah, tautan untuk mengatur ulang password sudah dikirim. Periksa kotak masuk atau folder spam."
+                                            "const": "Jika email ini terdaftar sebagai akun Kepala Sekolah, tautan untuk mengatur ulang password sudah dikirim. Periksa kotak masuk atau folder spam."
                                         },
                                         "data": {
                                             "type": "null"
@@ -25815,7 +25439,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -25831,8 +25455,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -26028,7 +25650,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -26044,8 +25666,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -26264,7 +25884,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -26280,8 +25900,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -26506,7 +26124,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -26522,8 +26140,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -26834,7 +26450,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -26849,8 +26465,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -27044,7 +26658,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27060,8 +26674,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -27279,7 +26891,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27294,8 +26906,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -27474,7 +27084,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27490,8 +27100,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -27731,7 +27339,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27747,8 +27355,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -27943,7 +27549,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27959,8 +27565,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -28176,7 +27780,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -28192,8 +27796,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -28405,7 +28007,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -28421,8 +28023,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -28659,7 +28259,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -28675,8 +28275,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -28862,7 +28460,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -28878,8 +28476,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -29065,7 +28661,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -29081,8 +28677,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -29310,7 +28904,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -29326,8 +28920,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -29546,7 +29138,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_PENDING / ACCOUNT_REJECTED / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -29562,8 +29154,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "FORBIDDEN",
-                                                "ACCOUNT_PENDING",
-                                                "ACCOUNT_REJECTED",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -30434,24 +30024,9 @@
                     "tampil_di_landing": {
                         "type": "boolean"
                     },
-                    "disetujui_oleh": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ]
-                    },
-                    "disetujui_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "alasan_penolakan": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                    "terhubung_google": {
+                        "type": "boolean",
+                        "description": "Sudah pernah masuk dengan Google (akun Google terikat). Nilai `sub` Google tidak dikirim."
                     },
                     "created_at": {
                         "type": [
@@ -30459,10 +30034,6 @@
                             "null"
                         ],
                         "format": "date-time"
-                    },
-                    "password_awal": {
-                        "type": "string",
-                        "description": "Hanya ada di respons `POST /guru`."
                     }
                 },
                 "required": [
@@ -30479,9 +30050,7 @@
                     "foto_url",
                     "bisa_kelola_keuangan",
                     "tampil_di_landing",
-                    "disetujui_oleh",
-                    "disetujui_at",
-                    "alasan_penolakan",
+                    "terhubung_google",
                     "created_at"
                 ],
                 "title": "GuruResource"
@@ -30582,7 +30151,6 @@
                     "pembayaran_masuk",
                     "pembayaran_diterima",
                     "pembayaran_ditolak",
-                    "guru_baru",
                     "rapor_diajukan",
                     "rapor_revisi",
                     "rapor_terbit",
@@ -31275,6 +30843,23 @@
                     "created_at"
                 ],
                 "title": "LogAktivitasResource"
+            },
+            "LoginGoogleRequest": {
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "type": "string",
+                        "description": "ID token (JWT) dari Google Identity Services, yaitu field `credential` di callback tombol Google.",
+                        "maxLength": 4096
+                    },
+                    "perangkat": {
+                        "$ref": "#/components/schemas/Perangkat"
+                    }
+                },
+                "required": [
+                    "credential"
+                ],
+                "title": "LoginGoogleRequest"
             },
             "LoginStaffRequest": {
                 "type": "object",
@@ -33011,41 +32596,6 @@
                 ],
                 "title": "RaporResource"
             },
-            "RegistrasiGuruRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 255
-                    },
-                    "password": {
-                        "type": "string"
-                    },
-                    "no_hp": {
-                        "type": "string"
-                    },
-                    "jenis_kelamin": {
-                        "$ref": "#/components/schemas/JenisKelamin"
-                    },
-                    "password_confirmation": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name",
-                    "email",
-                    "password",
-                    "no_hp",
-                    "jenis_kelamin",
-                    "password_confirmation"
-                ],
-                "title": "RegistrasiGuruRequest"
-            },
             "ResetPasswordRequest": {
                 "type": "object",
                 "properties": {
@@ -33310,7 +32860,7 @@
             },
             "SimpanGuruRequest": {
                 "type": "object",
-                "description": "Dipakai `POST /guru` dan `PUT /guru/{id}`; saat memperbarui, email boleh sama dengan milik guru itu sendiri.",
+                "description": "Dipakai `POST /guru` dan `PUT /guru/{id}`; saat memperbarui, email boleh sama dengan milik guru itu sendiri.\n`email` adalah alamat akun Google yang dipakai guru untuk login.",
                 "properties": {
                     "name": {
                         "type": "string",
@@ -33754,9 +33304,7 @@
             "StatusAkun": {
                 "type": "string",
                 "enum": [
-                    "pending",
                     "aktif",
-                    "ditolak",
                     "nonaktif"
                 ],
                 "title": "StatusAkun"

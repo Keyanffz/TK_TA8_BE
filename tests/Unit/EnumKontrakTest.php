@@ -25,7 +25,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     expect(array_column($enum::cases(), 'value'))->toBe($nilai);
 })->with([
     'Role' => [Role::class, ['super_admin', 'guru', 'wali_murid']],
-    'StatusAkun' => [StatusAkun::class, ['pending', 'aktif', 'ditolak', 'nonaktif']],
+    'StatusAkun' => [StatusAkun::class, ['aktif', 'nonaktif']],
     'StatusMurid' => [StatusMurid::class, ['aktif', 'lulus', 'pindah', 'keluar']],
     'Hubungan' => [Hubungan::class, ['ayah', 'ibu', 'wali']],
     'Tingkat' => [Tingkat::class, ['A', 'B']],
@@ -44,11 +44,11 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'JenisKelamin (A4)' => [JenisKelamin::class, ['L', 'P']],
     'JenisNotifikasi (A7)' => [JenisNotifikasi::class, [
         'tagihan_baru', 'tagihan_tertunda', 'pengingat_tagihan', 'tagihan_terlambat', 'pembayaran_masuk',
-        'pembayaran_diterima', 'pembayaran_ditolak', 'guru_baru', 'rapor_diajukan', 'rapor_revisi', 'rapor_terbit',
+        'pembayaran_diterima', 'pembayaran_ditolak', 'rapor_diajukan', 'rapor_revisi', 'rapor_terbit',
         'pengumuman_baru', 'pendaftaran_baru', 'pendaftaran_diproses', 'anak_tertaut',
     ]],
     'KodeError' => [KodeError::class, [
-        'UNAUTHENTICATED', 'FORBIDDEN', 'ACCOUNT_PENDING', 'ACCOUNT_REJECTED', 'ACCOUNT_INACTIVE',
+        'UNAUTHENTICATED', 'FORBIDDEN', 'ACCOUNT_INACTIVE',
         'PASSWORD_WAJIB_DIGANTI', 'NOT_FOUND', 'VALIDATION_ERROR', 'BUSINESS_RULE', 'TOO_MANY_REQUESTS', 'SERVER_ERROR',
     ]],
 ]);

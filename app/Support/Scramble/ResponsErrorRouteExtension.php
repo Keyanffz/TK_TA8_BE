@@ -47,7 +47,7 @@ class ResponsErrorRouteExtension extends OperationExtension
             $kodePerStatus[403] = [KodeError::Forbidden, ...$kodePerStatus[403] ?? []];
         }
         if (in_array('akun.aktif', $middleware, true)) {
-            $kodePerStatus[403] = [...$kodePerStatus[403] ?? [], KodeError::AccountPending, KodeError::AccountRejected, KodeError::AccountInactive];
+            $kodePerStatus[403] = [...$kodePerStatus[403] ?? [], KodeError::AccountInactive];
         }
         if (in_array('password.diganti', $middleware, true)) {
             $kodePerStatus[403] = [...$kodePerStatus[403] ?? [], KodeError::PasswordWajibDiganti];

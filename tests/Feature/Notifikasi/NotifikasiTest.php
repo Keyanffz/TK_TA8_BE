@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use App\Notifications\GuruBaruNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -9,22 +8,22 @@ beforeEach(function () {
     $this->kepsek = buatKepalaSekolah();
 
     Carbon::setTestNow('2026-10-01 08:00:00');
-    $this->kepsek->notify(new GuruBaruNotification(7, 'Fitri Handayani'));
+    $this->kepsek->notify(notifikasiPendaftarBaru(7, 'Fitri Handayani'));
     Carbon::setTestNow('2026-10-02 09:30:00');
-    $this->kepsek->notify(new GuruBaruNotification(8, 'Ahmad Fauzi'));
+    $this->kepsek->notify(notifikasiPendaftarBaru(8, 'Ahmad Fauzi'));
 });
 
 it('menampilkan notifikasi pengguna dalam bentuk A7, terbaru lebih dulu', function () {
     $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi')
         ->assertOk()
         ->assertJsonPath('meta.total', 2)
-        ->assertJsonPath('data.0.jenis', 'guru_baru')
-        ->assertJsonPath('data.0.judul', 'Pendaftaran guru baru')
-        ->assertJsonPath('data.0.pesan', 'Ahmad Fauzi mendaftar sebagai guru dan menunggu persetujuan Anda.')
-        ->assertJsonPath('data.0.url', '/mudarris/guru/8')
+        ->assertJsonPath('data.0.jenis', 'pendaftaran_baru')
+        ->assertJsonPath('data.0.judul', 'Pendaftar PPDB baru')
+        ->assertJsonPath('data.0.pesan', 'Ahmad Fauzi didaftarkan ke Kelompok A (PPDB-2027-0008). Periksa dokumennya.')
+        ->assertJsonPath('data.0.url', '/mudarris/ppdb/8')
         ->assertJsonPath('data.0.dibaca_at', null)
         ->assertJsonPath('data.0.created_at', '2026-10-02T09:30:00+07:00')
-        ->assertJsonPath('data.1.url', '/mudarris/guru/7');
+        ->assertJsonPath('data.1.url', '/mudarris/ppdb/7');
 });
 
 it('tidak menampilkan notifikasi milik pengguna lain', function () {
@@ -44,7 +43,7 @@ it('menghitung, menandai satu, lalu menandai semua notifikasi sudah dibaca', fun
         ->assertJsonPath('data.dibaca_at', '2026-10-02T09:30:00+07:00');
 
     $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi/belum-dibaca')->assertJsonPath('data.jumlah', 1);
-    $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi?filter[dibaca]=0')->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.url', '/mudarris/guru/7');
+    $this->actingAs($this->kepsek)->getJson('/api/v1/notifikasi?filter[dibaca]=0')->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.url', '/mudarris/ppdb/7');
 
     $this->actingAs($this->kepsek)->postJson('/api/v1/notifikasi/baca-semua')
         ->assertOk()

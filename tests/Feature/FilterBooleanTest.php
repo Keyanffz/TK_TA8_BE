@@ -3,7 +3,6 @@
 use App\Models\GaleriAlbum;
 use App\Models\JenisTagihan;
 use App\Models\Pengumuman;
-use App\Notifications\GuruBaruNotification;
 
 /**
  * Filter boolean didokumentasikan bertipe boolean di OpenAPI, jadi `true`/`false` harus diterima sama seperti
@@ -12,8 +11,8 @@ use App\Notifications\GuruBaruNotification;
 beforeEach(function () {
     $this->kepsek = buatKepalaSekolah();
 
-    $this->kepsek->notify(new GuruBaruNotification(7, 'Fitri Handayani'));
-    $this->kepsek->notify(new GuruBaruNotification(8, 'Ahmad Fauzi'));
+    $this->kepsek->notify(notifikasiPendaftarBaru(7, 'Fitri Handayani'));
+    $this->kepsek->notify(notifikasiPendaftarBaru(8, 'Ahmad Fauzi'));
     $this->kepsek->notifications()->latest('id')->first()?->markAsRead();
 
     GaleriAlbum::factory()->create(['is_publik' => true]);

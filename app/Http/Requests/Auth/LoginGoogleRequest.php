@@ -3,22 +3,19 @@
 namespace App\Http\Requests\Auth;
 
 use App\Enums\Perangkat;
-use App\Http\Requests\Concerns\MenormalkanEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class LoginStaffRequest extends FormRequest
+class LoginGoogleRequest extends FormRequest
 {
-    use MenormalkanEmail;
-
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
+            /** ID token (JWT) dari Google Identity Services, yaitu field `credential` di callback tombol Google. */
+            'credential' => ['required', 'string', 'max:4096'],
             'perangkat' => ['sometimes', Rule::enum(Perangkat::class)],
         ];
     }

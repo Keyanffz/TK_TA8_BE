@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Enums\JenisKelamin;
-use App\Enums\StatusAkun;
 use App\Models\Guru;
 use App\Models\User;
 use Database\Factories\Concerns\MembuatAlamatSemarang;
@@ -35,13 +34,6 @@ class GuruFactory extends Factory
             'bisa_kelola_keuangan' => false,
             'tampil_di_landing' => false,
         ];
-    }
-
-    public function menungguPersetujuan(): static
-    {
-        return $this->state(fn (): array => [
-            'user_id' => User::factory()->status(StatusAkun::Pending),
-        ]);
     }
 
     public function kelolaKeuangan(): static

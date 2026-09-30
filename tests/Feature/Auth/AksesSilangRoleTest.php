@@ -1,12 +1,14 @@
 <?php
 
+use App\Enums\Role;
 use App\Models\User;
 use App\Models\WaliMurid;
 use Illuminate\Routing\Route as RouteLaravel;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
-function tokenWali(object $test): string
+function tokenWali(TestCase $test): string
 {
     $user = User::factory()->waliMurid()->create(['username' => 'TA20260041', 'password' => 'melatiPagi26']);
     WaliMurid::factory()->for($user)->create();
@@ -16,8 +18,19 @@ function tokenWali(object $test): string
         ->json('data.token');
 }
 
-function tokenStaff(object $test, User $user): string
+/**
+ * Guru hanya bisa login lewat Google; Kepala Sekolah lewat password.
+ */
+function tokenStaff(TestCase $test, User $user): string
 {
+    if ($user->role === Role::Guru) {
+        palsukanGoogle($test);
+
+        return $test->postJson('/api/v1/auth/staff/google', ['credential' => idTokenGoogle(['email' => $user->email])])
+            ->assertOk()
+            ->json('data.token');
+    }
+
     $user->update(['password' => 'ruangGuru26']);
 
     return $test->postJson('/api/v1/auth/staff/login', ['email' => $user->email, 'password' => 'ruangGuru26'])
@@ -78,7 +91,7 @@ it('menolak token guru di endpoint khusus Kepala Sekolah dengan 403', function (
  */
 it('membatasi role di setiap route login kecuali route bersama yang dipakai semua role', function () {
     $routeBersama = [
-        'GET api/v1/auth/me', 'POST api/v1/auth/logout', 'PUT api/v1/auth/password', 'PUT api/v1/auth/profil',
+        'GET api/v1/auth/me', 'POST api/v1/auth/logout', 'PUT api/v1/auth/profil',
         'GET api/v1/dashboard',
         'GET api/v1/murid', 'GET api/v1/murid/{id}',
         'GET api/v1/tagihan', 'GET api/v1/tagihan/{id}', 'POST api/v1/tagihan/{id}/pembayaran',

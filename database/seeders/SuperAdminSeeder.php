@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use RuntimeException;
 
@@ -22,7 +23,7 @@ class SuperAdminSeeder extends Seeder
     {
         $data = [
             'name' => config('superadmin.name'),
-            'email' => config('superadmin.email'),
+            'email' => Str::lower(trim((string) config('superadmin.email'))),
             'password' => config('superadmin.password'),
         ];
 

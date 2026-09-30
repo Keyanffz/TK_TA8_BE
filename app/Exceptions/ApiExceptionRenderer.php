@@ -48,6 +48,7 @@ final class ApiExceptionRenderer
             $e instanceof AuthenticationException => ApiResponse::error(self::PESAN_TIDAK_TERAUTENTIKASI, KodeError::Unauthenticated),
             $e instanceof BusinessRuleException => ApiResponse::error($e->getMessage(), KodeError::BusinessRule),
             $e instanceof AksesAkunDitolakException => ApiResponse::error($e->getMessage(), $e->kode),
+            $e instanceof LayananTidakTersediaException => ApiResponse::error($e->pesanPengguna, KodeError::ServerError, LayananTidakTersediaException::STATUS),
             $e instanceof InvalidSignatureException => ApiResponse::error(self::PESAN_TAUTAN_FILE_TIDAK_BERLAKU, KodeError::Forbidden),
             $e instanceof InvalidQuery => ApiResponse::error(self::PESAN_PARAMETER_DAFTAR_TIDAK_DIKENAL, KodeError::ValidationError),
             $e instanceof HttpExceptionInterface => $this->dariHttpException($e, $request),

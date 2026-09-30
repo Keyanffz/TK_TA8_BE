@@ -1,9 +1,15 @@
 <?php
 
 use App\Enums\StatusAkun;
+use App\Enums\Tingkat;
 use App\Models\Guru;
+use App\Models\Pendaftaran;
 use App\Models\User;
+use App\Notifications\PendaftaranBaruNotification;
+use App\Services\GoogleIdTokenVerifier;
+use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -24,6 +30,82 @@ function buatKepalaSekolah(): User
 function buatGuru(StatusAkun $status = StatusAkun::Aktif, array $atributGuru = []): Guru
 {
     return Guru::factory()->for(User::factory()->status($status))->create($atributGuru);
+}
+
+const CLIENT_ID_GOOGLE = '1234567890-tkta8.apps.googleusercontent.com';
+
+const SUB_GOOGLE = '109876543210987654321';
+
+/**
+ * Notifikasi database untuk test yang hanya butuh notifikasi tersimpan (daftar, filter, tandai dibaca).
+ */
+function notifikasiPendaftarBaru(int $pendaftaranId, string $namaAnak): PendaftaranBaruNotification
+{
+    return new PendaftaranBaruNotification(Pendaftaran::factory()->make([
+        'id' => $pendaftaranId,
+        'kode' => sprintf('PPDB-2027-%04d', $pendaftaranId),
+        'nama_lengkap' => $namaAnak,
+        'tingkat_tujuan' => Tingkat::A,
+        'wali_murid_id' => null,
+        'tahun_ajaran_id' => null,
+    ]));
+}
+
+/**
+ * Pasangan kunci RSA pengganti kunci Google. Kunci publiknya dilayani lewat Http::fake di alamat kunci publik
+ * Google (palsukanGoogle), jadi verifikasi tanda tangan, `aud`, `iss`, dan `exp` di GoogleIdTokenVerifier
+ * benar-benar berjalan tanpa menghubungi Google.
+ *
+ * @return array{privat: OpenSSLAsymmetricKey, jwks: array<string, mixed>}
+ */
+function kunciGooglePalsu(string $kid = 'kunci-uji-1'): array
+{
+    static $kunci = [];
+
+    if (! isset($kunci[$kid])) {
+        $privat = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        $rsa = openssl_pkey_get_details($privat)['rsa'];
+        $kunci[$kid] = [
+            'privat' => $privat,
+            'jwks' => ['keys' => [[
+                'kty' => 'RSA', 'alg' => 'RS256', 'use' => 'sig', 'kid' => $kid,
+                'n' => JWT::urlsafeB64Encode($rsa['n']), 'e' => JWT::urlsafeB64Encode($rsa['e']),
+            ]]],
+        ];
+    }
+
+    return $kunci[$kid];
+}
+
+/**
+ * ID token seperti yang dikirim Google Identity Services ke FE.
+ */
+function idTokenGoogle(array $klaim = [], ?OpenSSLAsymmetricKey $kunciPenanda = null): string
+{
+    return JWT::encode([
+        'iss' => 'https://accounts.google.com',
+        'aud' => CLIENT_ID_GOOGLE,
+        'sub' => SUB_GOOGLE,
+        'email' => 'nur.aini@gmail.com',
+        'email_verified' => true,
+        'name' => 'Nur Aini',
+        'iat' => now()->timestamp,
+        'exp' => now()->addHour()->timestamp,
+        ...$klaim,
+    ], $kunciPenanda ?? kunciGooglePalsu()['privat'], 'RS256', 'kunci-uji-1');
+}
+
+/**
+ * Mengarahkan unduhan kunci publik Google ke kunci uji. Isi `$this->googleGangguan = true` di test untuk meniru
+ * server Google yang gagal.
+ */
+function palsukanGoogle(TestCase $test): void
+{
+    config(['services.google.client_id' => CLIENT_ID_GOOGLE]);
+    Http::preventStrayRequests();
+    Http::fake([GoogleIdTokenVerifier::URL_KUNCI_PUBLIK => fn () => ($test->googleGangguan ?? false)
+        ? Http::response('gangguan', 500)
+        : Http::response(kunciGooglePalsu()['jwks'], 200, ['Cache-Control' => 'public, max-age=21600'])]);
 }
 
 /**

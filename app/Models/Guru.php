@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'user_id', 'nip', 'nuptk', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'alamat',
     'pendidikan_terakhir', 'jabatan', 'foto_path', 'bisa_kelola_keuangan', 'tampil_di_landing',
-    'disetujui_oleh', 'disetujui_at', 'alasan_penolakan',
 ])]
 class Guru extends Model
 {
@@ -36,7 +35,6 @@ class Guru extends Model
             'tanggal_lahir' => 'date',
             'bisa_kelola_keuangan' => 'boolean',
             'tampil_di_landing' => 'boolean',
-            'disetujui_at' => 'datetime',
         ];
     }
 
@@ -80,14 +78,6 @@ class Guru extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * @return BelongsTo<User, $this>
-     */
-    public function penyetuju(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'disetujui_oleh');
     }
 
     /**
