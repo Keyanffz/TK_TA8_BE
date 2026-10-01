@@ -66,6 +66,21 @@ class Absensi extends Model
     }
 
     /**
+     * Baris tidak hadir buatan scheduler yang belum pernah dikoreksi: tanpa waktu dan foto. Absen sungguhan
+     * yang dikoreksi menjadi tidak hadir tetap punya waktu, jadi tidak termasuk.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeTidakHadirOtomatis(Builder $query): void
+    {
+        $query->where('jenis', JenisAbsensi::Masuk)
+            ->where('status', StatusAbsensi::TidakHadir)
+            ->whereNull('waktu')
+            ->whereNull('foto_path')
+            ->whereNull('dikoreksi_at');
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

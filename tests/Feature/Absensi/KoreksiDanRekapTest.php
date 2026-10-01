@@ -16,6 +16,7 @@ beforeEach(function () {
     Carbon::setTestNow('2026-10-02 10:00:00');
     Storage::fake('local');
     Storage::disk('local')->put('absensi/nur.jpg', 'isi-foto');
+    aturAbsensi(['tanggal_mulai' => '2026-09-01']);
     $this->kepsek = buatKepalaSekolah();
     $this->nur = buatGuru(atributGuru: ['jabatan' => 'Guru Kelas'])->user;
     $this->nur->update(['name' => 'Nur Aini, S.Pd.']);

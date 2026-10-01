@@ -41,7 +41,8 @@ const LONGITUDE_SEKOLAH = 110.4229;
 
 /**
  * Mengubah kunci grup pengaturan `absensi`, misalnya `aturAbsensi(['radius_meter' => 50])`. Nilai bawaannya
- * sudah diisi migration.
+ * sudah diisi migration; `tanggal_mulai` bawaan adalah tanggal test dijalankan, jadi test yang mengatur waktu
+ * wajib mengisinya sendiri.
  *
  * @param  array<string, mixed>  $nilai
  */

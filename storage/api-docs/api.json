@@ -696,7 +696,7 @@
         "/absensi/hari-ini": {
             "get": {
                 "operationId": "absensi.hariIni",
-                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur",
+                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.\nSebelum `tanggal_mulai`, `terbuka` selalu false",
                 "tags": [
                     "Absensi"
                 ],
@@ -728,6 +728,12 @@
                                                 },
                                                 "tanggal_libur": {
                                                     "type": "boolean"
+                                                },
+                                                "tanggal_mulai": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "lokasi": {
                                                     "type": [
@@ -823,6 +829,7 @@
                                                 "waktu_server",
                                                 "hari_kerja",
                                                 "tanggal_libur",
+                                                "tanggal_mulai",
                                                 "lokasi",
                                                 "radius_meter",
                                                 "batas_akurasi_meter",
@@ -1170,7 +1177,7 @@
             },
             "post": {
                 "operationId": "absensi.store",
-                "summary": "Absen masuk atau pulang (`multipart/form-data`). Ditolak 422 `BUSINESS_RULE` dengan pesan yang\nmenjelaskan sebabnya: bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen\npulang tanpa absen masuk, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk\n`hadir` atau `terlambat` ditentukan dari jam server. Dibatasi 10 kali per menit per pengguna",
+                "summary": "Absen masuk atau pulang (`multipart/form-data`). Ditolak 422 `BUSINESS_RULE` dengan pesan yang\nmenjelaskan sebabnya: sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen\npulang tanpa absen masuk, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk\n`hadir` atau `terlambat` ditentukan dari jam server. Dibatasi 10 kali per menit per pengguna",
                 "tags": [
                     "Absensi"
                 ],

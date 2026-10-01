@@ -14,6 +14,9 @@ final readonly class AturanAbsensi
 {
     public const GRUP = 'absensi';
 
+    /** Tidak ada di `BAWAAN` karena nilai awalnya tanggal migration dijalankan, bukan nilai tetap. */
+    public const KUNCI_TANGGAL_MULAI = 'absensi.tanggal_mulai';
+
     /** Hari kerja memakai nomor hari ISO: 1 = Senin sampai 7 = Minggu. */
     public const BAWAAN = [
         'absensi.lokasi' => null,
@@ -42,12 +45,14 @@ final readonly class AturanAbsensi
         public array $hariKerja,
         public array $tanggalLibur,
         public int $masaSimpanFotoBulan,
+        public ?string $tanggalMulai,
     ) {}
 
     public static function dari(PengaturanService $pengaturan): self
     {
         $nilai = fn (string $nama): mixed => $pengaturan->nilai(self::GRUP.'.'.$nama, self::BAWAAN[self::GRUP.'.'.$nama]);
         $lokasi = $nilai('lokasi');
+        $mulai = $pengaturan->nilai(self::KUNCI_TANGGAL_MULAI);
 
         return new self(
             lokasi: is_array($lokasi) ? ['latitude' => (float) $lokasi['latitude'], 'longitude' => (float) $lokasi['longitude']] : null,
@@ -58,6 +63,7 @@ final readonly class AturanAbsensi
             hariKerja: array_map(intval(...), $nilai('hari_kerja')),
             tanggalLibur: $nilai('tanggal_libur'),
             masaSimpanFotoBulan: (int) $nilai('masa_simpan_foto_bulan'),
+            tanggalMulai: is_string($mulai) ? $mulai : null,
         );
     }
 
@@ -69,6 +75,14 @@ final readonly class AturanAbsensi
     public function tanggalLibur(CarbonInterface $waktu): bool
     {
         return in_array($waktu->toDateString(), $this->tanggalLibur, true);
+    }
+
+    /**
+     * Sebelum `absensi.tanggal_mulai` tidak ada absensi: absen ditolak dan scheduler tidak menandai tidak hadir.
+     */
+    public function sudahMulai(CarbonInterface $waktu): bool
+    {
+        return $this->tanggalMulai === null || $waktu->toDateString() >= $this->tanggalMulai;
     }
 
     /**

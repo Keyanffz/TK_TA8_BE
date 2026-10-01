@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Kamis, 1 Oktober 2026 pukul 06:50. Jam masuk 06:30–09:00 (terlambat setelah 07:15), jam pulang 11:00–15:00,
- * hari kerja Senin–Sabtu, radius 100 m, batas akurasi 100 m.
+ * hari kerja Senin–Sabtu, radius 100 m, batas akurasi 100 m, absensi berlaku sejak 1 September 2026.
  */
 beforeEach(function () {
     Carbon::setTestNow('2026-10-01 06:50:00');
     Storage::fake('local');
-    aturAbsensi(['lokasi' => ['latitude' => LATITUDE_SEKOLAH, 'longitude' => LONGITUDE_SEKOLAH]]);
+    aturAbsensi(['lokasi' => ['latitude' => LATITUDE_SEKOLAH, 'longitude' => LONGITUDE_SEKOLAH], 'tanggal_mulai' => '2026-09-01']);
     $this->guru = buatGuru()->user;
 });
 
@@ -83,6 +83,7 @@ it('menolak absen yang melanggar aturan tanpa menyimpan data atau foto', functio
     'tanggal libur' => [fn () => aturAbsensi(['tanggal_libur' => ['2026-10-01']]), [], 'Hari ini libur sekolah, jadi tidak ada absensi.'],
     'bukan hari kerja' => [fn () => Carbon::setTestNow('2026-10-04 06:50:00'), [], 'Hari Minggu bukan hari kerja, jadi tidak ada absensi.'],
     'pulang tanpa masuk' => [fn () => Carbon::setTestNow('2026-10-01 12:00:00'), ['jenis' => 'pulang'], 'Absen pulang hanya bisa setelah absen masuk, dan hari ini Anda belum absen masuk.'],
+    'sebelum tanggal mulai absensi' => [fn () => aturAbsensi(['tanggal_mulai' => '2026-10-05']), [], 'Absensi baru berlaku mulai 5 Oktober 2026.'],
     'lokasi sekolah belum diatur' => [fn () => aturAbsensi(['lokasi' => null]), [], 'Lokasi sekolah belum diatur. Minta Kepala Sekolah mengisi pengaturan absensi.'],
 ]);
 
@@ -188,6 +189,7 @@ it('menampilkan status hari ini: jam, jendela yang terbuka, dan absensi yang sud
             'waktu_server' => '2026-10-01T06:50:00+07:00',
             'hari_kerja' => true,
             'tanggal_libur' => false,
+            'tanggal_mulai' => '2026-09-01',
             'lokasi' => ['latitude' => LATITUDE_SEKOLAH, 'longitude' => LONGITUDE_SEKOLAH],
             'radius_meter' => 100,
             'batas_akurasi_meter' => 100,
@@ -219,6 +221,22 @@ it('menandai hari libur dan bukan hari kerja di status hari ini', function () {
         ->assertJsonPath('data.hari_kerja', false)
         ->assertJsonPath('data.tanggal_libur', false)
         ->assertJsonPath('data.masuk.terbuka', false);
+});
+
+it('menerima absen tepat pada tanggal mulai absensi', function () {
+    aturAbsensi(['tanggal_mulai' => '2026-10-01']);
+
+    $this->actingAs($this->guru)->post('/api/v1/absensi', isianAbsen())->assertCreated();
+});
+
+it('menutup jam absen di status hari ini sebelum tanggal mulai absensi', function () {
+    aturAbsensi(['tanggal_mulai' => '2026-10-05']);
+
+    $this->actingAs($this->guru)->getJson('/api/v1/absensi/hari-ini')
+        ->assertJsonPath('data.tanggal_mulai', '2026-10-05')
+        ->assertJsonPath('data.hari_kerja', true)
+        ->assertJsonPath('data.masuk.terbuka', false)
+        ->assertJsonPath('data.pulang.terbuka', false);
 });
 
 it('tidak menampilkan absensi peserta lain di status hari ini', function () {

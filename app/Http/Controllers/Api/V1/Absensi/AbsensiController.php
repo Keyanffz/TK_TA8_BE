@@ -31,6 +31,7 @@ class AbsensiController extends Controller
      * Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah
      * sedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk
      * menampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.
+     * Sebelum `tanggal_mulai`, `terbuka` selalu false.
      *
      * @response array{
      *     success: true,
@@ -40,6 +41,7 @@ class AbsensiController extends Controller
      *         waktu_server: string,
      *         hari_kerja: bool,
      *         tanggal_libur: bool,
+     *         tanggal_mulai: string|null,
      *         lokasi: array{latitude: float, longitude: float}|null,
      *         radius_meter: int,
      *         batas_akurasi_meter: int,
@@ -56,8 +58,9 @@ class AbsensiController extends Controller
         $tercatat = $this->absensiService->absensiTanggal($user, $sekarang);
         $libur = $aturan->tanggalLibur($sekarang);
         $hariKerja = $aturan->hariKerja($sekarang) && ! $libur;
+        $berlaku = $hariKerja && $aturan->sudahMulai($sekarang);
         $jenis = fn (JenisAbsensi $jenis): array => [
-            'terbuka' => $hariKerja && $aturan->jendelaTerbuka($jenis, $sekarang),
+            'terbuka' => $berlaku && $aturan->jendelaTerbuka($jenis, $sekarang),
             'absensi' => $tercatat->has($jenis->value) ? new AbsensiResource($tercatat->get($jenis->value)) : null,
         ];
 
@@ -66,6 +69,7 @@ class AbsensiController extends Controller
             'waktu_server' => $sekarang->toIso8601String(),
             'hari_kerja' => $hariKerja,
             'tanggal_libur' => $libur,
+            'tanggal_mulai' => $aturan->tanggalMulai,
             'lokasi' => $aturan->lokasi,
             'radius_meter' => $aturan->radiusMeter,
             'batas_akurasi_meter' => $aturan->batasAkurasiMeter,
@@ -76,7 +80,7 @@ class AbsensiController extends Controller
 
     /**
      * Absen masuk atau pulang (`multipart/form-data`). Ditolak 422 `BUSINESS_RULE` dengan pesan yang
-     * menjelaskan sebabnya: bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen
+     * menjelaskan sebabnya: sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen
      * pulang tanpa absen masuk, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk
      * `hadir` atau `terlambat` ditentukan dari jam server. Dibatasi 10 kali per menit per pengguna.
      */

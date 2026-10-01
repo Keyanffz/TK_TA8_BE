@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Enums\NadaInfo;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Absensi;
 use App\Models\Pengaturan;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Support\AturanAbsensi;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -122,6 +124,7 @@ class PengaturanService
         }
 
         $gambarLama = $this->semuaGambar($this->semua());
+        $liburLama = $this->semua()['absensi.tanggal_libur'] ?? [];
 
         DB::transaction(function () use ($items): void {
             foreach ($items as $kunci => $nilai) {
@@ -134,6 +137,10 @@ class PengaturanService
 
         foreach (array_diff($gambarLama, $this->semuaGambar($this->semua())) as $path) {
             Storage::disk(MediaService::DISK_PUBLIK)->delete($path);
+        }
+
+        if (array_key_exists('absensi.tanggal_libur', $items)) {
+            $this->hapusTidakHadirPadaLiburBaru(array_values(array_diff($items['absensi.tanggal_libur'], is_array($liburLama) ? $liburLama : [])), $pelaku);
         }
 
         activity('pengaturan')->causedBy($pelaku)->event('diubah')
@@ -269,6 +276,7 @@ class PengaturanService
             'absensi.tanggal_libur' => ['array', 'list', 'max:'.self::MAKSIMAL_TANGGAL_LIBUR],
             'absensi.tanggal_libur.*' => ['date_format:Y-m-d', 'distinct'],
             'absensi.masa_simpan_foto_bulan' => ['integer', 'between:1,60'],
+            AturanAbsensi::KUNCI_TANGGAL_MULAI => ['required', 'date_format:Y-m-d'],
         ];
     }
 
@@ -349,6 +357,30 @@ class PengaturanService
         }
 
         return $items;
+    }
+
+    /**
+     * Tanggal libur yang baru ditambahkan bisa sudah lewat dan sudah ditandai scheduler. Baris tidak hadir
+     * otomatis yang belum dikoreksi pada tanggal itu dihapus; absen sungguhan dan baris yang sudah dikoreksi
+     * tetap. Jumlahnya dicatat di log aktivitas.
+     *
+     * @param  list<string>  $tanggalBaru
+     */
+    private function hapusTidakHadirPadaLiburBaru(array $tanggalBaru, User $pelaku): void
+    {
+        if ($tanggalBaru === []) {
+            return;
+        }
+
+        $dihapus = Absensi::query()->tidakHadirOtomatis()
+            ->where(fn (Builder $absensi) => collect($tanggalBaru)->each(fn (string $tanggal) => $absensi->orWhereDate('tanggal', $tanggal)))
+            ->delete();
+
+        if ($dihapus > 0) {
+            activity('absensi')->causedBy($pelaku)->event('tidak_hadir_dihapus')
+                ->withProperties(['tanggal_libur' => $tanggalBaru, 'jumlah' => $dihapus])
+                ->log("Menghapus {$dihapus} tanda tidak hadir otomatis pada tanggal libur yang baru ditambahkan");
+        }
     }
 
     /**

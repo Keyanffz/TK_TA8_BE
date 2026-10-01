@@ -29,6 +29,10 @@ class AbsensiDemoSeeder extends Seeder
     public function run(PengaturanService $pengaturan): void
     {
         Pengaturan::query()->updateOrCreate(['kunci' => 'absensi.lokasi'], ['nilai' => self::LOKASI, 'grup' => AturanAbsensi::GRUP]);
+        Pengaturan::query()->updateOrCreate(
+            ['kunci' => AturanAbsensi::KUNCI_TANGGAL_MULAI],
+            ['nilai' => today()->subDays(self::HARI_KE_BELAKANG)->toDateString(), 'grup' => AturanAbsensi::GRUP],
+        );
         $aturan = AturanAbsensi::dari($pengaturan);
         $peserta = User::query()->pesertaAbsensi()->orderBy('id')->get();
 

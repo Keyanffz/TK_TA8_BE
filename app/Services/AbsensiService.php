@@ -54,7 +54,7 @@ class AbsensiService
     }
 
     /**
-     * Urutan pemeriksaan: lokasi sekolah sudah diatur, hari kerja, tanggal libur, jendela jam, belum absen
+     * Urutan pemeriksaan: lokasi sekolah sudah diatur, tanggal mulai, hari kerja, tanggal libur, jendela jam, belum absen
      * jenis itu, absen pulang butuh absen masuk, akurasi, lalu jarak. Foto baru disimpan setelah semua lolos.
      *
      * @throws BusinessRuleException
@@ -130,6 +130,7 @@ class AbsensiService
      * `HARI_SUSULAN` hari ke belakang (misalnya scheduler sempat mati). Hanya hari kerja yang bukan tanggal libur
      * dan jam masuknya sudah tutup; hari ini baru dihitung setelah jam tutup lewat. Aman dijalankan berulang:
      * peserta yang sudah punya baris absen masuk dilewati, dan unique (user, tanggal, jenis) menjaga sisanya.
+     * Tanggal sebelum `absensi.tanggal_mulai` tidak pernah ditandai.
      *
      * Hari kerja, tanggal libur, dan jam tutup dibaca dari pengaturan saat command berjalan, begitu juga status
      * akun: riwayat keduanya tidak disimpan. Akun yang dibuat setelah jam masuk tutup hari itu tidak ditandai.
@@ -145,7 +146,7 @@ class AbsensiService
             $hari = $waktu->copy()->subDays($mundur);
             $masihBerjalan = $mundur === 0 && ! $aturan->jendelaSudahTutup(JenisAbsensi::Masuk, $waktu);
 
-            if ($masihBerjalan || ! $aturan->hariKerja($hari) || $aturan->tanggalLibur($hari)) {
+            if ($masihBerjalan || ! $aturan->sudahMulai($hari) || ! $aturan->hariKerja($hari) || $aturan->tanggalLibur($hari)) {
                 continue;
             }
 
@@ -210,6 +211,11 @@ class AbsensiService
      */
     private function pastikanWaktuAbsen(AturanAbsensi $aturan, JenisAbsensi $jenis, Carbon $sekarang): void
     {
+        if (! $aturan->sudahMulai($sekarang)) {
+            $mulai = Carbon::parse((string) $aturan->tanggalMulai)->translatedFormat('j F Y');
+
+            throw new BusinessRuleException("Absensi baru berlaku mulai {$mulai}.");
+        }
         if (! $aturan->hariKerja($sekarang)) {
             throw new BusinessRuleException("Hari {$sekarang->translatedFormat('l')} bukan hari kerja, jadi tidak ada absensi.");
         }

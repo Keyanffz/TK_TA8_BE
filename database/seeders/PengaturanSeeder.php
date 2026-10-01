@@ -81,6 +81,7 @@ class PengaturanSeeder extends Seeder
                 'berlaku_sampai' => null,
             ],
             ...AturanAbsensi::BAWAAN,
+            AturanAbsensi::KUNCI_TANGGAL_MULAI => today()->toDateString(),
         ];
     }
 }

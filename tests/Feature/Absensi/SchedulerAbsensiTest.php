@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 beforeEach(function () {
     Carbon::setTestNow('2026-10-01 06:00:00');
     Storage::fake('local');
+    aturAbsensi(['tanggal_mulai' => '2026-09-01']);
     $this->kepsek = buatKepalaSekolah();
     $this->nur = buatGuru()->user;
     $this->dwi = buatGuru()->user;
@@ -169,6 +170,30 @@ it('tidak membuat baris dobel saat susulan dijalankan dua kali', function () {
     expect(Absensi::query()->count())->toBe($setelahPertama)
         ->and($setelahPertama)->toBe(18)
         ->and($dobel)->toBeEmpty();
+});
+
+it('tidak mengisi susulan untuk tanggal sebelum tanggal mulai absensi', function () {
+    siapkanSusulan($this);
+    aturAbsensi(['tanggal_mulai' => '2026-09-26']);
+
+    $this->artisan('absensi:tandai-tidak-hadir')
+        ->expectsOutputToContain('10 absensi tidak hadir dicatat.')
+        ->assertSuccessful();
+
+    expect(tanggalTidakHadir($this->nur))->toBe(['2026-09-26', '2026-09-29', '2026-09-30'])
+        ->and(tanggalTidakHadir($this->kepsek))->toBe(['2026-09-26', '2026-09-29', '2026-09-30', '2026-10-01'])
+        ->and(Absensi::query()->whereDate('tanggal', '<', '2026-09-26')->count())->toBe(0);
+});
+
+it('tidak menandai siapa pun kalau absensi baru mulai besok', function () {
+    siapkanSusulan($this);
+    aturAbsensi(['tanggal_mulai' => '2026-10-02']);
+
+    $this->artisan('absensi:tandai-tidak-hadir')
+        ->expectsOutputToContain('0 absensi tidak hadir dicatat.')
+        ->assertSuccessful();
+
+    expect(Absensi::query()->where('status', StatusAbsensi::TidakHadir)->count())->toBe(0);
 });
 
 it('mengisi susulan hari kemarin walau hari ini jam masuk belum tutup', function () {
