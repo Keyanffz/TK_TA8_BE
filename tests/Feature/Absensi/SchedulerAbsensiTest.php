@@ -13,10 +13,11 @@ use Illuminate\Support\Str;
 
 /**
  * Kamis, 1 Oktober 2026 pukul 09:10, sepuluh menit setelah jam masuk tutup (09:00). Bu Nur sudah absen,
- * Bu Dwi belum, Bu Fitri nonaktif, dan Kepala Sekolah belum absen.
+ * Bu Dwi belum, Bu Fitri nonaktif, dan Kepala Sekolah belum absen. Semua akun dibuat pagi itu, jadi tidak ada
+ * hari sebelumnya yang perlu diisi susulan kecuali di test susulan, yang memundurkan tanggal pembuatan akun.
  */
 beforeEach(function () {
-    Carbon::setTestNow('2026-09-01 08:00:00');
+    Carbon::setTestNow('2026-10-01 06:00:00');
     Storage::fake('local');
     $this->kepsek = buatKepalaSekolah();
     $this->nur = buatGuru()->user;
@@ -29,7 +30,7 @@ beforeEach(function () {
 
 it('menandai tidak hadir peserta aktif yang belum absen masuk setelah jam masuk tutup', function () {
     $this->artisan('absensi:tandai-tidak-hadir')
-        ->expectsOutputToContain('2 peserta ditandai tidak hadir.')
+        ->expectsOutputToContain('2 absensi tidak hadir dicatat.')
         ->assertSuccessful();
 
     $dwi = Absensi::query()->where('user_id', $this->dwi->id)->sole();
@@ -55,20 +56,18 @@ it('tidak membuat baris ganda saat dijalankan berulang', function () {
     Carbon::setTestNow('2026-10-01 09:20:00');
 
     $this->artisan('absensi:tandai-tidak-hadir')
-        ->expectsOutputToContain('0 peserta ditandai tidak hadir.')
+        ->expectsOutputToContain('0 absensi tidak hadir dicatat.')
         ->assertSuccessful();
 
     expect(Absensi::query()->count())->toBe(3);
 });
 
-it('tidak menandai siapa pun sebelum jam masuk tutup, di tanggal libur, atau di luar hari kerja', function (Closure $siapkan) {
+it('tidak menandai hari ini sebelum jam masuk tutup, di tanggal libur, atau di luar hari kerja', function (Closure $siapkan) {
     $siapkan();
 
-    $this->artisan('absensi:tandai-tidak-hadir')
-        ->expectsOutputToContain('0 peserta ditandai tidak hadir.')
-        ->assertSuccessful();
+    $this->artisan('absensi:tandai-tidak-hadir')->assertSuccessful();
 
-    expect(Absensi::query()->where('status', StatusAbsensi::TidakHadir)->count())->toBe(0);
+    expect(Absensi::query()->where('status', StatusAbsensi::TidakHadir)->whereDate('tanggal', today()->toDateString())->count())->toBe(0);
 })->with([
     'tepat jam tutup' => [fn () => Carbon::setTestNow('2026-10-01 09:00:50')],
     'tanggal libur' => [fn () => aturAbsensi(['tanggal_libur' => ['2026-10-01']])],
@@ -82,10 +81,10 @@ it('tidak menandai siapa pun sebelum jam masuk tutup, di tanggal libur, atau di 
 it('mengikuti jam masuk tutup yang diatur Kepala Sekolah', function () {
     aturAbsensi(['jam_masuk' => ['buka' => '06:30', 'batas_terlambat' => '07:15', 'tutup' => '10:00']]);
 
-    $this->artisan('absensi:tandai-tidak-hadir')->expectsOutputToContain('0 peserta ditandai tidak hadir.');
+    $this->artisan('absensi:tandai-tidak-hadir')->expectsOutputToContain('0 absensi tidak hadir dicatat.');
 
     Carbon::setTestNow('2026-10-01 10:01:00');
-    $this->artisan('absensi:tandai-tidak-hadir')->expectsOutputToContain('2 peserta ditandai tidak hadir.');
+    $this->artisan('absensi:tandai-tidak-hadir')->expectsOutputToContain('2 absensi tidak hadir dicatat.');
 });
 
 it('tidak menandai akun yang baru dibuat setelah jam masuk tutup', function () {
@@ -98,10 +97,96 @@ it('tidak menandai akun yang baru dibuat setelah jam masuk tutup', function () {
 
 it('hanya menghitung saat --dry-run', function () {
     $this->artisan('absensi:tandai-tidak-hadir', ['--dry-run' => true])
-        ->expectsOutputToContain('[dry run] 2 peserta akan ditandai tidak hadir.')
+        ->expectsOutputToContain('[dry run] 2 absensi tidak hadir akan dicatat.')
         ->assertSuccessful();
 
     expect(Absensi::query()->count())->toBe(1);
+});
+
+/**
+ * Scheduler mati sejak Rabu, 23 September. Dijalankan lagi Kamis, 1 Oktober pukul 09:10: susulan menjangkau
+ * 24 September sampai 30 September. Minggu 27 September bukan hari kerja dan Senin 28 September tanggal libur.
+ */
+function siapkanSusulan(object $test): void
+{
+    User::query()->update(['created_at' => '2026-09-01 08:00:00']);
+    aturAbsensi(['tanggal_libur' => ['2026-09-28']]);
+    Absensi::factory()->for($test->dwi)->create(['tanggal' => '2026-09-29', 'status' => StatusAbsensi::Hadir]);
+}
+
+/**
+ * @return list<string>
+ */
+function tanggalTidakHadir(User $user): array
+{
+    return Absensi::query()->where('user_id', $user->id)->where('status', StatusAbsensi::TidakHadir)
+        ->orderBy('tanggal')->get()->map(fn (Absensi $absensi) => $absensi->tanggal->toDateString())->all();
+}
+
+it('mengisi susulan hari kerja yang terlewat sampai 7 hari ke belakang', function () {
+    siapkanSusulan($this);
+
+    $this->artisan('absensi:tandai-tidak-hadir')
+        ->expectsOutputToContain('16 absensi tidak hadir dicatat.')
+        ->assertSuccessful();
+
+    expect(tanggalTidakHadir($this->nur))->toBe(['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-29', '2026-09-30'])
+        ->and(tanggalTidakHadir($this->dwi))->toBe(['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-30', '2026-10-01'])
+        ->and(tanggalTidakHadir($this->kepsek))->toBe(['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-29', '2026-09-30', '2026-10-01'])
+        ->and(tanggalTidakHadir($this->fitri))->toBe([])
+        ->and(Absensi::query()->where('user_id', $this->dwi->id)->whereDate('tanggal', '2026-09-29')->sole()->status)->toBe(StatusAbsensi::Hadir);
+});
+
+it('melewati hari libur dan hari di luar hari kerja saat mengisi susulan', function () {
+    siapkanSusulan($this);
+
+    $this->artisan('absensi:tandai-tidak-hadir')->assertSuccessful();
+
+    expect(Absensi::query()->whereDate('tanggal', '2026-09-27')->count())->toBe(0)
+        ->and(Absensi::query()->whereDate('tanggal', '2026-09-28')->count())->toBe(0);
+});
+
+it('tidak menyentuh hari yang lebih dari 7 hari ke belakang', function () {
+    siapkanSusulan($this);
+
+    $this->artisan('absensi:tandai-tidak-hadir')->assertSuccessful();
+
+    expect(Absensi::query()->whereDate('tanggal', '<', '2026-09-24')->count())->toBe(0)
+        ->and(Absensi::query()->whereDate('tanggal', '2026-09-24')->count())->toBe(3);
+});
+
+it('tidak membuat baris dobel saat susulan dijalankan dua kali', function () {
+    siapkanSusulan($this);
+    $this->artisan('absensi:tandai-tidak-hadir')->assertSuccessful();
+    $setelahPertama = Absensi::query()->count();
+
+    $this->artisan('absensi:tandai-tidak-hadir')
+        ->expectsOutputToContain('0 absensi tidak hadir dicatat.')
+        ->assertSuccessful();
+
+    $dobel = Absensi::query()->selectRaw('user_id, tanggal, jenis, count(*) as jumlah')
+        ->groupBy('user_id', 'tanggal', 'jenis')->having('jumlah', '>', 1)->get();
+    expect(Absensi::query()->count())->toBe($setelahPertama)
+        ->and($setelahPertama)->toBe(18)
+        ->and($dobel)->toBeEmpty();
+});
+
+it('mengisi susulan hari kemarin walau hari ini jam masuk belum tutup', function () {
+    siapkanSusulan($this);
+    Carbon::setTestNow('2026-10-01 08:00:00');
+
+    $this->artisan('absensi:tandai-tidak-hadir')->assertSuccessful();
+
+    expect(tanggalTidakHadir($this->dwi))->toBe(['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-30']);
+});
+
+it('tidak menandai akun pada hari sebelum akun itu dibuat', function () {
+    siapkanSusulan($this);
+    $this->dwi->forceFill(['created_at' => '2026-09-30 06:00:00'])->save();
+
+    $this->artisan('absensi:tandai-tidak-hadir')->assertSuccessful();
+
+    expect(tanggalTidakHadir($this->dwi))->toBe(['2026-09-30', '2026-10-01']);
 });
 
 it('menghapus file foto yang melewati masa simpan dan mempertahankan data absensinya', function () {

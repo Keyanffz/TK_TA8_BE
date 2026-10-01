@@ -26,6 +26,9 @@ class AbsensiService
 
     private const UKURAN_CHUNK = 100;
 
+    /** Batas susulan `tandaiTidakHadir()`: hari kerja yang terlewat lebih lama dari ini tidak disentuh. */
+    public const HARI_SUSULAN = 7;
+
     public function __construct(
         private readonly PengaturanService $pengaturan,
         private readonly MediaService $media,
@@ -123,21 +126,39 @@ class AbsensiService
     }
 
     /**
-     * Setelah jam masuk tutup di hari kerja, peserta aktif yang belum punya absen masuk hari itu ditandai
-     * tidak hadir. Aman dijalankan berulang. Akun yang dibuat setelah jam masuk tutup tidak ditandai.
+     * Menandai tidak hadir peserta aktif yang belum punya absen masuk, untuk hari ini dan susulan sampai
+     * `HARI_SUSULAN` hari ke belakang (misalnya scheduler sempat mati). Hanya hari kerja yang bukan tanggal libur
+     * dan jam masuknya sudah tutup; hari ini baru dihitung setelah jam tutup lewat. Aman dijalankan berulang:
+     * peserta yang sudah punya baris absen masuk dilewati, dan unique (user, tanggal, jenis) menjaga sisanya.
      *
-     * @return int jumlah peserta yang ditandai (atau akan ditandai, saat simulasi)
+     * Hari kerja, tanggal libur, dan jam tutup dibaca dari pengaturan saat command berjalan, begitu juga status
+     * akun: riwayat keduanya tidak disimpan. Akun yang dibuat setelah jam masuk tutup hari itu tidak ditandai.
+     *
+     * @return int jumlah absensi tidak hadir yang dibuat (atau akan dibuat, saat simulasi)
      */
     public function tandaiTidakHadir(Carbon $waktu, bool $simulasi = false): int
     {
         $aturan = $this->aturan();
+        $jumlah = 0;
 
-        if (! $aturan->hariKerja($waktu) || $aturan->tanggalLibur($waktu) || ! $aturan->jendelaSudahTutup(JenisAbsensi::Masuk, $waktu)) {
-            return 0;
+        for ($mundur = self::HARI_SUSULAN; $mundur >= 0; $mundur--) {
+            $hari = $waktu->copy()->subDays($mundur);
+            $masihBerjalan = $mundur === 0 && ! $aturan->jendelaSudahTutup(JenisAbsensi::Masuk, $waktu);
+
+            if ($masihBerjalan || ! $aturan->hariKerja($hari) || $aturan->tanggalLibur($hari)) {
+                continue;
+            }
+
+            $jumlah += $this->tandaiTidakHadirPadaHari($hari, $aturan, $simulasi);
         }
 
-        $tanggal = $waktu->toDateString();
-        $tutup = $waktu->copy()->setTimeFromTimeString($aturan->jamMasuk['tutup'])->endOfMinute();
+        return $jumlah;
+    }
+
+    private function tandaiTidakHadirPadaHari(Carbon $hari, AturanAbsensi $aturan, bool $simulasi): int
+    {
+        $tanggal = $hari->toDateString();
+        $tutup = $hari->copy()->setTimeFromTimeString($aturan->jamMasuk['tutup'])->endOfMinute();
         $peserta = User::query()->pesertaAbsensi()
             ->where('created_at', '<=', $tutup)
             ->whereDoesntHave('absensi', fn (Builder $absensi) => $absensi->whereDate('tanggal', $tanggal)->where('jenis', JenisAbsensi::Masuk))
