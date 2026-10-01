@@ -22,6 +22,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Tautan login per role di email dan kartu akun (branch `be/tautan-login-per-role`) | Selesai, menunggu review |
 | Area `/mudarris` untuk guru dan Kepala Sekolah (branch `be/rute-mudarris`) | Selesai, menunggu review |
 | Login Google staff, guru dikelola Kepala Sekolah tanpa pendaftaran mandiri (branch `be/login-google-staff`) | Selesai, menunggu review |
+| Absensi guru dan Kepala Sekolah berbasis lokasi dan foto (branch `be/absensi`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -50,7 +51,8 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
-| Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA) |
+| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user), `GET /absensi` (riwayat per bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (SA) |
+| Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA). Grup `absensi` berisi aturan absensi |
 | Galeri (SA) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
 
@@ -58,11 +60,48 @@ K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga m
 
 Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum). Akun wali yang masih memakai password awal (`wajib_ganti_password`) hanya bisa memakai `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`; endpoint login lain membalas 403 `PASSWORD_WAJIB_DIGANTI`.
 
-Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
+Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `absensi:tandai-tidak-hadir` (tiap 10 menit; hari ini setelah jam masuk tutup, ditambah susulan hari kerja 7 hari ke belakang), `absensi:hapus-foto-lama` (harian 01:00). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
 
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Absensi guru dan Kepala Sekolah (branch `be/absensi`). Fitur dan kontraknya diminta pemilik repo dan sudah ditulis ke Bagian A dan B; yang di bawah ini diputuskan saat pengerjaan:
+
+1. Aturan absensi disimpan di tabel `pengaturan` sebagai grup baru `absensi` (8 kunci, A4), dibaca dan diubah lewat `GET /pengaturan?grup=absensi` dan `PUT /pengaturan` yang sudah ada dan memang hanya untuk Kepala Sekolah. Tidak ada tabel atau endpoint pengaturan baru. Hari kerja disimpan sebagai nomor hari ISO (1 = Senin sampai 7 = Minggu), jam sebagai teks `HH:MM`.
+2. Nilai bawaan (`App\Support\AturanAbsensi::BAWAAN`): radius 100 m, batas akurasi 100 m, masa simpan foto 6 bulan (ketiganya dari permintaan); jam masuk 06:30, batas terlambat 07:15, tutup 09:00; jam pulang 11:00–15:00; hari kerja Senin–Sabtu; tanpa tanggal libur; `absensi.lokasi` null. Jam dan hari kerja bawaan adalah tebakan dan perlu disesuaikan Kepala Sekolah. Selama `absensi.lokasi` null, semua absen ditolak dengan pesan untuk mengisi pengaturan.
+3. Migration data `2026_10_01_100001_isi_pengaturan_absensi` mengisi kedelapan kunci itu (tanpa menimpa yang sudah ada), supaya database yang sudah berjalan cukup `php artisan migrate`. `PengaturanSeeder` memuat nilai yang sama dari konstanta yang sama. Akibatnya setiap test sekarang berangkat dengan 8 baris `pengaturan`.
+4. Batas isian: radius 10–5000 m, batas akurasi 5–1000 m, masa simpan foto 1–60 bulan, paling banyak 366 tanggal libur. Jam masuk harus berurutan (buka ≤ batas terlambat ≤ tutup, tutup setelah buka) dan jam pulang tutup setelah buka; diperiksa terhadap gabungan nilai tersimpan dan nilai baru. Jam pulang tidak diwajibkan setelah jam masuk tutup.
+5. Satu baris `absensi` per peserta, tanggal, dan jenis. `status` hanya untuk jenis `masuk` (null untuk pulang). Baris `tidak_hadir` dari scheduler tidak punya waktu, koordinat, dan foto. `StatusAbsensi` hanya `hadir`, `terlambat`, `tidak_hadir` sesuai permintaan; tidak ada `izin`/`sakit`. Ketidakhadiran yang beralasan saat ini hanya bisa dicatat di catatan koreksi.
+6. Jam dibandingkan per menit sebagai teks `HH:MM` dengan jam server: absen pukul 07:15:40 masih `hadir` untuk batas 07:15, dan jam masuk yang tutup 09:00 masih menerima absen sampai 09:00:59. Scheduler baru menandai tidak hadir mulai 09:01.
+7. Urutan pemeriksaan `POST /absensi`: lokasi sekolah sudah diatur, hari kerja, tanggal libur, jam, absen pulang butuh absen masuk, belum absen jenis itu, akurasi, jarak. Semua penolakan aturan `BUSINESS_RULE` dengan pesan yang menyebut angka (jarak, radius, akurasi, jam); bentuk isian (jenis, koordinat, foto) `VALIDATION_ERROR`. Foto baru disimpan setelah semua pemeriksaan lolos, dan dihapus lagi kalau penyimpanan baris gagal (termasuk karena unique index pada dua permintaan bersamaan).
+8. Absen pulang ditolak kalau absen masuk hari itu berstatus `tidak_hadir`. Setelah Kepala Sekolah mengoreksinya menjadi `hadir`/`terlambat`, absen pulang bisa dilakukan selama jam pulang masih terbuka.
+9. Foto absensi tidak memakai signed URL `GET /media/{token}` seperti file private lain, karena permintaannya "endpoint yang hanya bisa diakses pemiliknya dan Kepala Sekolah": siapa pun yang memegang signed URL bisa membukanya selama 30 menit. `GET /absensi/{id}/foto` memakai `auth:sanctum` + `AbsensiPolicy`; guru lain mendapat 404 (B4), wali murid 403 dari middleware role. Resource hanya mengirim `ada_foto`. Foto diproses `MediaService::simpanGambar()` (maksimal lebar 1600 px, JPEG, EXIF dibuang).
+10. Rate limit `absen` 10/menit per user (angka tidak disebut di permintaan), dihitung untuk setiap percobaan termasuk yang ditolak, di atas limiter `api`.
+11. `absensi:tandai-tidak-hadir` dijadwalkan tiap 10 menit, bukan pada jam tetap, karena jam masuk tutup bisa diubah Kepala Sekolah kapan saja. Command memeriksa sendiri hari kerja, tanggal libur, dan jam tutup, dan aman dijalankan berulang: peserta yang sudah punya baris absen masuk dilewati, `firstOrCreate` dan unique index menjaga sisanya. **Tambahan setelah review (diminta pemilik repo):** setiap kali berjalan, command juga mengisi susulan hari kerja yang terlewat sampai 7 hari ke belakang (`AbsensiService::HARI_SUSULAN`), misalnya setelah scheduler mati. Yang diputuskan saat pengerjaan:
+    - Jangkauannya hari ini ditambah 7 hari kalender sebelumnya; hari ke-8 dan yang lebih lama tidak disentuh. Hari ini baru dihitung setelah jam masuk tutup; hari sebelumnya selalu dianggap sudah tutup, jadi susulan tetap berjalan walau command dipanggil pagi hari.
+    - Hari kerja, tanggal libur, dan jam tutup untuk hari yang lewat dibaca dari pengaturan saat command berjalan, karena riwayat pengaturan tidak disimpan. Mengubah hari kerja atau menghapus tanggal libur yang jatuh dalam 7 hari terakhir membuat hari itu ikut diisi; menambah tanggal libur belakangan menghapus tanda tidak hadir otomatis pada tanggal itu (nomor 19).
+    - "Peserta yang saat itu aktif" = akun yang aktif saat command berjalan dan sudah dibuat sebelum jam masuk tutup pada hari yang diisi. Riwayat status akun tidak disimpan: guru yang nonaktif pada hari itu lalu diaktifkan kembali ikut ditandai untuk hari tersebut, dan guru yang aktif pada hari itu tetapi sekarang nonaktif tidak ditandai. Kepala Sekolah bisa mengoreksi yang pertama.
+    - Susulan tidak pernah mundur melewati `absensi.tanggal_mulai` (nomor 18), jadi hari-hari sebelum fitur ini dipasang tidak ditandai.
+    - Keluaran command sekarang menghitung baris, bukan peserta: "N absensi tidak hadir dicatat."
+12. `absensi:hapus-foto-lama` (harian 01:00) memakai `tanggal` absensi: foto dengan tanggal lebih lama dari hari ini dikurangi masa simpan dihapus dan `foto_path` dikosongkan.
+13. Koreksi hanya untuk baris absen masuk yang sudah ada dan menolak status yang sama. Kepala Sekolah belum bisa membuat absensi untuk hari yang tidak punya baris (misalnya sebelum scheduler berjalan, atau hari yang bukan hari kerja). Selain `dikoreksi_oleh`/`dikoreksi_at` di baris absensi, koreksi dicatat di log aktivitas `absensi`/`dikoreksi` (status sebelum dan sesudah, catatan), sehingga riwayat koreksi berulang tidak hilang. Guru tidak dikirimi notifikasi.
+14. `GET /absensi` mengembalikan baris absensi mentah (masuk dan pulang terpisah) satu bulan tanpa paginasi, paling banyak 62 baris; FE yang mengelompokkan per hari. Endpoint yang sama dipakai riwayat pribadi dan detail per hari di rekap (`user_id`, hanya Kepala Sekolah).
+15. Rekap memuat guru dan Kepala Sekolah yang aktif walau belum punya absensi, ditambah akun nonaktif yang punya absensi di bulan itu. `tidak_absen_pulang` baru dihitung setelah jam pulang hari itu tutup. Ekspor CSV berpemisah koma dengan BOM UTF-8 supaya terbaca di Excel; tidak memakai `maatwebsite/excel` karena isinya satu tabel kecil.
+16. Kepala Sekolah ikut absen dan ikut ditandai tidak hadir, sesuai permintaan "guru aktif dan kepala sekolah".
+17. `DemoSeeder` menambah `AbsensiDemoSeeder`: titik sekolah fiktif di Semarang dan absensi 14 hari terakhir tanpa hari ini; foto contoh hanya untuk tiga hari terakhir. `absensi.tanggal_mulai` data demo dimundurkan 14 hari supaya sesuai dengan absensi contohnya.
+18. **Tambahan setelah review (diminta pemilik repo): tanggal mulai absensi.** Kunci baru `absensi.tanggal_mulai` (date, wajib). Migration `2026_10_01_100002_isi_tanggal_mulai_absensi` mengisinya dengan tanggal migration dijalankan tanpa menimpa nilai yang ada; `PengaturanSeeder` memuat hal yang sama. Yang diputuskan saat pengerjaan:
+    - Kunci ini tidak masuk `AturanAbsensi::BAWAAN` karena nilai awalnya bukan nilai tetap. Kalau barisnya sampai tidak ada, absensi dianggap tanpa batas mulai.
+    - Tanggal mulai itu sendiri sudah berlaku: absen diterima dan scheduler menandai tidak hadir mulai tanggal tersebut. Sebelum itu `POST /absensi` membalas `BUSINESS_RULE` "Absensi baru berlaku mulai 5 Oktober 2026." dan diperiksa lebih dulu daripada hari kerja.
+    - `GET /absensi/hari-ini` mendapat field `tanggal_mulai`; `terbuka` false sebelum tanggal itu. `hari_kerja` tidak berubah arti.
+    - Memundurkan tanggal mulai ke masa lalu membuat scheduler mengisi susulan untuk hari kerja di antara tanggal baru dan hari ini, paling jauh 7 hari. Memajukannya tidak menghapus baris yang sudah ada.
+    - Karena nilai bawaannya tanggal migration, test absensi yang mengatur waktu mengisi `tanggal_mulai` sendiri (`aturAbsensi()`), supaya tidak bergantung pada tanggal test dijalankan.
+19. **Tambahan setelah review (diminta pemilik repo): tanggal libur yang ditambah belakangan.** Saat `PUT /pengaturan` menambah tanggal ke `absensi.tanggal_libur`, baris `Absensi::scopeTidakHadirOtomatis` pada tanggal itu dihapus: jenis masuk, status `tidak_hadir`, tanpa waktu, tanpa foto, dan `dikoreksi_at` kosong. Yang diputuskan saat pengerjaan:
+    - Hanya tanggal yang baru masuk daftar yang dibersihkan (selisih dengan daftar tersimpan), bukan seluruh daftar setiap kali disimpan.
+    - Tidak disentuh: absen sungguhan (punya waktu dan foto) termasuk absen pulang, baris tidak hadir otomatis yang sudah dikoreksi walau statusnya tetap tidak hadir, dan absen sungguhan yang dikoreksi menjadi tidak hadir (masih punya waktu).
+    - Absen sungguhan yang fotonya sudah dihapus setelah masa simpan tetap aman karena masih punya waktu.
+    - Log aktivitas `absensi`/`tidak_hadir_dihapus` berisi daftar tanggal libur baru dan jumlah baris, hanya ditulis kalau ada yang dihapus. Baris dihapus permanen; menghapus tanggal itu lagi dari daftar libur tidak mengembalikannya, tetapi scheduler akan menandai ulang kalau tanggalnya masih dalam 7 hari terakhir.
+    - Penghapusan dilakukan di `PengaturanService`, bukan `AbsensiService`, karena `AbsensiService` sudah bergantung pada `PengaturanService`.
 
 Login Google staff dan guru tanpa pendaftaran mandiri (branch `be/login-google-staff`). Perubahan kontrak diminta pemilik repo dan sudah ditulis ke Bagian A dan B; yang di bawah ini diputuskan saat pengerjaan:
 
@@ -316,7 +355,7 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
 - Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
 - Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
-- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `tagihan:pengingat` 07:00 (WIB). Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
+- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `tagihan:pengingat` 07:00, `absensi:tandai-tidak-hadir` tiap 10 menit, `absensi:hapus-foto-lama` 01:00 (WIB). Tanpa scheduler yang berjalan, peserta yang tidak absen tidak ditandai tidak hadir; setelah berjalan lagi, hari kerja yang terlewat diisi susulan sampai 7 hari ke belakang. Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
 - Notifikasi tagihan dan pembayaran juga lewat queue: tanpa worker, notifikasi hasil generate masih di tabel `jobs`.
 - Mencoba satu jadwal tanpa menunggu jamnya: `php artisan schedule:test --name=tagihan:generate` (atau nama command lain). Command yang dijalankan scheduler memakai jam sistem sebenarnya.
 
@@ -443,7 +482,7 @@ Middleware:
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
 - Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Setelah `findOrFail`, controller memanggil `Jangkauan::pastikanTerlihat($model)` untuk Policy `view` yang hanya membalas 404, dan `Gate::authorize(...)` untuk aksi yang bisa membalas 403.
 - `signed:relative`: hanya di `GET /media/{token}`.
-- Rate limiter (`AppServiceProvider`): `login-staff` 3/menit per email + IP dan 10/menit per IP, `login-google` 10/menit per IP, `login-wali` 5/menit per username + IP dan 20/menit per IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
+- Rate limiter (`AppServiceProvider`): `login-staff` 3/menit per email + IP dan 10/menit per IP, `login-google` 10/menit per IP, `login-wali` 5/menit per username + IP dan 20/menit per IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, `absen` 10/menit per user, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
 
 ## Auth dan akun
 
@@ -464,10 +503,11 @@ Middleware:
 - Gambar (`MediaService::aturanGambar()`: jpg/jpeg/png/webp, maksimal 5 MB) diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80 dengan nama UUID, metadata EXIF dibuang.
 - File publik (avatar, foto guru) di disk `public`, URL lewat `Storage::url()`. File lama dihapus setelah transaksi berhasil.
 - File private di disk `local` disajikan lewat `GET /media/{token}`: token = path terenkripsi (`Crypt`, base64 url-safe), URL ditandatangani relatif (`URL::temporarySignedRoute(..., absolute: false)`) dan berlaku 30 menit, respons `Cache-Control: private, max-age=1800`. Token rusak atau file sudah dihapus dibalas 404.
+- Foto absensi (disk `local`, folder `absensi/`, maksimal 2 MB) tidak diberi signed URL. `GET /absensi/{id}/foto` memakai `auth:sanctum` dan `AbsensiPolicy`: hanya pemilik absensi dan Kepala Sekolah. File dihapus `absensi:hapus-foto-lama` setelah `absensi.masa_simpan_foto_bulan`.
 
 ## Skema database
 
-- 35 tabel: 26 tabel domain A4 (termasuk `users`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
+- 36 tabel: 27 tabel domain A4 (termasuk `users`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
 - Foreign key: tabel anak dan pivot `cascade` (`murid_wali`, `kelas_murid`, `pengumuman_kelas`, `pengumuman_murid`, `kegiatan_foto`, `rapor_detail`, `pendaftaran_dokumen`, `galeri_foto`, profil `guru`/`wali_murid` ke `users`); kolom pelaku (`dibuat_oleh`, `diverifikasi_oleh`, `disetujui_oleh`, `diproses_oleh`, `dibayar_oleh`) `null on delete`; `kelas.wali_kelas_id`, `kelas.guru_pendamping_id`, `pendaftaran.murid_id` `null on delete`; sisanya (data keuangan, rapor, kegiatan, tahun ajaran) `restrict`. `users`, `murid`, dan `pengumuman` memakai soft delete, jadi hapus fisik jarang terjadi.
 - Cascade di database tidak menjalankan observer Eloquent. Penghapusan data yang punya file (kegiatan, rapor, PPDB, galeri) harus lewat Eloquent di service supaya file fisiknya ikut terhapus (B5).
 - Scope visibilitas (B4), dipakai semua endpoint terkait mulai Fase 3:
@@ -483,6 +523,7 @@ Middleware:
 | `Rapor::visibleTo` | semua | kelas yang diampu | rapor anaknya berstatus `terbit` |
 | `Pengumuman::visibleTo` (feed) | semua, termasuk draft | terbit untuk semua / guru / kelas yang diampu / murid di kelasnya, plus tulisannya sendiri (termasuk draft) | terbit untuk semua / wali murid / kelas anaknya / anaknya, plus tulisannya sendiri |
 | `Pendaftaran::visibleTo` | semua | tidak ada | miliknya |
+| `Absensi::visibleTo` | semua | miliknya | ditolak 403 (`role:`) |
 
 `User::bisaKelolaKeuangan()` menentukan petugas keuangan (Kepala Sekolah, atau guru dengan `bisa_kelola_keuangan`).
 
@@ -548,6 +589,12 @@ Login Google staff (branch `be/login-google-staff`, diminta pemilik repo; Bagian
 38. Guru dan Kepala Sekolah login dengan Google (`POST /auth/staff/google`), Kepala Sekolah juga dengan password; guru tidak punya password. Lupa/reset password dan `PUT /auth/password` hanya untuk Kepala Sekolah (dan wali murid untuk ganti password) (A2.1, A3, A6, A7, B6.7, B6.8, B7).
 39. Pendaftaran guru mandiri dan persetujuan/penolakan dihapus: `POST /auth/register-guru`, `POST /guru/{id}/setujui`, `POST /guru/{id}/tolak`, status `pending`/`ditolak`, `ACCOUNT_PENDING`, `ACCOUNT_REJECTED`, notifikasi `guru_baru`, `tertunda.guru_pending`, halaman `/mudarris/daftar` dan `/mudarris/menunggu-persetujuan` (A1, A3, A5, A6, A7).
 40. Skema: `users.google_sub`, email disimpan huruf kecil, `guru.disetujui_oleh`/`disetujui_at`/`alasan_penolakan` dihapus (A4). Guru tidak dihapus, hanya dinonaktifkan.
+
+Absensi (branch `be/absensi`, diminta pemilik repo; Bagian A disalin identik ke `PROMPT_FE_TK.md` di branch `fe/absensi` repo FE):
+
+41. "Tidak ada modul absensi" di A1 diganti absensi guru aktif dan Kepala Sekolah berbasis lokasi dan foto (A1, A2.12, A3, A6).
+42. Tabel `absensi`, grup pengaturan `absensi` dengan 8 kunci, enum `JenisAbsensi` dan `StatusAbsensi` (A4, A5).
+43. Endpoint `GET /absensi/hari-ini`, `POST /absensi`, `GET /absensi`, `GET /absensi/{id}/foto`, `PATCH /absensi/{id}/koreksi`, `GET /absensi/rekap`, `GET /absensi/rekap/export`; `grup=absensi` di `GET /pengaturan` (A7, B2, B4, B5, B6.2, B6.14, B7, B8).
 
 ## Keputusan teknis
 
@@ -676,6 +723,36 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Absensi guru dan Kepala Sekolah (branch `be/absensi`)
+
+Diminta pemilik repo. Kontrak ditulis ke Bagian A (A1, A2.12, A3, A4, A5, A6, A7) dan Bagian B (B2, B4, B5, B6.2, B6.14, B7, B8) `PROMPT_BE_TK.md`, lalu Bagian A disalin identik ke `PROMPT_FE_TK.md`. Keputusan detail ada di "Keputusan menunggu review".
+
+Baru:
+
+- `app/Enums/{JenisAbsensi, StatusAbsensi}.php`.
+- `database/migrations/2026_10_01_100000_create_absensi_table.php` (unique `user_id, tanggal, jenis`), `2026_10_01_100001_isi_pengaturan_absensi.php` (data: 8 kunci grup `absensi`).
+- `app/Models/Absensi.php` (`visibleTo`, relasi `user` dan `pengoreksi`), `database/factories/AbsensiFactory.php`, `app/Policies/AbsensiPolicy.php`.
+- `app/Support/AturanAbsensi.php` (nilai bawaan dan pembacaan aturan dari pengaturan: hari kerja, tanggal libur, jam terbuka, terlambat), `app/Support/Jarak.php` (Haversine).
+- `app/Services/AbsensiService.php` (absen, koreksi, tandai tidak hadir, hapus foto lama), `app/Services/RekapAbsensiService.php` (rekap per bulan dan CSV).
+- `app/Http/Controllers/Api/V1/Absensi/AbsensiController.php`, `app/Http/Requests/Absensi/{AbsenRequest, BulanAbsensiRequest, RiwayatAbsensiRequest, KoreksiAbsensiRequest}.php`, `app/Http/Resources/AbsensiResource.php`.
+- `app/Console/Commands/{TandaiTidakHadirCommand, HapusFotoAbsensiLamaCommand}.php`.
+- `database/seeders/Demo/AbsensiDemoSeeder.php`.
+- Test `tests/Feature/Absensi/`: `AbsenTest` (absen masuk dan pulang, jam server, hadir dan terlambat di sekitar batas, setiap aturan penolakan tanpa menyimpan data atau foto, dobel, unique index, validasi isian dan foto, rate limit, guru nonaktif, status hari ini, wali murid ditolak di semua endpoint absensi), `SchedulerAbsensiTest` (tidak hadir untuk peserta aktif termasuk Kepala Sekolah, guru nonaktif dan wali tidak ditandai, idempoten, sebelum jam tutup, tanggal libur, bukan hari kerja, jam tutup dari pengaturan, akun baru, `--dry-run`, hapus foto lama dengan data tetap, masa simpan dari pengaturan, jadwal), `KoreksiDanRekapTest` (akses foto pemilik, Kepala Sekolah, guru lain 404, wali 403, tanpa login 401, koreksi tercatat di baris dan log, guru ditolak, catatan wajib, riwayat, rekap, CSV). Waktu memakai `Carbon::setTestNow`.
+
+Diubah:
+
+- `app/Services/PengaturanService.php` (aturan validasi grup `absensi`, urutan jam, perapian nilai), `app/Http/Requests/Pengaturan/DaftarPengaturanRequest.php` (`grup=absensi`), `app/Http/Controllers/Api/V1/Pengaturan/PengaturanController.php` (deskripsi).
+- `app/Models/User.php` (`scopePesertaAbsensi`, relasi `absensi`), `app/Providers/AppServiceProvider.php` (limiter `absen`), `routes/api.php`, `routes/console.php`, `lang/id/validation.php` (atribut `akurasi`).
+- `database/seeders/{PengaturanSeeder, DemoSeeder}.php`.
+- Test: `tests/Pest.php` (`aturAbsensi()`, `isianAbsen()`), `Pengaturan/PengaturanTest` (grup `absensi`: validasi, simpan, akses; jumlah kunci 34), `Database/SeederTest` (33 baris pengaturan), `DokumentasiApiTest`, `Unit/EnumKontrakTest`.
+- `storage/api-docs/api.json`: diekspor ulang. Enam path baru `/absensi…`, lima skema baru (`AbsenRequest`, `AbsensiResource`, `JenisAbsensi`, `KoreksiAbsensiRequest`, `StatusAbsensi`); path lain hanya berubah di `/pengaturan` (enum `grup`).
+
+Hasil pengecekan: 829 test lulus di SQLite (`--parallel`) dan di MariaDB 12.3.3 (database terpisah `TK_TA8_uji`); Pint, PHPStan, dan `check:slop` tanpa temuan. Uji manual lewat curl ke `php artisan serve` dengan database lokal: status hari ini, penolakan di luar radius (1.146 m), akurasi 300 m, absen pulang di luar jam, absen masuk sah (status terlambat pukul 08:24, jarak 16 m), dobel, foto dibuka pemilik dan Kepala Sekolah (200 `image/jpeg`) dan ditolak tanpa token (401), koreksi oleh guru 403 dan oleh Kepala Sekolah tercatat, rekap, CSV, `grup=absensi` 403 untuk guru, kedua command dengan `--dry-run`, dan `schedule:list`. Tambahan setelah review (susulan hari terlewat): `AbsensiService::tandaiTidakHadir()` mengulang hari ini dan 7 hari sebelumnya, `TandaiTidakHadirCommand` (keluaran dan deskripsi), `SchedulerAbsensiTest` (hari terlewat diisi susulan per peserta, hari libur dan bukan hari kerja dilewati, lebih dari 7 hari tidak disentuh, dua kali jalan tanpa baris dobel, susulan tetap jalan sebelum jam tutup hari ini, akun tidak ditandai sebelum tanggal dibuatnya; test lama memakai akun yang dibuat pagi itu supaya tidak ikut susulan). 835 test lulus di SQLite; Pint, PHPStan, `check:slop` bersih. Tidak diulang ke MariaDB karena tidak ada migration, seeder, atau bentuk query baru.
+
+Tambahan setelah review (tanggal mulai dan libur belakangan): migration `2026_10_01_100002_isi_tanggal_mulai_absensi.php`; `AturanAbsensi` (`KUNCI_TANGGAL_MULAI`, `sudahMulai()`), `AbsensiService` (absen dan scheduler), `Absensi::scopeTidakHadirOtomatis`, `PengaturanService` (validasi `absensi.tanggal_mulai`, `hapusTidakHadirPadaLiburBaru()`), `AbsensiController::hariIni` (`tanggal_mulai`), `PengaturanSeeder`, `AbsensiDemoSeeder`. Test: `AbsenTest` (ditolak sebelum tanggal mulai, diterima tepat di tanggal mulai, status hari ini), `SchedulerAbsensiTest` (susulan berhenti di tanggal mulai, tidak ada yang ditandai kalau mulai besok), `PengaturanTest` (nilai bawaan dari migration, validasi, menambah libur menghapus tidak hadir otomatis dan mencatat log, absen sungguhan dan baris terkoreksi tetap, hanya tanggal baru, tanpa log kalau tidak ada yang dihapus), `SeederTest`. Bagian A (A2.12, A3, A4, A6, A7) diubah dan disalin identik ke `PROMPT_FE_TK.md`. `api.json` diekspor ulang (field `tanggal_mulai` di `GET /absensi/hari-ini`). 847 test lulus di SQLite dan MariaDB (database terpisah); Pint, PHPStan, `check:slop` bersih.
+
+Yang belum diuji: absen dari HP sungguhan dengan GPS dan kamera, scheduler yang dibiarkan berjalan melewati jam masuk tutup (logikanya diuji lewat test dengan waktu yang diatur), dan wali murid lewat curl (database lokal tidak punya akun wali aktif; ditutup test).
 
 ### Login Google staff dan guru tanpa pendaftaran mandiri (branch `be/login-google-staff`)
 

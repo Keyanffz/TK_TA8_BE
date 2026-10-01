@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Absensi\AbsensiController;
 use App\Http\Controllers\Api\V1\Agenda\AgendaController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\ProfilController;
@@ -129,6 +130,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
         Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
+
+        Route::get('/absensi/rekap', [AbsensiController::class, 'rekap']);
+        Route::get('/absensi/rekap/export', [AbsensiController::class, 'export']);
+        Route::patch('/absensi/{id}/koreksi', [AbsensiController::class, 'koreksi']);
     });
 
     Route::middleware('can:kelola-keuangan')->group(function () {
@@ -171,6 +176,11 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/pengumuman', [PengumumanController::class, 'store']);
         Route::put('/pengumuman/{id}', [PengumumanController::class, 'update']);
         Route::delete('/pengumuman/{id}', [PengumumanController::class, 'destroy']);
+
+        Route::get('/absensi/hari-ini', [AbsensiController::class, 'hariIni']);
+        Route::get('/absensi', [AbsensiController::class, 'index']);
+        Route::post('/absensi', [AbsensiController::class, 'store'])->middleware('throttle:absen');
+        Route::get('/absensi/{id}/foto', [AbsensiController::class, 'foto']);
     });
 
     Route::get('/murid', [MuridController::class, 'index']);

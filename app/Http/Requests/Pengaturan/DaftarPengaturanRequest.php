@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class DaftarPengaturanRequest extends FormRequest
 {
-    public const GRUP = ['profil', 'landing', 'keuangan', 'ppdb', 'beranda'];
+    public const GRUP = ['profil', 'landing', 'keuangan', 'ppdb', 'beranda', 'absensi'];
 
     /**
      * @return array<string, mixed>

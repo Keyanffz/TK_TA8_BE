@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Pengaturan;
+use App\Support\AturanAbsensi;
 use Illuminate\Database\Seeder;
 
 /**
@@ -79,6 +80,8 @@ class PengaturanSeeder extends Seeder
                 'nada' => 'info',
                 'berlaku_sampai' => null,
             ],
+            ...AturanAbsensi::BAWAAN,
+            AturanAbsensi::KUNCI_TANGGAL_MULAI => today()->toDateString(),
         ];
     }
 }

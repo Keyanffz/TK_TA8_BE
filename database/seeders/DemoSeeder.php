@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\TahunAjaran;
+use Database\Seeders\Demo\AbsensiDemoSeeder;
 use Database\Seeders\Demo\AkademikDemoSeeder;
 use Database\Seeders\Demo\KeuanganDemoSeeder;
 use Database\Seeders\Demo\KomunikasiDemoSeeder;
@@ -36,6 +37,7 @@ class DemoSeeder extends Seeder
             KomunikasiDemoSeeder::class,
             PpdbDemoSeeder::class,
             WebsiteDemoSeeder::class,
+            AbsensiDemoSeeder::class,
         ]);
     }
 }

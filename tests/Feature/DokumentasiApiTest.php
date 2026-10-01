@@ -119,6 +119,8 @@ it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru ta
         '/rapor/{id}/pdf' => 'application/pdf',
         '/laporan/keuangan/export' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         '/media/{token}' => 'application/octet-stream',
+        '/absensi/{id}/foto' => 'image/jpeg',
+        '/absensi/rekap/export' => 'text/csv',
     ];
 
     foreach ($tipeFile as $path => $tipe) {
@@ -127,6 +129,26 @@ it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru ta
     foreach (['/pembayaran/{id}', '/pembayaran/{id}/bukti', '/pembayaran/{id}/kwitansi'] as $path) {
         expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->toContain('FORBIDDEN');
     }
+});
+
+it('mendokumentasikan absensi: unggahan multipart, batas role, dan status yang bisa null', function () {
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $absen = $dokumen['paths']['/absensi']['post'];
+    $skema = $dokumen['components']['schemas'];
+
+    expect(array_keys($absen['requestBody']['content']))->toBe(['multipart/form-data'])
+        ->and($skema['AbsenRequest']['required'])->toBe(['jenis', 'latitude', 'longitude', 'akurasi', 'foto'])
+        ->and($skema['AbsenRequest']['properties']['foto']['format'])->toBe('binary')
+        ->and(kodeErrorTerdokumentasi($absen, 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
+        ->and(kodeErrorTerdokumentasi($absen, 429))->toBe(['TOO_MANY_REQUESTS'])
+        ->and(kodeErrorTerdokumentasi($absen, 403))->toContain('FORBIDDEN')
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/absensi/{id}/koreksi']['patch'], 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/absensi/{id}/foto']['get'], 404))->toBe(['NOT_FOUND'])
+        ->and($skema['JenisAbsensi']['enum'])->toBe(['masuk', 'pulang'])
+        ->and($skema['StatusAbsensi']['enum'])->toBe(['hadir', 'terlambat', 'tidak_hadir'])
+        ->and($skema['AbsensiResource']['properties']['status']['anyOf'])->toContain(['type' => 'null'])
+        ->and($skema['AbsensiResource']['properties']['id']['type'])->toBe('integer')
+        ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan']);
 });
 
 it('mendokumentasikan tipe item array bertingkat dan url file yang bisa null', function () {

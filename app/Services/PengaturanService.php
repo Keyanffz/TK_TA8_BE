@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Enums\NadaInfo;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Absensi;
 use App\Models\Pengaturan;
 use App\Models\TahunAjaran;
 use App\Models\User;
+use App\Support\AturanAbsensi;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +35,12 @@ class PengaturanService
     private const KUNCI_HTML = ['profil.sejarah', 'profil.sambutan_kepsek', 'ppdb.info'];
 
     /** Kunci angka disimpan sebagai integer walau dikirim sebagai string dari form multipart. */
-    private const KUNCI_ANGKA = ['keuangan.tanggal_jatuh_tempo', 'keuangan.hari_pengingat', 'ppdb.tahun_ajaran_id', 'ppdb.kuota'];
+    private const KUNCI_ANGKA = [
+        'keuangan.tanggal_jatuh_tempo', 'keuangan.hari_pengingat', 'ppdb.tahun_ajaran_id', 'ppdb.kuota',
+        'absensi.radius_meter', 'absensi.batas_akurasi_meter', 'absensi.masa_simpan_foto_bulan',
+    ];
+
+    private const MAKSIMAL_TANGGAL_LIBUR = 366;
 
     private const MAKSIMAL_ITEM_DAFTAR = 20;
 
@@ -110,11 +118,13 @@ class PengaturanService
         if (is_string($buka) && is_string($tutup) && $tutup < $buka) {
             throw ValidationException::withMessages(['ppdb.tanggal_tutup' => 'Tanggal tutup PPDB tidak boleh sebelum tanggal buka.']);
         }
+        $this->pastikanJamAbsensiUrut($sesudah);
         if (($sesudah['ppdb.dibuka'] ?? false) === true && ! $this->tahunAjaranPpdbAda($sesudah['ppdb.tahun_ajaran_id'] ?? null)) {
             throw new BusinessRuleException('PPDB tidak bisa dibuka sebelum tahun ajaran tujuan PPDB dipilih.');
         }
 
         $gambarLama = $this->semuaGambar($this->semua());
+        $liburLama = $this->semua()['absensi.tanggal_libur'] ?? [];
 
         DB::transaction(function () use ($items): void {
             foreach ($items as $kunci => $nilai) {
@@ -127,6 +137,10 @@ class PengaturanService
 
         foreach (array_diff($gambarLama, $this->semuaGambar($this->semua())) as $path) {
             Storage::disk(MediaService::DISK_PUBLIK)->delete($path);
+        }
+
+        if (array_key_exists('absensi.tanggal_libur', $items)) {
+            $this->hapusTidakHadirPadaLiburBaru(array_values(array_diff($items['absensi.tanggal_libur'], is_array($liburLama) ? $liburLama : [])), $pelaku);
         }
 
         activity('pengaturan')->causedBy($pelaku)->event('diubah')
@@ -245,6 +259,24 @@ class PengaturanService
             'beranda.info_wali.isi' => ['nullable', 'required_if_accepted:beranda.info_wali.aktif', 'string', 'max:1000'],
             'beranda.info_wali.nada' => ['required', Rule::enum(NadaInfo::class)],
             'beranda.info_wali.berlaku_sampai' => ['nullable', 'date_format:Y-m-d'],
+            'absensi.lokasi' => ['nullable', 'array:latitude,longitude', 'required_array_keys:latitude,longitude'],
+            'absensi.lokasi.latitude' => ['numeric', 'between:-90,90'],
+            'absensi.lokasi.longitude' => ['numeric', 'between:-180,180'],
+            'absensi.radius_meter' => ['integer', 'between:10,5000'],
+            'absensi.batas_akurasi_meter' => ['integer', 'between:5,1000'],
+            'absensi.jam_masuk' => ['array:buka,batas_terlambat,tutup'],
+            'absensi.jam_masuk.buka' => ['required', 'date_format:H:i'],
+            'absensi.jam_masuk.batas_terlambat' => ['required', 'date_format:H:i'],
+            'absensi.jam_masuk.tutup' => ['required', 'date_format:H:i'],
+            'absensi.jam_pulang' => ['array:buka,tutup'],
+            'absensi.jam_pulang.buka' => ['required', 'date_format:H:i'],
+            'absensi.jam_pulang.tutup' => ['required', 'date_format:H:i'],
+            'absensi.hari_kerja' => ['array', 'list', 'min:1', 'max:7'],
+            'absensi.hari_kerja.*' => ['integer', 'between:1,7', 'distinct'],
+            'absensi.tanggal_libur' => ['array', 'list', 'max:'.self::MAKSIMAL_TANGGAL_LIBUR],
+            'absensi.tanggal_libur.*' => ['date_format:Y-m-d', 'distinct'],
+            'absensi.masa_simpan_foto_bulan' => ['integer', 'between:1,60'],
+            AturanAbsensi::KUNCI_TANGGAL_MULAI => ['required', 'date_format:Y-m-d'],
         ];
     }
 
@@ -315,10 +347,61 @@ class PengaturanService
                 $items[$kunci] = Purify::clean($nilai);
             } elseif (in_array($kunci, self::KUNCI_ANGKA, true) && is_numeric($nilai)) {
                 $items[$kunci] = (int) $nilai;
+            } elseif ($kunci === 'absensi.lokasi' && is_array($nilai)) {
+                $items[$kunci] = ['latitude' => (float) $nilai['latitude'], 'longitude' => (float) $nilai['longitude']];
+            } elseif ($kunci === 'absensi.hari_kerja' && is_array($nilai)) {
+                $items[$kunci] = collect($nilai)->map(fn (mixed $hari): int => (int) $hari)->sort()->values()->all();
+            } elseif ($kunci === 'absensi.tanggal_libur' && is_array($nilai)) {
+                $items[$kunci] = collect($nilai)->sort()->values()->all();
             }
         }
 
         return $items;
+    }
+
+    /**
+     * Tanggal libur yang baru ditambahkan bisa sudah lewat dan sudah ditandai scheduler. Baris tidak hadir
+     * otomatis yang belum dikoreksi pada tanggal itu dihapus; absen sungguhan dan baris yang sudah dikoreksi
+     * tetap. Jumlahnya dicatat di log aktivitas.
+     *
+     * @param  list<string>  $tanggalBaru
+     */
+    private function hapusTidakHadirPadaLiburBaru(array $tanggalBaru, User $pelaku): void
+    {
+        if ($tanggalBaru === []) {
+            return;
+        }
+
+        $dihapus = Absensi::query()->tidakHadirOtomatis()
+            ->where(fn (Builder $absensi) => collect($tanggalBaru)->each(fn (string $tanggal) => $absensi->orWhereDate('tanggal', $tanggal)))
+            ->delete();
+
+        if ($dihapus > 0) {
+            activity('absensi')->causedBy($pelaku)->event('tidak_hadir_dihapus')
+                ->withProperties(['tanggal_libur' => $tanggalBaru, 'jumlah' => $dihapus])
+                ->log("Menghapus {$dihapus} tanda tidak hadir otomatis pada tanggal libur yang baru ditambahkan");
+        }
+    }
+
+    /**
+     * Jam absensi dibandingkan sebagai teks `HH:MM`. Diperiksa terhadap gabungan nilai tersimpan dan nilai
+     * baru, karena jam masuk dan jam pulang bisa dikirim terpisah.
+     *
+     * @param  array<string, mixed>  $pengaturan
+     *
+     * @throws ValidationException
+     */
+    private function pastikanJamAbsensiUrut(array $pengaturan): void
+    {
+        $masuk = $pengaturan['absensi.jam_masuk'] ?? AturanAbsensi::BAWAAN['absensi.jam_masuk'];
+        $pulang = $pengaturan['absensi.jam_pulang'] ?? AturanAbsensi::BAWAAN['absensi.jam_pulang'];
+
+        if ($masuk['batas_terlambat'] < $masuk['buka'] || $masuk['tutup'] < $masuk['batas_terlambat'] || $masuk['tutup'] <= $masuk['buka']) {
+            throw ValidationException::withMessages(['absensi.jam_masuk' => 'Jam masuk harus berurutan: jam buka, batas terlambat, lalu jam tutup.']);
+        }
+        if ($pulang['tutup'] <= $pulang['buka']) {
+            throw ValidationException::withMessages(['absensi.jam_pulang' => 'Jam tutup absen pulang harus setelah jam bukanya.']);
+        }
     }
 
     private function tahunAjaranPpdbAda(mixed $tahunAjaranId): bool

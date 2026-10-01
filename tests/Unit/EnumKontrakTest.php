@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Hubungan;
+use App\Enums\JenisAbsensi;
 use App\Enums\JenisAgenda;
 use App\Enums\JenisDokumen;
 use App\Enums\JenisKelamin;
@@ -10,6 +11,7 @@ use App\Enums\MetodeBayar;
 use App\Enums\NadaInfo;
 use App\Enums\PeriodeTagihan;
 use App\Enums\Role;
+use App\Enums\StatusAbsensi;
 use App\Enums\StatusAkun;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
@@ -41,6 +43,8 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'StatusPendaftaran' => [StatusPendaftaran::class, ['diajukan', 'diverifikasi', 'diterima', 'ditolak']],
     'JenisDokumen' => [JenisDokumen::class, ['akta_kelahiran', 'kartu_keluarga', 'pas_foto', 'lainnya']],
     'NadaInfo' => [NadaInfo::class, ['info', 'penting', 'peringatan']],
+    'JenisAbsensi' => [JenisAbsensi::class, ['masuk', 'pulang']],
+    'StatusAbsensi' => [StatusAbsensi::class, ['hadir', 'terlambat', 'tidak_hadir']],
     'JenisKelamin (A4)' => [JenisKelamin::class, ['L', 'P']],
     'JenisNotifikasi (A7)' => [JenisNotifikasi::class, [
         'tagihan_baru', 'tagihan_tertunda', 'pengingat_tagihan', 'tagihan_terlambat', 'pembayaran_masuk',
@@ -62,5 +66,5 @@ it('memberi label bahasa Indonesia untuk setiap nilai enum', function (string $e
     StatusKelasMurid::class, PeriodeTagihan::class, TipeKeringanan::class, StatusTagihan::class,
     MetodeBayar::class, StatusPembayaran::class, TargetPengumuman::class, JenisAgenda::class,
     StatusRapor::class, StatusPendaftaran::class, JenisDokumen::class, JenisKelamin::class, JenisNotifikasi::class,
-    NadaInfo::class,
+    NadaInfo::class, JenisAbsensi::class, StatusAbsensi::class,
 ]);

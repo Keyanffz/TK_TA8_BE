@@ -30,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
 
     private const BATAS_TAMBAH_ANAK_PER_MENIT = 5;
 
+    private const BATAS_ABSEN_PER_MENIT = 10;
+
     private const BATAS_API_PER_MENIT = 120;
 
     private const BATAS_PENDAFTARAN_PUBLIK_PER_JAM = 3;
@@ -97,6 +99,9 @@ class AppServiceProvider extends ServiceProvider
         // Kode pendaftaran berurutan dan tanggal lahir anak hanya berkisar satu-dua tahun, jadi percobaan dibatasi.
         RateLimiter::for('status-pendaftaran', fn (Request $request) => Limit::perMinute(self::BATAS_CEK_STATUS_PENDAFTARAN_PER_MENIT)
             ->by((string) $request->ip()));
+
+        RateLimiter::for('absen', fn (Request $request) => Limit::perMinute(self::BATAS_ABSEN_PER_MENIT)
+            ->by((string) $request->user()?->getAuthIdentifier()));
 
         RateLimiter::for('tambah-anak', fn (Request $request) => Limit::perMinute(self::BATAS_TAMBAH_ANAK_PER_MENIT)
             ->by((string) $request->user()?->getAuthIdentifier()));
