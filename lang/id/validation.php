@@ -185,5 +185,6 @@ return [
         'kelas_id' => 'kelas',
         'jenis_tagihan_id' => 'jenis tagihan',
         'bukti' => 'bukti transfer',
+        'akurasi' => 'akurasi lokasi',
     ],
 ];

@@ -4,11 +4,13 @@ use App\Enums\StatusAkun;
 use App\Enums\Tingkat;
 use App\Models\Guru;
 use App\Models\Pendaftaran;
+use App\Models\Pengaturan;
 use App\Models\User;
 use App\Notifications\PendaftaranBaruNotification;
 use App\Services\GoogleIdTokenVerifier;
 use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -30,6 +32,42 @@ function buatKepalaSekolah(): User
 function buatGuru(StatusAkun $status = StatusAkun::Aktif, array $atributGuru = []): Guru
 {
     return Guru::factory()->for(User::factory()->status($status))->create($atributGuru);
+}
+
+/** Titik sekolah di pengaturan absensi untuk test; 0,0004 derajat lintang kira-kira 44 m. */
+const LATITUDE_SEKOLAH = -6.9903;
+
+const LONGITUDE_SEKOLAH = 110.4229;
+
+/**
+ * Mengubah kunci grup pengaturan `absensi`, misalnya `aturAbsensi(['radius_meter' => 50])`. Nilai bawaannya
+ * sudah diisi migration.
+ *
+ * @param  array<string, mixed>  $nilai
+ */
+function aturAbsensi(array $nilai): void
+{
+    foreach ($nilai as $nama => $isi) {
+        Pengaturan::query()->updateOrCreate(['kunci' => "absensi.{$nama}"], ['nilai' => $isi, 'grup' => 'absensi']);
+    }
+}
+
+/**
+ * Isian `POST /absensi` dari dalam area sekolah dengan akurasi baik.
+ *
+ * @param  array<string, mixed>  $ubah
+ * @return array<string, mixed>
+ */
+function isianAbsen(string $jenis = 'masuk', array $ubah = []): array
+{
+    return [
+        'jenis' => $jenis,
+        'latitude' => LATITUDE_SEKOLAH + 0.0004,
+        'longitude' => LONGITUDE_SEKOLAH,
+        'akurasi' => 15,
+        'foto' => UploadedFile::fake()->image('swafoto.jpg', 640, 480),
+        ...$ubah,
+    ];
 }
 
 const CLIENT_ID_GOOGLE = '1234567890-tkta8.apps.googleusercontent.com';
