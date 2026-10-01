@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -81,6 +82,24 @@ class User extends Authenticatable
                 ->orWhere(fn (Builder $guru) => $guru
                     ->where('role', Role::Guru)
                     ->whereHas('guru', fn (Builder $profil) => $profil->where('bisa_kelola_keuangan', true))));
+    }
+
+    /**
+     * Peserta absensi: guru dan Kepala Sekolah yang akunnya aktif. Guru nonaktif tidak ikut absensi.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopePesertaAbsensi(Builder $query): void
+    {
+        $query->whereIn('role', [Role::SuperAdmin, Role::Guru])->where('status', StatusAkun::Aktif);
+    }
+
+    /**
+     * @return HasMany<Absensi, $this>
+     */
+    public function absensi(): HasMany
+    {
+        return $this->hasMany(Absensi::class);
     }
 
     /**

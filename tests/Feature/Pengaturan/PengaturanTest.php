@@ -26,7 +26,7 @@ function unggahGambarPengaturan(object $test): string
 it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan url gambar', function () {
     $data = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(26)
+    expect($data)->toHaveCount(34)
         ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyathul Athfal 8')
         ->and($data)->toHaveKey('profil.logo', null)
         ->and($data)->toHaveKey('profil.logo_url', null)
@@ -92,7 +92,61 @@ it('memvalidasi nilai per kunci dan menolak kunci yang tidak dikenal', function 
     'nada info wali asing' => [['beranda.info_wali' => ['aktif' => false, 'nada' => 'darurat']], 'beranda.info_wali.nada'],
     'field info wali asing' => [['beranda.info_wali' => ['aktif' => false, 'nada' => 'info', 'warna' => 'merah']], 'beranda.info_wali'],
     'berlaku sampai bukan tanggal' => [['beranda.info_wali' => ['aktif' => false, 'nada' => 'info', 'berlaku_sampai' => '31/10/2026']], 'beranda.info_wali.berlaku_sampai'],
+    'lokasi absensi tanpa longitude' => [['absensi.lokasi' => ['latitude' => -6.99]], 'absensi.lokasi'],
+    'latitude di luar rentang' => [['absensi.lokasi' => ['latitude' => -96.99, 'longitude' => 110.42]], 'absensi.lokasi.latitude'],
+    'radius nol' => [['absensi.radius_meter' => 0], 'absensi.radius_meter'],
+    'batas akurasi bukan angka' => [['absensi.batas_akurasi_meter' => 'dekat'], 'absensi.batas_akurasi_meter'],
+    'jam masuk bukan HH:MM' => [['absensi.jam_masuk' => ['buka' => '6.30', 'batas_terlambat' => '07:15', 'tutup' => '09:00']], 'absensi.jam_masuk.buka'],
+    'jam masuk tanpa batas terlambat' => [['absensi.jam_masuk' => ['buka' => '06:30', 'tutup' => '09:00']], 'absensi.jam_masuk.batas_terlambat'],
+    'batas terlambat setelah jam tutup' => [['absensi.jam_masuk' => ['buka' => '06:30', 'batas_terlambat' => '09:30', 'tutup' => '09:00']], 'absensi.jam_masuk'],
+    'jam pulang tutup sebelum buka' => [['absensi.jam_pulang' => ['buka' => '13:00', 'tutup' => '12:00']], 'absensi.jam_pulang'],
+    'hari kerja kosong' => [['absensi.hari_kerja' => []], 'absensi.hari_kerja'],
+    'hari kerja di luar 1-7' => [['absensi.hari_kerja' => [1, 8]], 'absensi.hari_kerja.1'],
+    'hari kerja dobel' => [['absensi.hari_kerja' => [1, 1]], 'absensi.hari_kerja.0'],
+    'tanggal libur bukan tanggal' => [['absensi.tanggal_libur' => ['17 Agustus']], 'absensi.tanggal_libur.0'],
+    'masa simpan foto nol' => [['absensi.masa_simpan_foto_bulan' => 0], 'absensi.masa_simpan_foto_bulan'],
 ]);
+
+it('menyimpan pengaturan absensi dan menampilkannya di grup absensi', function () {
+    $data = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
+        'absensi.lokasi' => ['latitude' => '-6.9903', 'longitude' => 110.4229],
+        'absensi.radius_meter' => '150',
+        'absensi.jam_masuk' => ['buka' => '06:45', 'batas_terlambat' => '07:30', 'tutup' => '08:30'],
+        'absensi.hari_kerja' => [5, 1, 3, 2, 4],
+        'absensi.tanggal_libur' => ['2026-12-25', '2026-10-26'],
+    ]])->assertOk()->json('data');
+
+    expect($data['absensi.lokasi'])->toBe(['latitude' => -6.9903, 'longitude' => 110.4229])
+        ->and($data['absensi.radius_meter'])->toBe(150)
+        ->and($data['absensi.hari_kerja'])->toBe([1, 2, 3, 4, 5])
+        ->and($data['absensi.tanggal_libur'])->toBe(['2026-10-26', '2026-12-25']);
+
+    $this->getJson('/api/v1/pengaturan?grup=absensi')
+        ->assertOk()
+        ->assertJsonCount(8, 'data')
+        ->assertJsonPath('data', [
+            'absensi.batas_akurasi_meter' => 100,
+            'absensi.hari_kerja' => [1, 2, 3, 4, 5],
+            'absensi.jam_masuk' => ['buka' => '06:45', 'batas_terlambat' => '07:30', 'tutup' => '08:30'],
+            'absensi.jam_pulang' => ['buka' => '11:00', 'tutup' => '15:00'],
+            'absensi.lokasi' => ['latitude' => -6.9903, 'longitude' => 110.4229],
+            'absensi.masa_simpan_foto_bulan' => 6,
+            'absensi.radius_meter' => 150,
+            'absensi.tanggal_libur' => ['2026-10-26', '2026-12-25'],
+        ]);
+    $this->getJson('/api/v1/public/profil')->assertJsonMissingPath('data.absensi.lokasi');
+});
+
+it('hanya mengizinkan Kepala Sekolah membaca dan mengubah pengaturan absensi', function () {
+    $guru = buatGuru()->user;
+    $bendahara = Guru::factory()->kelolaKeuangan()->create()->user;
+
+    $this->actingAs($guru)->getJson('/api/v1/pengaturan?grup=absensi')->assertForbidden();
+    $this->actingAs($bendahara)->getJson('/api/v1/pengaturan?grup=absensi')->assertForbidden();
+    $this->actingAs($guru)->putJson('/api/v1/pengaturan', ['items' => ['absensi.radius_meter' => 5000]])->assertForbidden();
+
+    expect(app(PengaturanService::class)->nilai('absensi.radius_meter'))->toBe(100);
+});
 
 it('menyimpan banner info wali dan menampilkannya di grup beranda', function () {
     $info = ['aktif' => true, 'judul' => 'Libur Maulid Nabi', 'isi' => 'Sekolah libur Senin, 26 Oktober 2026.', 'nada' => 'penting', 'berlaku_sampai' => '2026-10-26'];

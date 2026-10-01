@@ -42,7 +42,7 @@ it('membuat satu Kepala Sekolah beserta profil gurunya, elemen penilaian, dan pe
         ->and(Hash::check('kepsek2026', (string) $kepsek->password))->toBeTrue()
         ->and($kepsek->guru?->jabatan)->toBe(Guru::JABATAN_KEPALA_SEKOLAH)
         ->and(ElemenPenilaian::query()->orderBy('urutan')->pluck('kode')->all())->toBe(['NAB', 'JD', 'LITERASI_STEAM'])
-        ->and(Pengaturan::query()->count())->toBe(25)
+        ->and(Pengaturan::query()->count())->toBe(33)
         ->and(Pengaturan::query()->where('kunci', 'keuangan.tanggal_jatuh_tempo')->value('nilai'))->toBe(10)
         ->and(Pengaturan::query()->where('kunci', 'ppdb.dibuka')->value('nilai'))->toBeFalse();
 });

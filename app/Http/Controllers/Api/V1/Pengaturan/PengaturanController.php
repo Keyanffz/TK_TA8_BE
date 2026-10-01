@@ -20,7 +20,7 @@ class PengaturanController extends Controller
 
     /**
      * Pengaturan sebagai objek datar berkunci lengkap (`"profil.visi": …`), bisa dibatasi per `grup`
-     * (`profil` | `landing` | `keuangan` | `ppdb` | `beranda`). Field gambar disertai pasangan `*_url`. Guru berizin
+     * (`profil` | `landing` | `keuangan` | `ppdb` | `beranda` | `absensi`). Field gambar disertai pasangan `*_url`. Guru berizin
      * keuangan hanya boleh membaca `grup=keuangan`.
      */
     public function index(DaftarPengaturanRequest $request, #[CurrentUser] User $user): JsonResponse
