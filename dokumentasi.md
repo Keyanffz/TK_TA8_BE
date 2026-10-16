@@ -22,7 +22,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Tautan login per role di email dan kartu akun (branch `be/tautan-login-per-role`) | Selesai, menunggu review |
 | Area `/mudarris` untuk guru dan Kepala Sekolah (branch `be/rute-mudarris`) | Selesai, menunggu review |
 | Login Google staff, guru dikelola Kepala Sekolah tanpa pendaftaran mandiri (branch `be/login-google-staff`) | Selesai, menunggu review |
-| Absensi guru dan Kepala Sekolah berbasis lokasi dan foto (branch `be/absensi`) | Selesai, menunggu review |
+| Absensi guru dan Kepala Sekolah berbasis lokasi dan foto (branch `be/absensi`) | Selesai, di-merge ke `main` |
+| Absensi harian dan absen masuk yang dicatat Kepala Sekolah (branch `be/absensi-harian`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -51,7 +52,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
-| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user), `GET /absensi` (riwayat per bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (SA) |
+| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user), `GET /absensi` (riwayat per bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk untuk tanggal tanpa baris), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (SA) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA). Grup `absensi` berisi aturan absensi |
 | Galeri (SA) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
@@ -65,6 +66,20 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Absensi harian dan absen masuk yang dicatat Kepala Sekolah (branch `be/absensi-harian`). Diminta pemilik repo setelah uji di HP: Kepala Sekolah butuh tampilan per tanggal, dan guru yang lupa absen padahal masuk diperbaiki Kepala Sekolah lewat koreksi, bukan diajukan guru. Kontrak ditulis ke Bagian A (A2.12, A3, A7) dan Bagian B (B4, B6.14); yang di bawah ini diputuskan saat pengerjaan:
+
+1. `POST /absensi/koreksi` hanya untuk tanggal yang belum punya absen masuk, apa pun statusnya. Baris yang sudah ada (termasuk `tidak_hadir` dari scheduler) tetap diubah lewat `PATCH /absensi/{id}/koreksi`, yang tidak berubah. `status` hanya `hadir`/`terlambat` (di OpenAPI enum dua nilai, bukan `$ref` `StatusAbsensi`); `tidak_hadir` tetap hanya dibuat scheduler. `catatan` wajib, maksimal 500 karakter seperti koreksi biasa (`KoreksiAbsensiBaruRequest` turunan `KoreksiAbsensiRequest`).
+2. Urutan pemeriksaan: bentuk isian (`VALIDATION_ERROR`: `user_id` tidak ada, format tanggal, status, catatan), lalu `BUSINESS_RULE`: akun bukan peserta absensi aktif (wali murid, guru nonaktif, akun terhapus), tanggal setelah hari ini, sebelum `absensi.tanggal_mulai`, bukan hari kerja, tanggal libur, sudah ada absen masuk. Jam tidak diperiksa, jadi hari ini bisa dicatat kapan saja, termasuk sebelum jam masuk buka. Pesan menyebut tanggal, dan untuk baris yang sudah ada juga nama peserta: "Absen masuk Nur Aini, S.Pd. tanggal 1 Oktober 2026 sudah tercatat. Koreksi status absensi yang sudah ada."
+3. Status akun dibaca saat koreksi, sama seperti scheduler (riwayat status tidak disimpan): guru yang sekarang nonaktif tidak bisa dicatat walau aktif pada tanggal itu. Tanggal pembuatan akun tidak diperiksa (scheduler memakainya supaya akun baru tidak ditandai tidak hadir untuk hari sebelum akunnya ada); Kepala Sekolah dianggap tahu guru itu sudah bekerja.
+4. Baris baru: jenis `masuk`, `waktu`, koordinat, akurasi, jarak, dan foto kosong, `catatan_koreksi`/`dikoreksi_oleh`/`dikoreksi_at` terisi. Baris dan log aktivitas `absensi`/`dikoreksi` (bentuk properti sama dengan koreksi biasa, `sebelum: null`) ditulis dalam satu transaksi; penulisan log kedua jalur memakai `AbsensiService::catatKoreksi()`. Kalau scheduler atau absen peserta membuat baris di antara pengecekan dan penyimpanan, unique (user_id, tanggal, jenis) menolak dan balasannya `BUSINESS_RULE` dengan pesan "sudah tercatat" yang sama. Guru tidak dikirimi notifikasi.
+5. Efek ke fitur lain tanpa perubahan kode: `absensi:tandai-tidak-hadir` melewati peserta itu karena sudah punya absen masuk; `scopeTidakHadirOtomatis` tidak mencakup baris ini (status bukan `tidak_hadir` dan `dikoreksi_at` terisi), jadi tanggal libur yang ditambah belakangan tidak menghapusnya; peserta bisa absen pulang di jam pulang (keputusan absensi nomor 8 di blok `be/absensi`). Keduanya dibuktikan test.
+6. **Perlu ditinjau:** rekap menghitung baris ini sebagai `hadir`/`terlambat`, dan `tidak_absen_pulang` ikut menghitung hari itu kalau tidak ada absen pulang. Untuk hari yang sudah lewat hampir pasti terhitung, karena peserta tidak bisa absen pulang tanpa absen masuk. Hal yang sama sudah terjadi untuk `tidak_hadir` yang dikoreksi menjadi hadir lewat `PATCH`. Definisi rekap tidak diubah; kalau hari dengan absen masuk tanpa waktu sebaiknya tidak dihitung, perlu keputusan dan perubahan kontrak rekap.
+7. Pesan `POST /absensi` kalau absen masuk hari itu sudah ada tanpa waktu sekarang dibedakan: `tidak_hadir` tetap "Absen masuk hari ini sudah tercatat tidak hadir. Hubungi Kepala Sekolah untuk koreksi."; `hadir`/`terlambat` (dicatat lewat `POST /absensi/koreksi`, atau `tidak_hadir` yang sudah dikoreksi) menjadi "Absen masuk hari ini sudah dicatat Kepala Sekolah dengan status Hadir.". Sebelumnya kasus kedua juga mendapat pesan tidak hadir.
+8. `GET /absensi/harian`: `tanggal` format `YYYY-MM-DD`, bawaan hari ini; tanggal setelah hari ini 422 `VALIDATION_ERROR` di field `tanggal` "Tanggal tidak boleh setelah hari ini." (berbeda dari `POST /absensi/koreksi` yang `BUSINESS_RULE`, sesuai kontrak). Tidak ada batas bawah: tanggal sebelum `tanggal_mulai`, hari libur, dan bukan hari kerja tetap menampilkan peserta dengan `masuk`/`pulang` null. Seperti rekap, peserta tidak disaring tanggal pembuatan akun.
+9. Logika harian ada di `RekapAbsensiService::harian()`. Aturan peserta (guru dan Kepala Sekolah aktif, ditambah akun nonaktif yang punya absensi di rentang itu, urut nama) dipisah ke `peserta()` dan dipakai rekap dan harian. Jumlah query tetap 4 berapa pun pesertanya (absensi dan pengoreksinya, akun dan profil guru), dibuktikan test yang menghitung query. `hari_kerja`, `tanggal_libur`, `tanggal_mulai` dihitung di controller dengan cara yang sama seperti `GET /absensi/hari-ini`.
+10. Atribut validasi `user_id` diberi nama "peserta" di `lang/id/validation.php`; ini juga mengubah pesan `GET /absensi?user_id=` yang tidak valid ("Peserta yang dipilih tidak valid.").
+11. A6 (flowchart absensi) tidak diubah.
 
 Absensi guru dan Kepala Sekolah (branch `be/absensi`). Fitur dan kontraknya diminta pemilik repo dan sudah ditulis ke Bagian A dan B; yang di bawah ini diputuskan saat pengerjaan:
 
@@ -85,7 +100,7 @@ Absensi guru dan Kepala Sekolah (branch `be/absensi`). Fitur dan kontraknya dimi
     - Susulan tidak pernah mundur melewati `absensi.tanggal_mulai` (nomor 18), jadi hari-hari sebelum fitur ini dipasang tidak ditandai.
     - Keluaran command sekarang menghitung baris, bukan peserta: "N absensi tidak hadir dicatat."
 12. `absensi:hapus-foto-lama` (harian 01:00) memakai `tanggal` absensi: foto dengan tanggal lebih lama dari hari ini dikurangi masa simpan dihapus dan `foto_path` dikosongkan.
-13. Koreksi hanya untuk baris absen masuk yang sudah ada dan menolak status yang sama. Kepala Sekolah belum bisa membuat absensi untuk hari yang tidak punya baris (misalnya sebelum scheduler berjalan, atau hari yang bukan hari kerja). Selain `dikoreksi_oleh`/`dikoreksi_at` di baris absensi, koreksi dicatat di log aktivitas `absensi`/`dikoreksi` (status sebelum dan sesudah, catatan), sehingga riwayat koreksi berulang tidak hilang. Guru tidak dikirimi notifikasi.
+13. Koreksi hanya untuk baris absen masuk yang sudah ada dan menolak status yang sama. Kepala Sekolah belum bisa membuat absensi untuk hari yang tidak punya baris (misalnya sebelum scheduler berjalan, atau hari yang bukan hari kerja). **Diubah di `be/absensi-harian`:** untuk hari kerja yang tidak setelah hari ini, absen masuk tanpa baris dicatat lewat `POST /absensi/koreksi`; hari yang bukan hari kerja atau libur tetap tidak bisa. Selain `dikoreksi_oleh`/`dikoreksi_at` di baris absensi, koreksi dicatat di log aktivitas `absensi`/`dikoreksi` (status sebelum dan sesudah, catatan), sehingga riwayat koreksi berulang tidak hilang. Guru tidak dikirimi notifikasi.
 14. `GET /absensi` mengembalikan baris absensi mentah (masuk dan pulang terpisah) satu bulan tanpa paginasi, paling banyak 62 baris; FE yang mengelompokkan per hari. Endpoint yang sama dipakai riwayat pribadi dan detail per hari di rekap (`user_id`, hanya Kepala Sekolah).
 15. Rekap memuat guru dan Kepala Sekolah yang aktif walau belum punya absensi, ditambah akun nonaktif yang punya absensi di bulan itu. `tidak_absen_pulang` baru dihitung setelah jam pulang hari itu tutup. Ekspor CSV berpemisah koma dengan BOM UTF-8 supaya terbaca di Excel; tidak memakai `maatwebsite/excel` karena isinya satu tabel kecil.
 16. Kepala Sekolah ikut absen dan ikut ditandai tidak hadir, sesuai permintaan "guru aktif dan kepala sekolah".
@@ -723,6 +738,27 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Absensi harian dan absen masuk yang dicatat Kepala Sekolah (branch `be/absensi-harian`)
+
+Diminta pemilik repo. Kontrak ditulis ke Bagian A (A2.12, A3, A7) dan Bagian B (B4, B6.14) `PROMPT_BE_TK.md`; Bagian A perlu disalin identik ke `PROMPT_FE_TK.md` di repo FE. Keputusan detail ada di "Keputusan menunggu review".
+
+Baru:
+
+- `app/Http/Requests/Absensi/HarianAbsensiRequest.php` (`tanggal`), `app/Http/Requests/Absensi/KoreksiAbsensiBaruRequest.php` (`user_id`, `tanggal`, `status` hadir/terlambat, `catatan`).
+- Test `tests/Feature/Absensi/HarianDanKoreksiBaruTest.php`: absensi harian (bentuk dan urutan, bawaan hari ini, akun nonaktif hanya di tanggal yang punya absensi, bukan hari kerja dan tanggal libur, jumlah query tetap, tanggal besok dan format salah 422), akses (guru dan wali 403, tanpa login 401), absen masuk baru (hari ini dan hari yang lewat, isi baris dan log), setiap penolakan `BUSINESS_RULE` tanpa menyimpan baris atau log, validasi isian, scheduler melewati baris ini, tanggal libur baru tidak menghapusnya, pesan absen sendiri setelah dicatat Kepala Sekolah, absen pulang setelahnya.
+
+Diubah:
+
+- `app/Services/AbsensiService.php`: `koreksiBaru()`, `pastikanTanggalAbsensi()`, log koreksi dipindah ke `catatKoreksi()`, pesan absen masuk yang sudah dicatat Kepala Sekolah.
+- `app/Services/RekapAbsensiService.php`: `harian()`, aturan peserta dipisah ke `peserta()` dan ringkasan akun ke `ringkasan()`.
+- `app/Http/Controllers/Api/V1/Absensi/AbsensiController.php` (`harian`, `koreksiBaru`), `routes/api.php` (grup `role:super_admin`), `lang/id/validation.php` (atribut `user_id`).
+- Test: `Absensi/AbsenTest` (dua endpoint baru di daftar endpoint yang menolak wali murid), `DokumentasiApiTest` (skema `KoreksiAbsensiBaruRequest`, enum status, 201, kode 403 dan 422, parameter `tanggal`).
+- `storage/api-docs/api.json`: diekspor ulang. Dua path baru (`/absensi/harian` GET, `/absensi/koreksi` POST) dan satu skema baru (`KoreksiAbsensiBaruRequest`); tidak ada baris lain yang berubah.
+
+Hasil pengecekan: 879 test lulus di SQLite (`--parallel`); 190 test di folder `Absensi`, `Pengaturan`, dan `DokumentasiApiTest` lulus di MariaDB (database terpisah `TK_TA8_uji`) karena ada query baru; Pint, PHPStan, dan `check:slop` tanpa temuan. Uji manual lewat curl ke `php artisan serve` dengan database lokal: harian hari ini (3 peserta, urut nama), tanggal besok 422 `VALIDATION_ERROR`, guru 403 di kedua endpoint, absen masuk baru ditolak untuk hari Minggu, tanggal besok, dan sebelum tanggal mulai, diterima untuk hari ini (201, waktu dan lokasi null), dobel ditolak, harian menampilkan baris itu, `PATCH` pada baris itu tetap jalan dan kedua koreksi tercatat di log. Baris, log, dan token uji dihapus lagi dari database lokal.
+
+Yang belum diuji: alur di FE dan HP, dan scheduler yang benar-benar berjalan setelah Kepala Sekolah mencatat absen masuk (diuji lewat test dengan waktu yang diatur).
 
 ### Absensi guru dan Kepala Sekolah (branch `be/absensi`)
 

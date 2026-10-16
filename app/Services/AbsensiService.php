@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -117,12 +118,49 @@ class AbsensiService
             'dikoreksi_oleh' => $pelaku->id,
             'dikoreksi_at' => now(),
         ]);
-
-        activity('absensi')->performedOn($absensi)->causedBy($pelaku)->event('dikoreksi')
-            ->withProperties(['user_id' => $absensi->user_id, 'tanggal' => $absensi->tanggal->toDateString(), 'sebelum' => $sebelum?->value, 'sesudah' => $status->value, 'catatan' => $catatan])
-            ->log("Mengoreksi absensi {$absensi->tanggal->toDateString()} menjadi {$status->label()}");
+        $this->catatKoreksi($absensi, $sebelum, $pelaku);
 
         return $absensi->load('pengoreksi');
+    }
+
+    /**
+     * Absen masuk yang dicatat Kepala Sekolah untuk hari yang belum punya baris, misalnya guru lupa absen padahal
+     * masuk dan scheduler belum menandainya tidak hadir. Barisnya tanpa waktu, lokasi, dan foto, dan langsung
+     * bertanda koreksi: scheduler melewatinya karena sudah ada absen masuk, dan `scopeTidakHadirOtomatis` tidak
+     * mencakupnya saat tanggal libur ditambah.
+     *
+     * @throws BusinessRuleException
+     */
+    public function koreksiBaru(int $userId, Carbon $tanggal, StatusAbsensi $status, string $catatan, User $pelaku): Absensi
+    {
+        $peserta = User::query()->pesertaAbsensi()->find($userId)
+            ?? throw new BusinessRuleException('Akun ini bukan peserta absensi. Absensi hanya untuk guru aktif dan Kepala Sekolah.');
+        $this->pastikanTanggalAbsensi($tanggal);
+
+        $sudahAda = "Absen masuk {$peserta->name} tanggal {$tanggal->translatedFormat('j F Y')} sudah tercatat. Koreksi status absensi yang sudah ada.";
+        if ($peserta->absensi()->masuk()->whereDate('tanggal', $tanggal->toDateString())->exists()) {
+            throw new BusinessRuleException($sudahAda);
+        }
+
+        try {
+            return DB::transaction(function () use ($peserta, $tanggal, $status, $catatan, $pelaku): Absensi {
+                $absensi = Absensi::query()->create([
+                    'user_id' => $peserta->id,
+                    'tanggal' => $tanggal->toDateString(),
+                    'jenis' => JenisAbsensi::Masuk,
+                    'status' => $status,
+                    'catatan_koreksi' => $catatan,
+                    'dikoreksi_oleh' => $pelaku->id,
+                    'dikoreksi_at' => now(),
+                ]);
+                $this->catatKoreksi($absensi, null, $pelaku);
+
+                return $absensi->load('pengoreksi');
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Scheduler atau absen peserta itu sendiri sempat membuat baris di antara pengecekan dan penyimpanan.
+            throw new BusinessRuleException($sudahAda);
+        }
     }
 
     /**
@@ -206,6 +244,42 @@ class AbsensiService
         return $jumlah;
     }
 
+    private function catatKoreksi(Absensi $absensi, ?StatusAbsensi $sebelum, User $pelaku): void
+    {
+        $tanggal = $absensi->tanggal->toDateString();
+
+        activity('absensi')->performedOn($absensi)->causedBy($pelaku)->event('dikoreksi')
+            ->withProperties(['user_id' => $absensi->user_id, 'tanggal' => $tanggal, 'sebelum' => $sebelum?->value, 'sesudah' => $absensi->status?->value, 'catatan' => $absensi->catatan_koreksi])
+            ->log("Mengoreksi absensi {$tanggal} menjadi {$absensi->status?->label()}");
+    }
+
+    /**
+     * Tanggal yang boleh punya absensi: sudah lewat atau hari ini, tidak sebelum tanggal mulai, hari kerja, dan bukan
+     * tanggal libur. Jam tidak diperiksa.
+     *
+     * @throws BusinessRuleException
+     */
+    private function pastikanTanggalAbsensi(Carbon $tanggal): void
+    {
+        $aturan = $this->aturan();
+        $teks = $tanggal->translatedFormat('j F Y');
+
+        if ($tanggal->toDateString() > today()->toDateString()) {
+            throw new BusinessRuleException("Tanggal {$teks} belum tiba. Absensi hanya bisa dicatat untuk hari ini atau sebelumnya.");
+        }
+        if (! $aturan->sudahMulai($tanggal)) {
+            $mulai = Carbon::parse((string) $aturan->tanggalMulai)->translatedFormat('j F Y');
+
+            throw new BusinessRuleException("Absensi baru berlaku mulai {$mulai}.");
+        }
+        if (! $aturan->hariKerja($tanggal)) {
+            throw new BusinessRuleException("{$tanggal->translatedFormat('l, j F Y')} bukan hari kerja, jadi tidak ada absensi.");
+        }
+        if ($aturan->tanggalLibur($tanggal)) {
+            throw new BusinessRuleException("{$teks} termasuk tanggal libur, jadi tidak ada absensi.");
+        }
+    }
+
     /**
      * @throws BusinessRuleException
      */
@@ -272,9 +346,11 @@ class AbsensiService
 
         $sudahAda = $hariIni->get($jenis->value);
         if ($sudahAda !== null) {
-            throw new BusinessRuleException($sudahAda->waktu === null
-                ? "Absen {$jenis->value} hari ini sudah tercatat tidak hadir. Hubungi Kepala Sekolah untuk koreksi."
-                : "Anda sudah absen {$jenis->value} hari ini pukul {$sudahAda->waktu->format('H:i')}.");
+            throw new BusinessRuleException(match (true) {
+                $sudahAda->waktu !== null => "Anda sudah absen {$jenis->value} hari ini pukul {$sudahAda->waktu->format('H:i')}.",
+                $sudahAda->status === StatusAbsensi::TidakHadir => "Absen {$jenis->value} hari ini sudah tercatat tidak hadir. Hubungi Kepala Sekolah untuk koreksi.",
+                default => "Absen {$jenis->value} hari ini sudah dicatat Kepala Sekolah dengan status {$sudahAda->status?->label()}.",
+            });
         }
     }
 }

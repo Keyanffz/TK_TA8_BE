@@ -7,6 +7,8 @@ use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Absensi\AbsenRequest;
 use App\Http\Requests\Absensi\BulanAbsensiRequest;
+use App\Http\Requests\Absensi\HarianAbsensiRequest;
+use App\Http\Requests\Absensi\KoreksiAbsensiBaruRequest;
 use App\Http\Requests\Absensi\KoreksiAbsensiRequest;
 use App\Http\Requests\Absensi\RiwayatAbsensiRequest;
 use App\Http\Resources\AbsensiResource;
@@ -147,6 +149,61 @@ class AbsensiController extends Controller
         $absensi = $this->absensiService->koreksi(Absensi::query()->findOrFail($id), $request->status(), $request->catatan(), $user);
 
         return ApiResponse::success(new AbsensiResource($absensi), "Status absensi dikoreksi menjadi {$request->status()->label()}.");
+    }
+
+    /**
+     * Mencatat absen masuk untuk peserta yang belum punya absen masuk pada tanggal itu, misalnya guru lupa absen
+     * padahal masuk. Catatan wajib; waktu, lokasi, dan foto kosong. Ditolak 422 `BUSINESS_RULE` kalau akun bukan
+     * peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur,
+     * atau absen masuk tanggal itu sudah ada (koreksi lewat `PATCH /absensi/{id}/koreksi`).
+     */
+    public function koreksiBaru(KoreksiAbsensiBaruRequest $request, #[CurrentUser] User $user): JsonResponse
+    {
+        $absensi = $this->absensiService->koreksiBaru($request->integer('user_id'), $request->tanggal(), $request->status(), $request->catatan(), $user);
+
+        return ApiResponse::success(new AbsensiResource($absensi), "Absen masuk dicatat dengan status {$request->status()->label()}.", status: 201);
+    }
+
+    /**
+     * Absen masuk dan pulang semua peserta pada satu tanggal (bawaan hari ini), urut nama. Pesertanya sama dengan
+     * rekap: guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di tanggal itu.
+     * `hari_kerja`, `tanggal_libur`, dan `tanggal_mulai` sama artinya dengan di `GET /absensi/hari-ini`.
+     *
+     * @response array{
+     *     success: true,
+     *     message: string,
+     *     data: array{
+     *         tanggal: string,
+     *         hari_kerja: bool,
+     *         tanggal_libur: bool,
+     *         tanggal_mulai: string|null,
+     *         peserta: list<array{
+     *             user: array{id: int, nama: string, jabatan: string|null},
+     *             masuk: AbsensiResource|null,
+     *             pulang: AbsensiResource|null
+     *         }>
+     *     },
+     *     meta: null
+     * }
+     */
+    public function harian(HarianAbsensiRequest $request, RekapAbsensiService $rekap): JsonResponse
+    {
+        $tanggal = $request->tanggal();
+        $aturan = $this->absensiService->aturan();
+        $libur = $aturan->tanggalLibur($tanggal);
+        $resource = fn (?Absensi $absensi): ?AbsensiResource => $absensi === null ? null : new AbsensiResource($absensi);
+
+        return ApiResponse::success([
+            'tanggal' => $tanggal->toDateString(),
+            'hari_kerja' => $aturan->hariKerja($tanggal) && ! $libur,
+            'tanggal_libur' => $libur,
+            'tanggal_mulai' => $aturan->tanggalMulai,
+            'peserta' => array_map(fn (array $baris): array => [
+                'user' => $baris['user'],
+                'masuk' => $resource($baris['masuk']),
+                'pulang' => $resource($baris['pulang']),
+            ], $rekap->harian($tanggal)),
+        ]);
     }
 
     /**

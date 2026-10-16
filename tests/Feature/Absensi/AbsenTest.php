@@ -258,6 +258,8 @@ it('menolak wali murid di semua endpoint absensi', function (string $metode, str
     'riwayat' => ['GET', '/api/v1/absensi'],
     'foto' => ['GET', '/api/v1/absensi/{id}/foto'],
     'koreksi' => ['PATCH', '/api/v1/absensi/{id}/koreksi'],
+    'koreksi hari tanpa absensi' => ['POST', '/api/v1/absensi/koreksi'],
+    'absensi harian' => ['GET', '/api/v1/absensi/harian'],
     'rekap' => ['GET', '/api/v1/absensi/rekap'],
     'export rekap' => ['GET', '/api/v1/absensi/rekap/export'],
     'pengaturan absensi' => ['GET', '/api/v1/pengaturan?grup=absensi'],
