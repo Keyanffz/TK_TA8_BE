@@ -449,6 +449,487 @@
                 }
             }
         },
+        "/absensi/harian": {
+            "get": {
+                "operationId": "absensi.harian",
+                "summary": "Absen masuk dan pulang semua peserta pada satu tanggal (bawaan hari ini), urut nama. Pesertanya sama dengan\nrekap: guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di tanggal itu.\n`hari_kerja`, `tanggal_libur`, dan `tanggal_mulai` sama artinya dengan di `GET /absensi/hari-ini`",
+                "tags": [
+                    "Absensi"
+                ],
+                "parameters": [
+                    {
+                        "name": "tanggal",
+                        "in": "query",
+                        "description": "Tanggal `YYYY-MM-DD`, bawaan hari ini.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "tanggal": {
+                                                    "type": "string"
+                                                },
+                                                "hari_kerja": {
+                                                    "type": "boolean"
+                                                },
+                                                "tanggal_libur": {
+                                                    "type": "boolean"
+                                                },
+                                                "tanggal_mulai": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "peserta": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "user": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "nama": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "jabatan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "id",
+                                                                    "nama",
+                                                                    "jabatan"
+                                                                ]
+                                                            },
+                                                            "masuk": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "$ref": "#/components/schemas/AbsensiResource"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "pulang": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "$ref": "#/components/schemas/AbsensiResource"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "user",
+                                                            "masuk",
+                                                            "pulang"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "tanggal",
+                                                "hari_kerja",
+                                                "tanggal_libur",
+                                                "tanggal_mulai",
+                                                "peserta"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/absensi/koreksi": {
+            "post": {
+                "operationId": "absensi.koreksiBaru",
+                "summary": "Mencatat absen masuk untuk peserta yang belum punya absen masuk pada tanggal itu, misalnya guru lupa absen\npadahal masuk. Catatan wajib; waktu, lokasi, dan foto kosong. Ditolak 422 `BUSINESS_RULE` kalau akun bukan\npeserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur,\natau absen masuk tanggal itu sudah ada (koreksi lewat `PATCH /absensi/{id}/koreksi`)",
+                "tags": [
+                    "Absensi"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/KoreksiAbsensiBaruRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/AbsensiResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/absensi/{id}/koreksi": {
             "patch": {
                 "operationId": "absensi.koreksi",
@@ -32412,6 +32893,40 @@
                     "created_at"
                 ],
                 "title": "KeringananResource"
+            },
+            "KoreksiAbsensiBaruRequest": {
+                "type": "object",
+                "description": "`POST /absensi/koreksi`: absen masuk untuk hari yang belum punya baris. Tidak hadir tidak bisa dibuat di sini;\nbaris itu dibuat scheduler.",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "description": "Peserta absensi: guru aktif atau Kepala Sekolah."
+                    },
+                    "tanggal": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Tanggal `YYYY-MM-DD`."
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Status absen masuk. Absen pulang tidak punya status.\n",
+                        "enum": [
+                            "hadir",
+                            "terlambat"
+                        ]
+                    },
+                    "catatan": {
+                        "type": "string",
+                        "maxLength": 500
+                    }
+                },
+                "required": [
+                    "user_id",
+                    "tanggal",
+                    "status",
+                    "catatan"
+                ],
+                "title": "KoreksiAbsensiBaruRequest"
             },
             "KoreksiAbsensiRequest": {
                 "type": "object",

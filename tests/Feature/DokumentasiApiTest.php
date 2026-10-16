@@ -149,6 +149,15 @@ it('mendokumentasikan absensi: unggahan multipart, batas role, dan status yang b
         ->and($skema['AbsensiResource']['properties']['status']['anyOf'])->toContain(['type' => 'null'])
         ->and($skema['AbsensiResource']['properties']['id']['type'])->toBe('integer')
         ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan']);
+
+    $koreksiBaru = $dokumen['paths']['/absensi/koreksi']['post'];
+    expect($skema['KoreksiAbsensiBaruRequest']['required'])->toBe(['user_id', 'tanggal', 'status', 'catatan'])
+        ->and($skema['KoreksiAbsensiBaruRequest']['properties']['status']['enum'])->toBe(['hadir', 'terlambat'])
+        ->and($koreksiBaru['responses'])->toHaveKey(201)
+        ->and(kodeErrorTerdokumentasi($koreksiBaru, 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
+        ->and(kodeErrorTerdokumentasi($koreksiBaru, 403))->toContain('FORBIDDEN')
+        ->and(array_column($dokumen['paths']['/absensi/harian']['get']['parameters'], 'name'))->toBe(['tanggal'])
+        ->and(kodeErrorTerdokumentasi($dokumen['paths']['/absensi/harian']['get'], 403))->toContain('FORBIDDEN');
 });
 
 it('mendokumentasikan tipe item array bertingkat dan url file yang bisa null', function () {
