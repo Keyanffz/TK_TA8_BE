@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Absensi\AbsenRequest;
 use App\Http\Requests\Absensi\BulanAbsensiRequest;
 use App\Http\Requests\Absensi\HarianAbsensiRequest;
+use App\Http\Requests\Absensi\KoreksiAbsensiBaruRequest;
 use App\Http\Requests\Absensi\KoreksiAbsensiRequest;
 use App\Http\Requests\Absensi\RiwayatAbsensiRequest;
 use App\Http\Resources\AbsensiResource;
@@ -148,6 +149,19 @@ class AbsensiController extends Controller
         $absensi = $this->absensiService->koreksi(Absensi::query()->findOrFail($id), $request->status(), $request->catatan(), $user);
 
         return ApiResponse::success(new AbsensiResource($absensi), "Status absensi dikoreksi menjadi {$request->status()->label()}.");
+    }
+
+    /**
+     * Mencatat absen masuk untuk peserta yang belum punya absen masuk pada tanggal itu, misalnya guru lupa absen
+     * padahal masuk. Catatan wajib; waktu, lokasi, dan foto kosong. Ditolak 422 `BUSINESS_RULE` kalau akun bukan
+     * peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur,
+     * atau absen masuk tanggal itu sudah ada (koreksi lewat `PATCH /absensi/{id}/koreksi`).
+     */
+    public function koreksiBaru(KoreksiAbsensiBaruRequest $request, #[CurrentUser] User $user): JsonResponse
+    {
+        $absensi = $this->absensiService->koreksiBaru($request->integer('user_id'), $request->tanggal(), $request->status(), $request->catatan(), $user);
+
+        return ApiResponse::success(new AbsensiResource($absensi), "Absen masuk dicatat dengan status {$request->status()->label()}.", status: 201);
     }
 
     /**

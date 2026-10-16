@@ -134,6 +134,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::get('/absensi/rekap', [AbsensiController::class, 'rekap']);
         Route::get('/absensi/rekap/export', [AbsensiController::class, 'export']);
         Route::get('/absensi/harian', [AbsensiController::class, 'harian']);
+        Route::post('/absensi/koreksi', [AbsensiController::class, 'koreksiBaru']);
         Route::patch('/absensi/{id}/koreksi', [AbsensiController::class, 'koreksi']);
     });
 
