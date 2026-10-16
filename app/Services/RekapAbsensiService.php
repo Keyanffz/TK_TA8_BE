@@ -8,13 +8,15 @@ use App\Enums\StatusAbsensi;
 use App\Models\Absensi;
 use App\Models\User;
 use App\Support\AturanAbsensi;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Rekap absensi per bulan per peserta untuk Kepala Sekolah, dihitung di PHP dari baris absensi bulan itu
- * (belasan peserta, paling banyak 62 baris per orang).
+ * Rekap absensi per bulan per peserta dan absensi semua peserta pada satu tanggal, untuk Kepala Sekolah. Rekap
+ * dihitung di PHP dari baris absensi bulan itu (belasan peserta, paling banyak 62 baris per orang).
  */
 class RekapAbsensiService
 {
@@ -33,23 +35,40 @@ class RekapAbsensiService
         $dalamBulan = fn (Builder $absensi) => $absensi->whereDate('tanggal', '>=', $awal)->whereDate('tanggal', '<=', $akhir);
 
         $absensi = Absensi::query()->tap($dalamBulan)->get()->groupBy('user_id');
-        $peserta = User::query()->with('guru')
-            ->whereIn('role', [Role::SuperAdmin, Role::Guru])
-            ->where(fn (Builder $user) => $user->pesertaAbsensi()->orWhereHas('absensi', $dalamBulan))
-            ->orderBy('name')
-            ->get();
 
-        return $peserta->map(function (User $user) use ($absensi): array {
+        return $this->peserta($dalamBulan)->map(function (User $user) use ($absensi): array {
             /** @var Collection<int, Absensi> $milik */
             $milik = $absensi->get($user->id, collect());
             $masuk = $milik->where('jenis', JenisAbsensi::Masuk);
 
             return [
-                'user' => ['id' => $user->id, 'nama' => $user->name, 'jabatan' => $user->guru?->jabatan],
+                'user' => $this->ringkasan($user),
                 'hadir' => $masuk->where('status', StatusAbsensi::Hadir)->count(),
                 'terlambat' => $masuk->where('status', StatusAbsensi::Terlambat)->count(),
                 'tidak_hadir' => $masuk->where('status', StatusAbsensi::TidakHadir)->count(),
                 'tidak_absen_pulang' => $this->tidakAbsenPulang($milik),
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Absen masuk dan pulang setiap peserta pada satu tanggal, dengan aturan peserta yang sama seperti rekap.
+     *
+     * @return list<array{user: array{id: int, nama: string, jabatan: string|null}, masuk: Absensi|null, pulang: Absensi|null}>
+     */
+    public function harian(Carbon $tanggal): array
+    {
+        $padaTanggal = fn (Builder $absensi) => $absensi->whereDate('tanggal', $tanggal->toDateString());
+        $absensi = Absensi::query()->with('pengoreksi')->tap($padaTanggal)->get()->groupBy('user_id');
+
+        return $this->peserta($padaTanggal)->map(function (User $user) use ($absensi): array {
+            /** @var Collection<int, Absensi> $milik */
+            $milik = $absensi->get($user->id, collect());
+
+            return [
+                'user' => $this->ringkasan($user),
+                'masuk' => $milik->firstWhere('jenis', JenisAbsensi::Masuk),
+                'pulang' => $milik->firstWhere('jenis', JenisAbsensi::Pulang),
             ];
         })->values()->all();
     }
@@ -75,6 +94,30 @@ class RekapAbsensiService
         fclose($berkas);
 
         return $isi;
+    }
+
+    /**
+     * Guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di rentang `$punyaAbsensi`,
+     * urut nama.
+     *
+     * @param  Closure(Builder<Absensi>): mixed  $punyaAbsensi
+     * @return EloquentCollection<int, User>
+     */
+    private function peserta(Closure $punyaAbsensi): EloquentCollection
+    {
+        return User::query()->with('guru')
+            ->whereIn('role', [Role::SuperAdmin, Role::Guru])
+            ->where(fn (Builder $user) => $user->pesertaAbsensi()->orWhereHas('absensi', $punyaAbsensi))
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * @return array{id: int, nama: string, jabatan: string|null}
+     */
+    private function ringkasan(User $user): array
+    {
+        return ['id' => $user->id, 'nama' => $user->name, 'jabatan' => $user->guru?->jabatan];
     }
 
     /**
