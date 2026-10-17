@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Lokasi sekolah fiktif di Semarang dan absensi guru aktif serta Kepala Sekolah untuk hari kerja dalam 14 hari
- * terakhir (tanpa hari ini, supaya absen bisa langsung dicoba). Foto contoh hanya untuk tiga hari terakhir.
+ * terakhir (tanpa hari ini, supaya absen bisa langsung dicoba), termasuk izin dan sakit. Foto contoh hanya untuk
+ * tiga hari terakhir.
  */
 class AbsensiDemoSeeder extends Seeder
 {
@@ -43,18 +44,32 @@ class AbsensiDemoSeeder extends Seeder
             }
 
             foreach ($peserta as $urutan => $user) {
-                $this->buatSatuHari($user, $hari, ($urutan + $mundur) % 7, $mundur <= self::HARI_BERFOTO);
+                $this->buatSatuHari($user, $hari, ($urutan + $mundur) % 9, $mundur <= self::HARI_BERFOTO);
             }
         }
     }
 
     /**
-     * Pola 0–4 hadir, 5 terlambat dan lupa absen pulang, 6 tidak hadir.
+     * Pola 0–4 hadir, 5 terlambat dan lupa absen pulang, 6 tidak hadir, 7 izin, 8 sakit.
      */
     private function buatSatuHari(User $user, Carbon $hari, int $pola, bool $berfoto): void
     {
         if ($pola === 6) {
             Absensi::query()->create(['user_id' => $user->id, 'tanggal' => $hari->toDateString(), 'jenis' => JenisAbsensi::Masuk, 'status' => StatusAbsensi::TidakHadir]);
+
+            return;
+        }
+        if ($pola >= 7) {
+            $izin = $pola === 7;
+            Absensi::query()->create([
+                'user_id' => $user->id,
+                'tanggal' => $hari->toDateString(),
+                'jenis' => JenisAbsensi::Masuk,
+                'status' => $izin ? StatusAbsensi::Izin : StatusAbsensi::Sakit,
+                'waktu' => $hari->copy()->setTime(6, 40),
+                'foto_path' => $berfoto ? GambarContoh::simpan(MediaService::DISK_PRIVAT, AbsensiService::FOLDER_FOTO, 480, 640) : null,
+                'keterangan' => $izin ? 'Mengantar ibu kontrol ke RSUP Kariadi.' : 'Demam sejak semalam, sudah periksa ke puskesmas.',
+            ]);
 
             return;
         }

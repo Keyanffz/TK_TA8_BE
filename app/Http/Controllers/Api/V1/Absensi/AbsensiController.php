@@ -83,23 +83,24 @@ class AbsensiController extends Controller
     /**
      * Absen masuk atau pulang (`multipart/form-data`). Ditolak 422 `BUSINESS_RULE` dengan pesan yang
      * menjelaskan sebabnya: sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen
-     * pulang tanpa absen masuk, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk
-     * `hadir` atau `terlambat` ditentukan dari jam server. Dibatasi 10 kali per menit per pengguna.
+     * pulang tanpa absen masuk hadir atau terlambat, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk
+     * `hadir` atau `terlambat` ditentukan dari jam server. Absen masuk dengan `status` `izin` atau `sakit` tidak butuh
+     * lokasi, tetapi butuh `keterangan` dan foto; hari itu tidak ada absen pulang. Dibatasi 10 kali per menit per pengguna.
      */
     public function store(AbsenRequest $request, #[CurrentUser] User $user): JsonResponse
     {
         $absensi = $this->absensiService->absen(
             $user,
             $request->jenis(),
-            $request->float('latitude'),
-            $request->float('longitude'),
-            $request->float('akurasi'),
+            $request->berhalangan(),
+            $request->posisi(),
+            $request->keterangan(),
             $request->foto(),
         );
 
         return ApiResponse::success(
             new AbsensiResource($absensi),
-            "Absen {$absensi->jenis->value} tercatat pukul {$absensi->waktu?->format('H:i')}.",
+            "{$absensi->namaAbsen()} tercatat pukul {$absensi->waktu?->format('H:i')}.",
             status: 201,
         );
     }
@@ -213,14 +214,14 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Rekap satu bulan per peserta: jumlah hadir, terlambat, tidak hadir, dan hari yang tidak absen pulang.
+     * Rekap satu bulan per peserta: jumlah hadir, terlambat, izin, sakit, tidak hadir, dan hari yang tidak absen pulang.
      *
      * @response array{
      *     success: true,
      *     message: string,
      *     data: list<array{
      *         user: array{id: int, nama: string, jabatan: string|null},
-     *         hadir: int, terlambat: int, tidak_hadir: int, tidak_absen_pulang: int
+     *         hadir: int, terlambat: int, izin: int, sakit: int, tidak_hadir: int, tidak_absen_pulang: int
      *     }>,
      *     meta: null
      * }

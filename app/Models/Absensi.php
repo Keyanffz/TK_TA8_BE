@@ -14,11 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Satu baris per peserta, tanggal, dan jenis (masuk atau pulang). `status` hanya diisi untuk absen masuk.
- * Baris `tidak_hadir` dibuat scheduler tanpa waktu, koordinat, dan foto.
+ * Baris `tidak_hadir` dibuat scheduler tanpa waktu, koordinat, dan foto; izin dan sakit punya waktu, foto, dan
+ * `keterangan`, tetapi tanpa koordinat.
  */
 #[Fillable([
     'user_id', 'tanggal', 'jenis', 'status', 'waktu', 'latitude', 'longitude', 'akurasi_meter', 'jarak_meter',
-    'foto_path', 'catatan_koreksi', 'dikoreksi_oleh', 'dikoreksi_at',
+    'foto_path', 'keterangan', 'pulang_awal', 'catatan_koreksi', 'dikoreksi_oleh', 'dikoreksi_at',
 ])]
 class Absensi extends Model
 {
@@ -26,6 +27,9 @@ class Absensi extends Model
     use HasFactory;
 
     protected $table = 'absensi';
+
+    /** Sama dengan bawaan kolom, supaya baris yang baru dibuat langsung punya nilai ini tanpa dibaca ulang. */
+    protected $attributes = ['pulang_awal' => false];
 
     /**
      * @return array<string, string>
@@ -41,6 +45,7 @@ class Absensi extends Model
             'longitude' => 'float',
             'akurasi_meter' => 'integer',
             'jarak_meter' => 'integer',
+            'pulang_awal' => 'boolean',
             'dikoreksi_at' => 'datetime',
         ];
     }
@@ -78,6 +83,18 @@ class Absensi extends Model
             ->whereNull('waktu')
             ->whereNull('foto_path')
             ->whereNull('dikoreksi_at');
+    }
+
+    /**
+     * Sebutan absensi ini di pesan untuk peserta: "Absen masuk", "Absen pulang", "Izin", atau "Sakit".
+     */
+    public function namaAbsen(): string
+    {
+        if ($this->status?->berhalangan()) {
+            return $this->status->label();
+        }
+
+        return "Absen {$this->jenis->value}";
     }
 
     /**

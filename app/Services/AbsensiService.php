@@ -15,6 +15,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -55,21 +56,25 @@ class AbsensiService
     }
 
     /**
-     * Urutan pemeriksaan: lokasi sekolah sudah diatur, tanggal mulai, hari kerja, tanggal libur, jendela jam, belum absen
-     * jenis itu, absen pulang butuh absen masuk, akurasi, lalu jarak. Foto baru disimpan setelah semua lolos.
+     * Urutan pemeriksaan: lokasi sekolah sudah diatur, tanggal mulai, hari kerja, tanggal libur, jendela jam, absen
+     * pulang butuh absen masuk hadir atau terlambat, belum absen jenis itu, akurasi, lalu jarak. Izin dan sakit
+     * melewati pemeriksaan lokasi. Foto baru disimpan setelah semua lolos.
+     *
+     * @param  StatusAbsensi|null  $berhalangan  izin atau sakit (hanya absen masuk); null untuk absen biasa
+     * @param  array{latitude: float, longitude: float, akurasi: float}|null  $posisi  null untuk izin dan sakit
      *
      * @throws BusinessRuleException
      */
-    public function absen(User $user, JenisAbsensi $jenis, float $latitude, float $longitude, float $akurasi, UploadedFile $foto): Absensi
+    public function absen(User $user, JenisAbsensi $jenis, ?StatusAbsensi $berhalangan, ?array $posisi, ?string $keterangan, UploadedFile $foto): Absensi
     {
         $sekarang = now();
         $aturan = $this->aturan();
-        $lokasi = $aturan->lokasi ?? throw new BusinessRuleException('Lokasi sekolah belum diatur. Minta Kepala Sekolah mengisi pengaturan absensi.');
+        $lokasi = $posisi === null ? null : ($aturan->lokasi ?? throw new BusinessRuleException('Lokasi sekolah belum diatur. Minta Kepala Sekolah mengisi pengaturan absensi.'));
 
         $this->pastikanWaktuAbsen($aturan, $jenis, $sekarang);
         $this->pastikanBolehAbsen($user, $jenis, $sekarang);
 
-        $jarak = $this->jarakDalamRadius($aturan, $lokasi, $latitude, $longitude, $akurasi);
+        $jarak = $posisi !== null && $lokasi !== null ? $this->jarakDalamRadius($aturan, $lokasi, $posisi) : null;
 
         $path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
@@ -78,13 +83,19 @@ class AbsensiService
                 'user_id' => $user->id,
                 'tanggal' => $sekarang->toDateString(),
                 'jenis' => $jenis,
-                'status' => $jenis === JenisAbsensi::Masuk ? ($aturan->terlambat($sekarang) ? StatusAbsensi::Terlambat : StatusAbsensi::Hadir) : null,
+                'status' => match (true) {
+                    $jenis === JenisAbsensi::Pulang => null,
+                    $berhalangan !== null => $berhalangan,
+                    $aturan->terlambat($sekarang) => StatusAbsensi::Terlambat,
+                    default => StatusAbsensi::Hadir,
+                },
                 'waktu' => $sekarang,
-                'latitude' => $latitude,
-                'longitude' => $longitude,
-                'akurasi_meter' => (int) ceil($akurasi),
-                'jarak_meter' => (int) round($jarak),
+                'latitude' => $posisi['latitude'] ?? null,
+                'longitude' => $posisi['longitude'] ?? null,
+                'akurasi_meter' => $posisi === null ? null : (int) ceil($posisi['akurasi']),
+                'jarak_meter' => $jarak === null ? null : (int) round($jarak),
                 'foto_path' => $path,
+                'keterangan' => $keterangan,
             ])->load('pengoreksi');
         } catch (Throwable $e) {
             $this->media->hapus($path, MediaService::DISK_PRIVAT);
@@ -258,6 +269,9 @@ class AbsensiService
         if ($jenis === JenisAbsensi::Pulang && $masuk === null) {
             throw new BusinessRuleException("{$absenMasuk} belum tercatat. Catat absen masuknya dulu sebelum absen pulang.");
         }
+        if ($jenis === JenisAbsensi::Pulang && $masuk->status?->berhalangan()) {
+            throw new BusinessRuleException("{$absenMasuk} tercatat ".Str::lower($masuk->namaAbsen()).', jadi tidak ada absen pulang.');
+        }
         if ($jenis === JenisAbsensi::Pulang && $masuk->status === StatusAbsensi::TidakHadir) {
             throw new BusinessRuleException("{$absenMasuk} tercatat tidak hadir. Koreksi absen masuknya menjadi hadir atau terlambat dulu sebelum absen pulang.");
         }
@@ -332,21 +346,22 @@ class AbsensiService
 
     /**
      * @param  array{latitude: float, longitude: float}  $lokasi
+     * @param  array{latitude: float, longitude: float, akurasi: float}  $posisi
      * @return float jarak ke sekolah dalam meter
      *
      * @throws BusinessRuleException
      */
-    private function jarakDalamRadius(AturanAbsensi $aturan, array $lokasi, float $latitude, float $longitude, float $akurasi): float
+    private function jarakDalamRadius(AturanAbsensi $aturan, array $lokasi, array $posisi): float
     {
-        if ($akurasi > $aturan->batasAkurasiMeter) {
+        if ($posisi['akurasi'] > $aturan->batasAkurasiMeter) {
             throw new BusinessRuleException(sprintf(
                 'Akurasi lokasi %d m, melebihi batas %d m. Nyalakan GPS, pindah ke tempat terbuka, lalu coba lagi.',
-                (int) ceil($akurasi),
+                (int) ceil($posisi['akurasi']),
                 $aturan->batasAkurasiMeter,
             ));
         }
 
-        $jarak = Jarak::meter($latitude, $longitude, $lokasi['latitude'], $lokasi['longitude']);
+        $jarak = Jarak::meter($posisi['latitude'], $posisi['longitude'], $lokasi['latitude'], $lokasi['longitude']);
         if ($jarak > $aturan->radiusMeter) {
             throw new BusinessRuleException(sprintf(
                 'Anda berada %d m dari sekolah, di luar radius absen %d m. Absen dari area sekolah.',
@@ -365,15 +380,18 @@ class AbsensiService
     {
         $hariIni = $this->absensiTanggal($user, $sekarang);
         $masuk = $hariIni->get(JenisAbsensi::Masuk->value);
-        $sudahMasuk = $masuk !== null && $masuk->status !== StatusAbsensi::TidakHadir;
 
-        if ($jenis === JenisAbsensi::Pulang && ! $sudahMasuk) {
+        if ($jenis === JenisAbsensi::Pulang && $masuk?->status?->berhalangan()) {
+            throw new BusinessRuleException('Hari ini Anda tercatat '.Str::lower($masuk->namaAbsen()).', jadi tidak perlu absen pulang.');
+        }
+        if ($jenis === JenisAbsensi::Pulang && $masuk?->status?->perluAbsenPulang() !== true) {
             throw new BusinessRuleException('Absen pulang hanya bisa setelah absen masuk, dan hari ini Anda belum absen masuk.');
         }
 
         $sudahAda = $hariIni->get($jenis->value);
         if ($sudahAda !== null) {
             throw new BusinessRuleException(match (true) {
+                $sudahAda->waktu !== null && $sudahAda->status?->berhalangan() => 'Anda sudah mencatat '.Str::lower($sudahAda->namaAbsen())." hari ini pukul {$sudahAda->waktu->format('H:i')}.",
                 $sudahAda->waktu !== null => "Anda sudah absen {$jenis->value} hari ini pukul {$sudahAda->waktu->format('H:i')}.",
                 $sudahAda->status === StatusAbsensi::TidakHadir => "Absen {$jenis->value} hari ini sudah tercatat tidak hadir. Hubungi Kepala Sekolah untuk koreksi.",
                 $sudahAda->status !== null => "Absen {$jenis->value} hari ini sudah dicatat Kepala Sekolah dengan status {$sudahAda->status->label()}.",

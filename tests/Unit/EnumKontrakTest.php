@@ -44,7 +44,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'JenisDokumen' => [JenisDokumen::class, ['akta_kelahiran', 'kartu_keluarga', 'pas_foto', 'lainnya']],
     'NadaInfo' => [NadaInfo::class, ['info', 'penting', 'peringatan']],
     'JenisAbsensi' => [JenisAbsensi::class, ['masuk', 'pulang']],
-    'StatusAbsensi' => [StatusAbsensi::class, ['hadir', 'terlambat', 'tidak_hadir']],
+    'StatusAbsensi' => [StatusAbsensi::class, ['hadir', 'terlambat', 'tidak_hadir', 'izin', 'sakit']],
     'JenisKelamin (A4)' => [JenisKelamin::class, ['L', 'P']],
     'JenisNotifikasi (A7)' => [JenisNotifikasi::class, [
         'tagihan_baru', 'tagihan_tertunda', 'pengingat_tagihan', 'tagihan_terlambat', 'pembayaran_masuk',

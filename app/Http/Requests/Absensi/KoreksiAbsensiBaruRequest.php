@@ -27,7 +27,7 @@ class KoreksiAbsensiBaruRequest extends FormRequest
             /** Bawaan `masuk`. */
             'jenis' => ['sometimes', Rule::enum(JenisAbsensi::class)],
             /** Wajib untuk absen masuk; tidak boleh dikirim untuk absen pulang. */
-            'status' => ['required_unless:jenis,pulang', 'prohibited_if:jenis,pulang', Rule::enum(StatusAbsensi::class)->only([StatusAbsensi::Hadir, StatusAbsensi::Terlambat])],
+            'status' => ['required_unless:jenis,pulang', 'prohibited_if:jenis,pulang', Rule::enum(StatusAbsensi::class)->except([StatusAbsensi::TidakHadir])],
             'catatan' => ['required', 'string', 'max:500'],
         ];
     }
