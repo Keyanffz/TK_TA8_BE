@@ -415,20 +415,39 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([Guru / Kepsek buka /mudarris/absensi]) --> B[Status hari ini: hari kerja, jam, absensi tercatat]
-    B --> C{Sudah tanggal mulai, hari kerja, bukan tanggal libur, dan jam absen terbuka?}
-    C -->|Tidak| D[Tombol absen tidak aktif + keterangan]
-    C -->|Ya| E[Ambil lokasi perangkat + swafoto]
-    E --> F[Kirim jenis, koordinat, akurasi, foto]
-    F --> G{Backend dengan jam server: jam, belum absen jenis ini, pulang setelah masuk, akurasi, jarak dalam radius?}
+    A([Guru / Kepsek buka /mudarris/absensi]) --> B["Status hari ini: hari kerja, jam, absensi tercatat, boleh_lebih_awal"]
+    B --> C{Absen apa?}
+    C -->|Masuk| C1{Sudah tanggal mulai, hari kerja, bukan tanggal libur, dan jam masuk terbuka?}
+    C1 -->|Tidak| D[Tombol absen tidak aktif + keterangan]
+    C1 -->|Ya, datang| E[Ambil lokasi perangkat + swafoto]
+    C1 -->|"Ya, izin atau sakit"| E2[Isi keterangan + foto, tanpa lokasi]
+    C -->|Pulang| C2{Jam pulang terbuka, atau boleh_lebih_awal?}
+    C2 -->|Tidak| D
+    C2 -->|Jam pulang terbuka| E
+    C2 -->|Sebelum jam pulang buka| E3[Isi alasan pulang lebih awal + lokasi perangkat + swafoto]
+    E --> F[Kirim jenis, koordinat, akurasi, foto, keterangan opsional]
+    E3 --> F
+    E2 --> F2[Kirim jenis masuk, status izin atau sakit, keterangan, foto]
+    F --> G{"Backend dengan jam server: jam (sebelum jam pulang buka butuh alasan), belum absen jenis ini, pulang setelah masuk hadir atau terlambat, akurasi, jarak dalam radius?"}
+    F2 --> G2{Backend dengan jam server: jam masuk terbuka, belum absen masuk hari ini?}
     G -->|Tidak| H[Ditolak dengan pesan sebabnya]
-    H --> E
+    G2 -->|Tidak| H
+    H --> C
     G -->|Ya, masuk| I[Simpan: hadir, atau terlambat kalau lewat batas terlambat]
-    G -->|Ya, pulang| J[Simpan absen pulang]
+    G -->|Ya, pulang| J["Simpan absen pulang, pulang_awal kalau sebelum jam pulang buka"]
+    G2 -->|Ya| I2["Simpan izin atau sakit dengan waktu server, tanpa koordinat; hari itu tidak ada absen pulang"]
+    I --> T[Notifikasi absensi_tercatat ke peserta]
+    J --> T
+    I2 --> T
     K([Scheduler tiap 10 menit]) --> L{Hari ini dan 7 hari ke belakang: hari kerja, tidak sebelum tanggal mulai, jam masuk sudah tutup?}
     L -->|Ya| M[Peserta aktif tanpa absen masuk hari itu: tidak_hadir]
-    M --> N[Kepsek koreksi status + catatan wajib bila perlu]
+    S([Kepsek buka absensi harian atau riwayat peserta]) --> N{Absensi yang perlu diperbaiki sudah ada?}
+    M --> N
     I --> N
+    N -->|Absen masuk sudah ada| V["Koreksi status: hadir, terlambat, tidak_hadir, izin, atau sakit + catatan wajib"]
+    N -->|Belum ada| W["Catat absen masuk (hadir, terlambat, izin, sakit) atau absen pulang yang terlupa + catatan wajib, tanpa waktu, lokasi, dan foto; absen pulang hanya kalau absen masuk hadir atau terlambat"]
+    V --> X[Notifikasi absensi_dikoreksi ke peserta, kecuali Kepsek mengubah absensinya sendiri]
+    W --> X
     O([Scheduler harian 01:00 WIB]) --> P[Hapus file foto yang melewati masa simpan, data absensi tetap]
     Q([Kepsek menambah tanggal libur]) --> R[Hapus tidak_hadir otomatis yang belum dikoreksi pada tanggal itu]
 ```

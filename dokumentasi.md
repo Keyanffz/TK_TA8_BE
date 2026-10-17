@@ -174,7 +174,7 @@ Keempatnya diminta dan disetujui pemilik repo; kontrak ditulis ke Bagian A (A2.1
 12. Rekap 1–3 bulan: `jumlah_bulan` integer 1–3 di `BulanAbsensiRequest` (dipakai rekap, ekspor, dan riwayat); rentang boleh melewati pergantian tahun. Riwayat tetap tanpa paginasi, paling banyak sekitar 186 baris. Respons rekap tidak menyertakan rentangnya karena FE sudah tahu dari parameter. Nama file ekspor satu bulan tidak berubah; beberapa bulan `rekap-absensi-2026-08-sampai-2026-10.csv`.
 13. Data demo: pola 9 hari per peserta (izin, sakit, dan satu pola pulang lebih awal pukul 10.xx dengan keterangan).
 14. `api.json` dibentuk dari database di `.env` (Scramble membaca tipe kolom dari database), jadi database lokal perlu `php artisan migrate` sebelum ekspor; tanpa itu `keterangan` dan `pulang_awal` tertulis `string`. Migration ini sudah dijalankan di database lokal `TK_TA8`.
-15. A6 (flowchart absensi) tidak diubah.
+15. A6 (flowchart absensi) tidak diubah. **Diubah di `be/rapikan-dokumentasi`:** flowchart A6 diperbarui mengikuti fitur ini.
 
 ### Absen pulang yang dicatat Kepala Sekolah (branch `be/absensi-pulang`, PR #10)
 
@@ -787,11 +787,12 @@ Diambil selama Fase 3:
 
 ### Judul blok keputusan (branch `be/rapikan-dokumentasi`)
 
-Diminta pemilik repo, dari saran review Bagian C. Hanya `dokumentasi.md`; kode, kontrak, dan Bagian A tidak berubah.
+Diminta pemilik repo, dari saran review Bagian C. Kode dan kontrak A7 tidak berubah; di Bagian A hanya flowchart A6 absensi yang diperbarui (disetujui pemilik repo), jadi Bagian A perlu disalin identik ke `PROMPT_FE_TK.md` di repo FE.
 
 - Empat blok keputusan absensi (`be/absensi`, `be/absensi-harian`, `be/absensi-pulang`, `be/absensi-lanjutan`, PR #8–#11) dipindah dari "Keputusan menunggu review" ke bagian baru "Keputusan yang sudah diterapkan", masing-masing dengan subjudul. Isi dan penomoran setiap blok tetap; rujukan "Keputusan detail ada di …" di changelog keempat branch itu diarahkan ke bagian baru.
 - Kalimat pembuka "Keputusan menunggu review" tidak lagi menyebut keputusannya "tidak mengubah kontrak A7 atau skema A4".
 - Status `be/rapikan-slop` diperbarui menjadi sudah di-merge (PR #12).
+- `PROMPT_BE_TK.md` A6 "Absensi guru dan Kepala Sekolah": flowchart mengikuti A7 yang sudah ada, dengan cabang izin atau sakit (jam masuk, tanpa lokasi, keterangan dan foto, tanpa absen pulang), pulang lebih awal (sebelum jam pulang buka, alasan wajib, lokasi dan foto tetap diperiksa, `pulang_awal`), notifikasi `absensi_tercatat`, serta koreksi status atau pencatatan absen yang terlupa oleh Kepala Sekolah dengan notifikasi `absensi_dikoreksi`. Keenam blok mermaid di `PROMPT_BE_TK.md` diperiksa dengan parser `mermaid` 11.4.1 dan semuanya valid.
 
 ### Perapian Bagian C untuk revisi absensi (branch `be/rapikan-slop`)
 
