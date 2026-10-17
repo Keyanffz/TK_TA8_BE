@@ -11,8 +11,10 @@ use App\Models\User;
 use App\Support\AturanAbsensi;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -30,6 +32,9 @@ class PengaturanService
     public const KUNCI_CACHE = 'pengaturan.semua';
 
     public const FOLDER_GAMBAR = 'pengaturan';
+
+    /** Gambar yang belum dipakai pengaturan dibiarkan selama ini, karena form CMS yang mengunggahnya mungkin masih terbuka. */
+    private const UMUR_GAMBAR_TAK_TERPAKAI_JAM = 24;
 
     /** Kunci yang isinya HTML dari editor dan harus disanitasi sebelum disimpan. */
     private const KUNCI_HTML = ['profil.sejarah', 'profil.sambutan_kepsek', 'ppdb.info'];
@@ -467,6 +472,33 @@ class PengaturanService
         }
 
         return $items;
+    }
+
+    /**
+     * Menghapus file di folder gambar pengaturan (disk public) yang tidak dipakai kunci pengaturan mana pun dan
+     * terakhir diubah lebih dari `UMUR_GAMBAR_TAK_TERPAKAI_JAM` jam lalu. `POST /pengaturan/upload` menyimpan file
+     * sebelum tab CMS disimpan, jadi unggahan yang batal disimpan tertinggal di folder itu.
+     *
+     * @return int jumlah file yang dihapus (atau akan dihapus, saat simulasi)
+     */
+    public function bersihkanGambar(Carbon $sekarang, bool $simulasi = false): int
+    {
+        $disk = Storage::disk(MediaService::DISK_PUBLIK);
+        $dipakai = $this->semuaGambar($this->semua());
+        $batas = $sekarang->copy()->subHours(self::UMUR_GAMBAR_TAK_TERPAKAI_JAM)->getTimestamp();
+        $tidakDipakai = array_values(array_filter(
+            $disk->files(self::FOLDER_GAMBAR),
+            fn (string $path): bool => ! in_array($path, $dipakai, true) && $disk->lastModified($path) < $batas,
+        ));
+
+        if ($simulasi) {
+            return count($tidakDipakai);
+        }
+
+        $disk->delete($tidakDipakai);
+        Log::info('Gambar pengaturan yang tidak dipakai dihapus.', ['jumlah' => count($tidakDipakai), 'path' => $tidakDipakai]);
+
+        return count($tidakDipakai);
     }
 
     /**

@@ -687,7 +687,7 @@ app/
   Policies/               # otorisasi & scoping per model
   Services/               # logika bisnis (TagihanService, PembayaranService, RaporService, PendaftaranService, WaliMuridService, KartuAkunService, MediaService, PengaturanService, DashboardService, AbsensiService, RekapAbsensiService)
   Notifications/
-  Console/Commands/       # tagihan:generate, tagihan:pengingat, tagihan:tandai-terlambat, absensi:tandai-tidak-hadir, absensi:hapus-foto-lama
+  Console/Commands/       # tagihan:generate, tagihan:pengingat, tagihan:tandai-terlambat, absensi:tandai-tidak-hadir, absensi:hapus-foto-lama, pengaturan:bersihkan-gambar
   Support/ApiResponse.php # helper format respons A7
   Support/                # juga AturanAbsensi (aturan dari pengaturan grup absensi) dan Jarak (Haversine)
   Exports/                # export Excel
@@ -730,7 +730,7 @@ Aturan:
 - Disk `local` (private): foto kegiatan, bukti bayar, dokumen PPDB, foto rapor, foto murid, foto absensi (folder `absensi/`).
 - Resource mengembalikan `*_url`. Untuk file private, URL berupa **signed temporary route** (`GET /api/v1/media/{token}`, berlaku 30 menit) yang dilayani `MediaService`. Hak akses dicek saat URL dibuat: Resource hanya membuat URL untuk pengguna yang berhak melihat file itu. Route media tidak memakai `auth:sanctum` karena URL dipakai langsung di `<img>` / `<a>` oleh browser tanpa header Authorization; route hanya memvalidasi signature, masa berlaku, dan token. Token berisi path terenkripsi, bukan path mentah.
 - Validasi upload: gambar `jpg,jpeg,png,webp` maks 5 MB; dokumen PPDB juga boleh `pdf` maks 5 MB. Gambar di-resize/kompres sebelum disimpan. Nama file acak (UUID).
-- Hapus file fisik saat record dihapus (observer / event).
+- Hapus file fisik saat record dihapus (observer / event). Gambar pengaturan yang diganti dihapus saat `PUT /pengaturan`; gambar hasil `POST /pengaturan/upload` yang tidak pernah disimpan dibersihkan `pengaturan:bersihkan-gambar` (B6.2).
 - Foto absensi: `jpg,jpeg,png,webp` maks 2 MB, diproses seperti gambar lain, dan tidak memakai signed URL: dilayani `GET /absensi/{id}/foto` dengan `auth:sanctum` yang hanya mengizinkan pemilik dan Kepala Sekolah.
 
 ## B6. Aturan bisnis kunci (wajib ada test-nya)
@@ -742,6 +742,7 @@ Aturan:
    - `tagihan:pengingat` harian 07:00 WIB (H-`keuangan.hari_pengingat`)
    - `absensi:tandai-tidak-hadir` tiap 10 menit: jam masuk tutup diatur Kepala Sekolah, jadi command sendiri memeriksa hari kerja, tanggal libur, dan apakah jam masuk sudah tutup; juga mengisi susulan hari kerja yang terlewat sampai 7 hari ke belakang; idempoten
    - `absensi:hapus-foto-lama` harian 01:00 WIB
+   - `pengaturan:bersihkan-gambar` harian 02:00 WIB: menghapus file di folder `pengaturan/` (disk public) yang tidak dipakai kunci pengaturan mana pun dan terakhir diubah lebih dari sehari lalu. `POST /pengaturan/upload` menyimpan file sebelum tab CMS disimpan, jadi unggahan yang batal disimpan tertinggal; batas sehari menjaga unggahan di form yang masih terbuka. Jumlah file yang dihapus dicatat di log aplikasi
    - Semua command bisa dijalankan manual dengan opsi `--periode=YYYY-MM` / `--dry-run` untuk testing.
 3. **Pembayaran**: wali selalu transfer dengan bukti wajib (status `menunggu`); petugas keuangan mencatat tunai atau transfer (bukti opsional) yang langsung `diterima`. Tolak upload baru jika sudah ada pembayaran `menunggu` atau tagihan sudah `lunas` / `dibatalkan`. Jumlah pembayaran harus sama dengan `total` tagihan. Terima → tagihan `lunas` + `lunas_at` + notifikasi wali. Tolak → tagihan kembali `terlambat` jika lewat jatuh tempo, selain itu `belum_bayar`. Semua verifikasi dicatat di activity log.
 4. **Tahun ajaran**: tepat 1 yang aktif. Tidak bisa menghapus TA yang sudah punya kelas/tagihan.
