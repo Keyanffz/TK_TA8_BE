@@ -174,6 +174,7 @@ Fitur dan kontraknya diminta pemilik repo dan sudah ditulis ke Bagian A dan B; y
     - Absen sungguhan yang fotonya sudah dihapus setelah masa simpan tetap aman karena masih punya waktu.
     - Log aktivitas `absensi`/`tidak_hadir_dihapus` berisi daftar tanggal libur baru dan jumlah baris, hanya ditulis kalau ada yang dihapus. Baris dihapus permanen; menghapus tanggal itu lagi dari daftar libur tidak mengembalikannya, tetapi scheduler akan menandai ulang kalau tanggalnya masih dalam 7 hari terakhir.
     - Penghapusan dilakukan di `PengaturanService`, bukan `AbsensiService`, karena `AbsensiService` sudah bergantung pada `PengaturanService`.
+20. **Disetujui pemilik repo (17 Oktober 2026): guru yang diaktifkan kembali setelah jam masuk tutup.** Guru itu tetap ditandai `tidak_hadir` untuk hari itu pada putaran `absensi:tandai-tidak-hadir` berikutnya, karena status akun dibaca saat command berjalan (nomor 11) dan akunnya dibuat sebelum jam tutup. Perilaku ini dibiarkan; Kepala Sekolah mengoreksinya lewat tab Harian (`GET /absensi/harian`, lalu `PATCH /absensi/{id}/koreksi`).
 
 ### Login Google staff dan guru tanpa pendaftaran mandiri (branch `be/login-google-staff`, PR #7)
 
@@ -822,6 +823,7 @@ Diubah:
 Dokumentasi (`dokumentasi.md`, diminta pemilik repo):
 
 - Semua fitur yang sudah di-merge dan dipakai dianggap disetujui pemilik repo. Blok keputusan login Google staff, login terpisah, login NIS, dua revisi audit dashboard, dan Fase 8 dipindah dari "Keputusan menunggu review" ke "Keputusan yang sudah diterapkan" dengan subjudul; isi dan penomoran tetap. Rujukan "Keputusan detail ada di …" di changelog ketiga branch itu dan dua rujukan di "Keputusan teknis" (yang sebenarnya menunjuk keputusan Fase 4–5) diperbarui. Tabel Status memakai "Selesai, disetujui" untuk semua fase dan branch yang sudah di-merge. "Keputusan menunggu review" sekarang hanya berisi pembersihan gambar.
+- Keputusan absensi nomor 20 (blok `be/absensi`): guru yang diaktifkan kembali setelah jam masuk tutup tetap ditandai tidak hadir hari itu dan dikoreksi Kepala Sekolah lewat tab Harian. Disetujui pemilik repo; tidak ada perubahan kode.
 
 ### Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`)
 
