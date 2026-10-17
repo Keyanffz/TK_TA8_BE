@@ -54,7 +54,7 @@ class AbsenRequest extends FormRequest
             'latitude.required_unless' => $lokasiBelumTerbaca,
             'longitude.required_unless' => $lokasiBelumTerbaca,
             'akurasi.required_unless' => $lokasiBelumTerbaca,
-            'status.prohibited_if' => 'Absen pulang tidak punya status.',
+            'status.prohibited_if' => 'Absen pulang tidak punya status. Kosongkan status.',
             'keterangan.required_if' => 'Tulis keterangan izin atau sakit.',
         ];
     }

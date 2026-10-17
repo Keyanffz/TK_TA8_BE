@@ -279,7 +279,7 @@ it('tidak menghapus absen masuk dari Kepala Sekolah saat tanggalnya dijadikan ta
         ->and(Absensi::query()->where('user_id', $this->dwi->id)->whereDate('tanggal', '2026-09-29')->sole()->status)->toBe(StatusAbsensi::Hadir);
 });
 
-it('menjelaskan absen masuk yang sudah dicatat Kepala Sekolah saat peserta mencoba absen sendiri', function (array $baris, string $pesan) {
+it('menjelaskan absen masuk tanpa jam yang sudah tercatat saat peserta mencoba absen sendiri', function (array $baris, string $pesan) {
     Absensi::factory()->for($this->dwi)->tidakHadir()->create(['tanggal' => '2026-10-02', ...$baris]);
 
     $this->actingAs($this->dwi)->post('/api/v1/absensi', isianAbsen())

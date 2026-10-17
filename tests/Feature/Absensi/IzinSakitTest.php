@@ -117,7 +117,7 @@ it('memvalidasi isian izin dan sakit', function (array $isian, string $field, ?s
     'keterangan lebih dari 500 karakter' => [isianIzin(ubah: ['keterangan' => str_repeat('a', 501)]), 'keterangan', null],
     'status hadir dari peserta' => [isianIzin('hadir'), 'status', null],
     'status tidak hadir dari peserta' => [isianIzin('tidak_hadir'), 'status', null],
-    'status untuk absen pulang' => [isianIzin(ubah: ['jenis' => 'pulang']), 'status', 'Absen pulang tidak punya status.'],
+    'status untuk absen pulang' => [isianIzin(ubah: ['jenis' => 'pulang']), 'status', 'Absen pulang tidak punya status. Kosongkan status.'],
     'absen biasa tanpa lokasi' => [isianIzin(ubah: ['status' => null]), 'latitude', 'Lokasi belum terbaca. Izinkan akses lokasi lalu coba lagi.'],
 ]);
 

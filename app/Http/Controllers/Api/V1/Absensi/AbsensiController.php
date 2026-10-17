@@ -251,11 +251,11 @@ class AbsensiController extends Controller
     public function export(BulanAbsensiRequest $request, RekapAbsensiService $rekap): HttpResponse
     {
         [$awal, $akhir] = $request->rentang();
-        $rentang = $awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}";
+        $bulanFile = $awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}";
 
         return response($rekap->csv($awal, $akhir), 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"rekap-absensi-{$rentang}.csv\"",
+            'Content-Disposition' => "attachment; filename=\"rekap-absensi-{$bulanFile}.csv\"",
         ]);
     }
 }
