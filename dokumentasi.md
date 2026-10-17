@@ -831,6 +831,8 @@ Dokumentasi (`dokumentasi.md`, diminta pemilik repo):
 - Keputusan absensi nomor 20 (blok `be/absensi`): guru yang diaktifkan kembali setelah jam masuk tutup tetap ditandai tidak hadir hari itu dan dikoreksi Kepala Sekolah lewat tab Harian. Disetujui pemilik repo; tidak ada perubahan kode.
 - Baris "Belum ada rencana lanjutan dari BE …" di "Rencana yang sudah disepakati untuk fase berikutnya" diganti bagian baru "Saran dari Claude" berisi payment gateway, push notification (FCM), dan unggah lampiran pengumuman, masing-masing dengan alasan belum dibuat.
 
+Hasil pengecekan: 973 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan; ekspor ulang `api.json` tanpa perubahan. `pengaturan:bersihkan-gambar --dry-run` dicoba di database lokal (0 gambar akan dihapus); command tanpa `--dry-run` tidak dijalankan di laptop supaya gambar lokal tidak terhapus. Tidak diuji ke MariaDB karena tidak ada migration, query database, atau seeder yang berubah.
+
 ### Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`)
 
 Diminta pemilik repo, dari saran review Bagian C. Kontrak A7 tidak berubah; di Bagian A hanya flowchart A6 absensi yang diperbarui (disetujui pemilik repo), jadi Bagian A perlu disalin identik ke `PROMPT_FE_TK.md` di repo FE. Kode hanya berubah di satu pesan penolakan `POST /absensi`.
