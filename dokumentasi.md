@@ -24,7 +24,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Login Google staff, guru dikelola Kepala Sekolah tanpa pendaftaran mandiri (branch `be/login-google-staff`) | Selesai, menunggu review |
 | Absensi guru dan Kepala Sekolah berbasis lokasi dan foto (branch `be/absensi`) | Selesai, di-merge ke `main` |
 | Absensi harian dan absen masuk yang dicatat Kepala Sekolah (branch `be/absensi-harian`) | Selesai, di-merge ke `main` |
-| Absen pulang yang dicatat Kepala Sekolah (branch `be/absensi-pulang`) | Selesai, menunggu review |
+| Absen pulang yang dicatat Kepala Sekolah (branch `be/absensi-pulang`) | Selesai, di-merge ke `main` |
+| Izin dan sakit, pulang lebih awal, notifikasi absensi, rekap 1–3 bulan (branch `be/absensi-lanjutan`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -53,7 +54,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
-| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user), `GET /absensi` (riwayat per bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (SA) |
+| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, SA) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA). Grup `absensi` berisi aturan absensi |
 | Galeri (SA) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
@@ -67,6 +68,24 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan kecil yang diambil tanpa menunggu konfirmasi karena tidak mengubah kontrak A7 atau skema A4. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+Izin dan sakit, pulang lebih awal, notifikasi absensi, dan rekap 1–3 bulan (branch `be/absensi-lanjutan`). Keempatnya diminta dan disetujui pemilik repo; kontrak ditulis ke Bagian A (A2.12, A3, A4, A5, A7 termasuk bentuk absensi dan jenis notifikasi) dan Bagian B (B6.14, B8). Yang di bawah ini diputuskan saat pengerjaan:
+
+1. Migration `2026_10_17_100000_tambah_keterangan_dan_pulang_awal_ke_absensi_table` menambah `keterangan` (text nullable) dan `pulang_awal` (boolean, bawaan false). `status` sudah `string(20)`, jadi `izin`/`sakit` tidak butuh perubahan kolom. Batas 500 karakter `keterangan` dijaga validasi. Model memberi `pulang_awal = false` sebagai atribut bawaan supaya respons baris yang baru dibuat langsung boolean.
+2. `POST /absensi`: `status` boleh kosong atau `null` (absen biasa), selain itu hanya `izin`/`sakit`, dan dilarang untuk jenis pulang (`prohibited_if`). `latitude`, `longitude`, `akurasi` wajib kecuali status izin atau sakit (`required_unless`), jadi di OpenAPI yang wajib tinggal `jenis` dan `foto`. Untuk izin dan sakit koordinat yang tetap dikirim diabaikan (disimpan null) dan pengecekan "lokasi sekolah belum diatur" dilewati. Kalau jenis pulang dikirim dengan status izin/sakit, validasi juga meminta keterangan; kedua pesan muncul bersamaan.
+3. `keterangan` boleh diisi untuk absen masuk biasa dan absen pulang setelah jam pulang buka, dan ikut disimpan; kontrak hanya mewajibkannya untuk izin, sakit, dan pulang lebih awal. Pesan wajibnya "Tulis keterangan izin atau sakit.". Foto izin dan sakit memakai aturan swafoto (2 MB) dan pesan "Foto wajib diambil sebelum absen." yang sama.
+4. Izin dan sakit memakai pemeriksaan tanggal mulai, hari kerja, libur, jam masuk, dan satu absen masuk per hari. Pesan baru: "Anda sudah mencatat izin hari ini pukul 06:40." (izin/sakit sendiri sudah ada), "Absen masuk hari ini sudah dicatat Kepala Sekolah dengan status Izin.", "Hari ini Anda tercatat izin, jadi tidak perlu absen pulang.", dan untuk `POST /absensi/koreksi` jenis pulang "Absen masuk … tercatat izin, jadi tidak ada absen pulang.".
+5. Tanpa perubahan kode: scheduler melewati peserta yang izin/sakit karena sudah punya absen masuk; penghapusan tidak hadir saat tanggal libur ditambah tidak menyentuhnya (status bukan `tidak_hadir`); foto izin dan sakit ikut dihapus setelah masa simpan. Koreksi absen masuk menjadi izin/sakit lewat `PATCH` tidak menghapus absen pulang yang sudah ada, sama seperti koreksi ke tidak hadir.
+6. `POST /absensi/koreksi` jenis masuk menerima `hadir`, `terlambat`, `izin`, `sakit` (`tidak_hadir` tetap hanya dari scheduler); `keterangan` baris itu null karena alasannya ada di catatan koreksi. `PATCH /absensi/{id}/koreksi` menerima kelima status.
+7. Rekap dan CSV: `izin` dan `sakit` diletakkan setelah `terlambat`. `tidak_absen_pulang` sekarang hanya menghitung absen masuk `hadir`/`terlambat` (sebelumnya semua selain `tidak_hadir`). Status pembantu ada di `StatusAbsensi::berhalangan()` dan `perluAbsenPulang()`; sebutan absensi di pesan dan notifikasi di `Absensi::namaAbsen()`.
+8. Pulang lebih awal: "belum buka" dibandingkan per menit (10:59:59 masih lebih awal, 11:00 sudah biasa). Pemeriksaan jam terjadi sebelum pemeriksaan absen masuk, jadi absen pulang sebelum jam buka tanpa keterangan selalu mendapat pesan "Absen pulang baru bisa mulai pukul 11:00. Kalau perlu pulang lebih awal, tulis alasannya di keterangan.", juga kalau absen masuknya belum ada. Rekap tidak membedakan pulang lebih awal; tandanya terlihat di riwayat (`pulang_awal`).
+9. `GET /absensi/hari-ini`: `pulang.boleh_lebih_awal` diletakkan setelah `absensi`; `pulang.terbuka` tetap false sebelum jam pulang buka.
+10. Notifikasi lewat `NotifikasiDatabase` (queue, channel database) seperti notifikasi lain. `absensi_tercatat`: judul "Absen masuk tercatat" / "Izin tercatat" / "Absen pulang lebih awal tercatat"; pesan misalnya "Absen masuk Kamis, 1 Oktober 2026 pukul 07:20 tercatat dengan status Terlambat." atau "Izin Kamis, 1 Oktober 2026 pukul 07:20 tercatat. Keterangan: …". Juga dikirim ke Kepala Sekolah yang absen sendiri; tidak dikirim untuk absen yang ditolak atau tanda tidak hadir dari scheduler.
+11. `absensi_dikoreksi`: judul "Absensi dikoreksi Kepala Sekolah" untuk `PATCH` dan "Absensi dicatat Kepala Sekolah" untuk `POST /absensi/koreksi` (dibedakan lewat `wasRecentlyCreated`); pesan misalnya "Kepala Sekolah mengoreksi absen masuk Rabu, 30 September 2026 menjadi Hadir. Catatan: …". Dikirim dari dalam transaksi `POST /absensi/koreksi`; dengan queue `database` job-nya ikut transaksi itu. Worker `queue:work` yang sudah berjalan perlu `php artisan queue:restart` setelah kode ini dipasang.
+12. Rekap 1–3 bulan: `jumlah_bulan` integer 1–3 di `BulanAbsensiRequest` (dipakai rekap, ekspor, dan riwayat); rentang boleh melewati pergantian tahun. Riwayat tetap tanpa paginasi, paling banyak sekitar 186 baris. Respons rekap tidak menyertakan rentangnya karena FE sudah tahu dari parameter. Nama file ekspor satu bulan tidak berubah; beberapa bulan `rekap-absensi-2026-08-sampai-2026-10.csv`.
+13. Data demo: pola 9 hari per peserta (izin, sakit, dan satu pola pulang lebih awal pukul 10.xx dengan keterangan).
+14. `api.json` dibentuk dari database di `.env` (Scramble membaca tipe kolom dari database), jadi database lokal perlu `php artisan migrate` sebelum ekspor; tanpa itu `keterangan` dan `pulang_awal` tertulis `string`. Migration ini sudah dijalankan di database lokal `TK_TA8`.
+15. A6 (flowchart absensi) tidak diubah.
 
 Absen pulang yang dicatat Kepala Sekolah (branch `be/absensi-pulang`). Diminta pemilik repo: guru yang lupa absen pulang dicatat Kepala Sekolah lewat `POST /absensi/koreksi` yang diperluas, tanpa endpoint baru. Kontrak ditulis ke Bagian A (A2.12, A3, A7 termasuk bentuk absensi) dan Bagian B (B6.14); yang di bawah ini diputuskan saat pengerjaan:
 
@@ -751,6 +770,30 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Izin dan sakit, pulang lebih awal, notifikasi absensi, rekap 1–3 bulan (branch `be/absensi-lanjutan`)
+
+Diminta pemilik repo. Kontrak ditulis ke Bagian A (A2.12, A3, A4, A5, A7 termasuk bentuk absensi dan jenis notifikasi) dan Bagian B (B6.14, B8) `PROMPT_BE_TK.md`; Bagian A perlu disalin identik ke `PROMPT_FE_TK.md` di repo FE. Keputusan detail ada di "Keputusan menunggu review". Satu commit per fitur, lalu satu commit dokumentasi.
+
+Baru:
+
+- `database/migrations/2026_10_17_100000_tambah_keterangan_dan_pulang_awal_ke_absensi_table.php`.
+- `app/Notifications/{AbsensiTercatatNotification, AbsensiDikoreksiNotification}.php`.
+- Test `tests/Feature/Absensi/IzinSakitTest.php` (izin dan sakit tanpa lokasi, lokasi yang dikirim diabaikan, keterangan di absen biasa, setiap penolakan tanggal dan jam, dobel, validasi isian beserta pesannya, absen pulang ditolak di hari izin, scheduler melewati, koreksi dan pencatatan oleh Kepala Sekolah, rekap dan CSV), `PulangLebihAwalTest.php` (diterima dengan keterangan, ditolak tanpa keterangan, setiap penolakan absen pulang, batas per menit, absen pulang biasa, `boleh_lebih_awal` di setiap keadaan), `NotifikasiAbsensiTest.php` (bentuk lewat `GET /notifikasi`, judul dan pesan per jenis absen, Kepala Sekolah yang absen sendiri, absen ditolak, koreksi, pencatatan masuk dan pulang, koreksi absensi sendiri dan koreksi ditolak tanpa notifikasi).
+
+Diubah:
+
+- `app/Enums/StatusAbsensi.php` (`izin`, `sakit`, `berhalangan()`, `perluAbsenPulang()`), `app/Enums/JenisNotifikasi.php` (`absensi_tercatat`, `absensi_dikoreksi`).
+- `app/Models/Absensi.php` (kolom baru, bawaan `pulang_awal`, `namaAbsen()`), `app/Http/Resources/AbsensiResource.php` (`keterangan`, `pulang_awal`), `app/Support/AturanAbsensi.php` (`belumBuka()`).
+- `app/Http/Requests/Absensi/{AbsenRequest, KoreksiAbsensiBaruRequest, BulanAbsensiRequest}.php` (status izin/sakit, lokasi bersyarat, keterangan; status koreksi baru; `jumlah_bulan` dan `rentang()`).
+- `app/Services/AbsensiService.php` (absen izin/sakit dan pulang lebih awal, pesan baru, notifikasi), `app/Services/RekapAbsensiService.php` (rentang, `izin`, `sakit`, `tidak_absen_pulang` hanya hadir/terlambat), `app/Http/Controllers/Api/V1/Absensi/AbsensiController.php` (`boleh_lebih_awal`, pesan, rentang, nama file ekspor).
+- `database/seeders/Demo/AbsensiDemoSeeder.php` (izin, sakit, pulang lebih awal).
+- Test: `AbsenTest` (`boleh_lebih_awal` di status hari ini), `KoreksiDanRekapTest` (kolom rekap dan CSV, status asing, rentang 1–3 bulan, akun nonaktif di rentang, nama file, riwayat beberapa bulan, `jumlah_bulan` di luar 1–3), `DokumentasiApiTest`, `Unit/EnumKontrakTest`.
+- `storage/api-docs/api.json`: diekspor ulang setelah migration dijalankan di database lokal. Perubahan hanya di path absensi (`/absensi` GET dan POST, `/absensi/hari-ini`, `/absensi/rekap`, `/absensi/rekap/export`, `/absensi/koreksi`) dan skema `AbsenRequest`, `AbsensiResource`, `KoreksiAbsensiBaruRequest`, `StatusAbsensi`, `JenisNotifikasi`.
+
+Hasil pengecekan: 967 test lulus di SQLite (`--parallel`) dan di MariaDB 12.3.3 (database terpisah `TK_TA8_uji`, seluruh suite karena ada migration, query, dan seeder baru); Pint, PHPStan, dan `check:slop` tanpa temuan. `down()` migration dicoba di `TK_TA8_uji` (rollback satu langkah menghapus kedua kolom, migrate mengembalikannya). Uji manual lewat curl ke `php artisan serve` dengan database lokal (Sabtu 17 Oktober, bukan hari kerja di pengaturan lokal): `boleh_lebih_awal` muncul di status hari ini, izin tanpa lokasi lolos validasi lalu ditolak "bukan hari kerja", izin tanpa keterangan dan absen pulang dengan status 422 `VALIDATION_ERROR`, Kepala Sekolah mencatat izin untuk Jumat 16 Oktober (201, `keterangan` null, `pulang_awal` false), absen pulang di hari izin ditolak, `PATCH` izin menjadi sakit, kedua notifikasi `absensi_dikoreksi` sampai ke guru lewat worker `queue:work` yang sedang berjalan, rekap 3 bulan dengan kolom `sakit`, `jumlah_bulan=4` 422, ekspor bernama `rekap-absensi-2026-08-sampai-2026-10.csv` dengan kolom baru, dan riwayat 2 bulan. Baris, log, notifikasi, dan token uji dihapus lagi; migration baru tetap terpasang di database lokal.
+
+Yang belum diuji: izin, sakit, pulang lebih awal, dan notifikasi `absensi_tercatat` lewat curl (hari uji bukan hari kerja; ketiganya diuji lewat test dengan waktu yang diatur), alur di FE dan HP.
 
 ### Absen pulang yang dicatat Kepala Sekolah (branch `be/absensi-pulang`)
 

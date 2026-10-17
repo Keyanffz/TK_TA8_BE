@@ -18,7 +18,7 @@
         "/absensi/rekap": {
             "get": {
                 "operationId": "absensi.rekap",
-                "summary": "Rekap satu bulan per peserta: jumlah hadir, terlambat, tidak hadir, dan hari yang tidak absen pulang",
+                "summary": "Rekap per peserta untuk 1\u20133 bulan (`jumlah_bulan` bulan yang berakhir di `bulan`): jumlah hadir, terlambat,\nizin, sakit, tidak hadir, dan hari yang tidak absen pulang",
                 "tags": [
                     "Absensi"
                 ],
@@ -26,9 +26,19 @@
                     {
                         "name": "bulan",
                         "in": "query",
-                        "description": "Bulan `YYYY-MM`, bawaan bulan berjalan.",
+                        "description": "Bulan terakhir rentang, `YYYY-MM`, bawaan bulan berjalan.",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "jumlah_bulan",
+                        "in": "query",
+                        "description": "Jumlah bulan sampai `bulan`, 1\u20133, bawaan 1. Contoh `bulan=2026-10&jumlah_bulan=3` = Agustus sampai Oktober 2026.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 3
                         }
                     }
                 ],
@@ -79,6 +89,12 @@
                                                     "terlambat": {
                                                         "type": "integer"
                                                     },
+                                                    "izin": {
+                                                        "type": "integer"
+                                                    },
+                                                    "sakit": {
+                                                        "type": "integer"
+                                                    },
                                                     "tidak_hadir": {
                                                         "type": "integer"
                                                     },
@@ -90,6 +106,8 @@
                                                     "user",
                                                     "hadir",
                                                     "terlambat",
+                                                    "izin",
+                                                    "sakit",
                                                     "tidak_hadir",
                                                     "tidak_absen_pulang"
                                                 ]
@@ -264,7 +282,7 @@
         "/absensi/rekap/export": {
             "get": {
                 "operationId": "absensi.export",
-                "summary": "File CSV berisi rekap yang sama dengan `GET /absensi/rekap`",
+                "summary": "File CSV berisi rekap yang sama dengan `GET /absensi/rekap`. Nama file menyebut bulannya, misalnya\n`rekap-absensi-2026-10.csv` atau `rekap-absensi-2026-08-sampai-2026-10.csv`",
                 "tags": [
                     "Absensi"
                 ],
@@ -272,9 +290,19 @@
                     {
                         "name": "bulan",
                         "in": "query",
-                        "description": "Bulan `YYYY-MM`, bawaan bulan berjalan.",
+                        "description": "Bulan terakhir rentang, `YYYY-MM`, bawaan bulan berjalan.",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "jumlah_bulan",
+                        "in": "query",
+                        "description": "Jumlah bulan sampai `bulan`, 1\u20133, bawaan 1. Contoh `bulan=2026-10&jumlah_bulan=3` = Agustus sampai Oktober 2026.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 3
                         }
                     }
                 ],
@@ -1177,7 +1205,7 @@
         "/absensi/hari-ini": {
             "get": {
                 "operationId": "absensi.hariIni",
-                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.\nSebelum `tanggal_mulai`, `terbuka` selalu false",
+                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.\nSebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang\nakan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam\npulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang",
                 "tags": [
                     "Absensi"
                 ],
@@ -1295,13 +1323,17 @@
                                                                     "type": "null"
                                                                 }
                                                             ]
+                                                        },
+                                                        "boleh_lebih_awal": {
+                                                            "type": "boolean"
                                                         }
                                                     },
                                                     "required": [
                                                         "buka",
                                                         "tutup",
                                                         "terbuka",
-                                                        "absensi"
+                                                        "absensi",
+                                                        "boleh_lebih_awal"
                                                     ]
                                                 }
                                             },
@@ -1448,7 +1480,7 @@
         "/absensi": {
             "get": {
                 "operationId": "absensi.index",
-                "summary": "Riwayat absensi satu peserta dalam satu bulan, terbaru dulu, tanpa paginasi. Guru hanya melihat\nriwayatnya sendiri; Kepala Sekolah bisa membuka riwayat peserta lain lewat `user_id`",
+                "summary": "Riwayat absensi satu peserta dalam 1\u20133 bulan (`jumlah_bulan` bulan yang berakhir di `bulan`), terbaru dulu,\ntanpa paginasi. Guru hanya melihat riwayatnya sendiri; Kepala Sekolah bisa membuka riwayat peserta lain lewat\n`user_id`",
                 "tags": [
                     "Absensi"
                 ],
@@ -1456,9 +1488,19 @@
                     {
                         "name": "bulan",
                         "in": "query",
-                        "description": "Bulan `YYYY-MM`, bawaan bulan berjalan.",
+                        "description": "Bulan terakhir rentang, `YYYY-MM`, bawaan bulan berjalan.",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "jumlah_bulan",
+                        "in": "query",
+                        "description": "Jumlah bulan sampai `bulan`, 1\u20133, bawaan 1. Contoh `bulan=2026-10&jumlah_bulan=3` = Agustus sampai Oktober 2026.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 3
                         }
                     },
                     {
@@ -1658,7 +1700,7 @@
             },
             "post": {
                 "operationId": "absensi.store",
-                "summary": "Absen masuk atau pulang (`multipart/form-data`). Ditolak 422 `BUSINESS_RULE` dengan pesan yang\nmenjelaskan sebabnya: sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen\npulang tanpa absen masuk, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk\n`hadir` atau `terlambat` ditentukan dari jam server. Dibatasi 10 kali per menit per pengguna",
+                "summary": "Absen masuk atau pulang (`multipart/form-data`). Ditolak 422 `BUSINESS_RULE` dengan pesan yang\nmenjelaskan sebabnya: sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen\npulang tanpa absen masuk hadir atau terlambat, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk\n`hadir` atau `terlambat` ditentukan dari jam server. Absen masuk dengan `status` `izin` atau `sakit` tidak butuh\nlokasi, tetapi butuh `keterangan` dan foto; hari itu tidak ada absen pulang. Absen pulang sebelum jam pulang\nbuka diterima sebagai pulang lebih awal (`pulang_awal` true) kalau `keterangan` diisi, tanpa persetujuan.\nDibatasi 10 kali per menit per pengguna",
                 "tags": [
                     "Absensi"
                 ],
@@ -31311,38 +31353,57 @@
         "schemas": {
             "AbsenRequest": {
                 "type": "object",
-                "description": "`POST /absensi` (multipart). Di sini hanya bentuk isian; hari kerja, jam, jarak, dan akurasi diperiksa\n`AbsensiService` dengan jam server.",
+                "description": "`POST /absensi` (multipart). Di sini hanya bentuk isian; hari kerja, jam, jarak, dan akurasi diperiksa\n`AbsensiService` dengan jam server. Izin dan sakit tidak butuh lokasi, tetapi butuh keterangan dan foto.",
                 "properties": {
                     "jenis": {
                         "$ref": "#/components/schemas/JenisAbsensi"
                     },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hanya untuk absen masuk: `izin` atau `sakit`. Kosong untuk absen masuk biasa (hadir atau terlambat dari jam server).",
+                        "enum": [
+                            "izin",
+                            "sakit",
+                            null
+                        ]
+                    },
                     "latitude": {
                         "type": "number",
+                        "description": "Wajib kecuali izin atau sakit.",
                         "minimum": -90,
                         "maximum": 90
                     },
                     "longitude": {
                         "type": "number",
+                        "description": "Wajib kecuali izin atau sakit.",
                         "minimum": -180,
                         "maximum": 180
                     },
                     "akurasi": {
                         "type": "number",
-                        "description": "Akurasi lokasi dari perangkat, dalam meter.",
+                        "description": "Akurasi lokasi dari perangkat, dalam meter. Wajib kecuali izin atau sakit.",
                         "maximum": 100000
+                    },
+                    "keterangan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Alasan dari peserta. Wajib untuk izin atau sakit.",
+                        "maxLength": 500
                     },
                     "foto": {
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 2048 kilobytes."
+                        "description": "Swafoto, atau foto surat izin/keterangan sakit. jpeg, png, atau webp, maksimal 2 MB."
                     }
                 },
                 "required": [
                     "jenis",
-                    "latitude",
-                    "longitude",
-                    "akurasi",
                     "foto"
                 ],
                 "title": "AbsenRequest"
@@ -31406,6 +31467,15 @@
                     "ada_foto": {
                         "type": "boolean"
                     },
+                    "keterangan": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pulang_awal": {
+                        "type": "boolean"
+                    },
                     "catatan_koreksi": {
                         "type": [
                             "string",
@@ -31450,6 +31520,8 @@
                     "akurasi_meter",
                     "jarak_meter",
                     "ada_foto",
+                    "keterangan",
+                    "pulang_awal",
                     "catatan_koreksi",
                     "dikoreksi_oleh",
                     "dikoreksi_at"
@@ -32329,7 +32401,9 @@
                     "pengumuman_baru",
                     "pendaftaran_baru",
                     "pendaftaran_diproses",
-                    "anak_tertaut"
+                    "anak_tertaut",
+                    "absensi_tercatat",
+                    "absensi_dikoreksi"
                 ],
                 "title": "JenisNotifikasi"
             },
@@ -32916,7 +32990,9 @@
                         "description": "Wajib untuk absen masuk; tidak boleh dikirim untuk absen pulang.",
                         "enum": [
                             "hadir",
-                            "terlambat"
+                            "terlambat",
+                            "izin",
+                            "sakit"
                         ]
                     },
                     "catatan": {
@@ -35533,7 +35609,9 @@
                 "enum": [
                     "hadir",
                     "terlambat",
-                    "tidak_hadir"
+                    "tidak_hadir",
+                    "izin",
+                    "sakit"
                 ],
                 "title": "StatusAbsensi"
             },

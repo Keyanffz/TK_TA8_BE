@@ -36,7 +36,7 @@ class AbsenRequest extends FormRequest
             'akurasi' => ['required_unless:status,izin,sakit', 'numeric', 'gt:0', 'max:100000'],
             /** Alasan dari peserta. Wajib untuk izin atau sakit. */
             'keterangan' => ['required_if:status,izin,sakit', 'nullable', 'string', 'max:500'],
-            /** Swafoto, atau foto surat izin/keterangan sakit. */
+            /** Swafoto, atau foto surat izin/keterangan sakit. jpeg, png, atau webp, maksimal 2 MB. */
             'foto' => ['required', 'image', 'mimes:'.implode(',', MediaService::EKSTENSI_GAMBAR), 'max:'.self::UKURAN_MAKSIMAL_FOTO_KB],
         ];
     }
