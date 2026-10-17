@@ -58,7 +58,8 @@ class AbsensiService
     /**
      * Urutan pemeriksaan: lokasi sekolah sudah diatur, tanggal mulai, hari kerja, tanggal libur, jendela jam, absen
      * pulang butuh absen masuk hadir atau terlambat, belum absen jenis itu, akurasi, lalu jarak. Izin dan sakit
-     * melewati pemeriksaan lokasi. Foto baru disimpan setelah semua lolos.
+     * melewati pemeriksaan lokasi. Absen pulang sebelum jam pulang buka diterima sebagai pulang lebih awal kalau
+     * ada keterangan. Foto baru disimpan setelah semua lolos.
      *
      * @param  StatusAbsensi|null  $berhalangan  izin atau sakit (hanya absen masuk); null untuk absen biasa
      * @param  array{latitude: float, longitude: float, akurasi: float}|null  $posisi  null untuk izin dan sakit
@@ -71,7 +72,7 @@ class AbsensiService
         $aturan = $this->aturan();
         $lokasi = $posisi === null ? null : ($aturan->lokasi ?? throw new BusinessRuleException('Lokasi sekolah belum diatur. Minta Kepala Sekolah mengisi pengaturan absensi.'));
 
-        $this->pastikanWaktuAbsen($aturan, $jenis, $sekarang);
+        $pulangAwal = $this->pastikanWaktuAbsen($aturan, $jenis, $sekarang, $keterangan);
         $this->pastikanBolehAbsen($user, $jenis, $sekarang);
 
         $jarak = $posisi !== null && $lokasi !== null ? $this->jarakDalamRadius($aturan, $lokasi, $posisi) : null;
@@ -96,6 +97,7 @@ class AbsensiService
                 'jarak_meter' => $jarak === null ? null : (int) round($jarak),
                 'foto_path' => $path,
                 'keterangan' => $keterangan,
+                'pulang_awal' => $pulangAwal,
             ])->load('pengoreksi');
         } catch (Throwable $e) {
             $this->media->hapus($path, MediaService::DISK_PRIVAT);
@@ -322,9 +324,11 @@ class AbsensiService
     }
 
     /**
+     * @return bool true untuk absen pulang sebelum jam pulang buka (pulang lebih awal, tanpa persetujuan)
+     *
      * @throws BusinessRuleException
      */
-    private function pastikanWaktuAbsen(AturanAbsensi $aturan, JenisAbsensi $jenis, Carbon $sekarang): void
+    private function pastikanWaktuAbsen(AturanAbsensi $aturan, JenisAbsensi $jenis, Carbon $sekarang, ?string $keterangan): bool
     {
         if (! $aturan->sudahMulai($sekarang)) {
             $mulai = Carbon::parse((string) $aturan->tanggalMulai)->translatedFormat('j F Y');
@@ -337,11 +341,20 @@ class AbsensiService
         if ($aturan->tanggalLibur($sekarang)) {
             throw new BusinessRuleException('Hari ini libur sekolah, jadi tidak ada absensi.');
         }
+        if ($jenis === JenisAbsensi::Pulang && $aturan->belumBuka($jenis, $sekarang)) {
+            if ($keterangan === null) {
+                throw new BusinessRuleException("Absen pulang baru bisa mulai pukul {$aturan->jamPulang['buka']}. Kalau perlu pulang lebih awal, tulis alasannya di keterangan.");
+            }
+
+            return true;
+        }
         if (! $aturan->jendelaTerbuka($jenis, $sekarang)) {
             $jendela = $aturan->jendela($jenis);
 
             throw new BusinessRuleException("Absen {$jenis->value} hanya bisa pukul {$jendela['buka']}–{$jendela['tutup']}. Sekarang pukul {$sekarang->format('H:i')}.");
         }
+
+        return false;
     }
 
     /**

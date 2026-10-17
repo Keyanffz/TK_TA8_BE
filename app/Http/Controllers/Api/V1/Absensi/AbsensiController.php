@@ -33,7 +33,9 @@ class AbsensiController extends Controller
      * Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah
      * sedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk
      * menampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.
-     * Sebelum `tanggal_mulai`, `terbuka` selalu false.
+     * Sebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang
+     * akan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam
+     * pulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang.
      *
      * @response array{
      *     success: true,
@@ -48,7 +50,7 @@ class AbsensiController extends Controller
      *         radius_meter: int,
      *         batas_akurasi_meter: int,
      *         masuk: array{buka: string, batas_terlambat: string, tutup: string, terbuka: bool, absensi: AbsensiResource|null},
-     *         pulang: array{buka: string, tutup: string, terbuka: bool, absensi: AbsensiResource|null}
+     *         pulang: array{buka: string, tutup: string, terbuka: bool, absensi: AbsensiResource|null, boleh_lebih_awal: bool}
      *     },
      *     meta: null
      * }
@@ -76,7 +78,13 @@ class AbsensiController extends Controller
             'radius_meter' => $aturan->radiusMeter,
             'batas_akurasi_meter' => $aturan->batasAkurasiMeter,
             'masuk' => [...$aturan->jamMasuk, ...$jenis(JenisAbsensi::Masuk)],
-            'pulang' => [...$aturan->jamPulang, ...$jenis(JenisAbsensi::Pulang)],
+            'pulang' => [
+                ...$aturan->jamPulang,
+                ...$jenis(JenisAbsensi::Pulang),
+                'boleh_lebih_awal' => $berlaku && $aturan->belumBuka(JenisAbsensi::Pulang, $sekarang)
+                    && $tercatat->get(JenisAbsensi::Masuk->value)?->status?->perluAbsenPulang() === true
+                    && ! $tercatat->has(JenisAbsensi::Pulang->value),
+            ],
         ]);
     }
 
@@ -85,7 +93,9 @@ class AbsensiController extends Controller
      * menjelaskan sebabnya: sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur, di luar jam, sudah absen jenis itu hari ini, absen
      * pulang tanpa absen masuk hadir atau terlambat, akurasi lokasi melebihi batas, atau di luar radius sekolah. Status absen masuk
      * `hadir` atau `terlambat` ditentukan dari jam server. Absen masuk dengan `status` `izin` atau `sakit` tidak butuh
-     * lokasi, tetapi butuh `keterangan` dan foto; hari itu tidak ada absen pulang. Dibatasi 10 kali per menit per pengguna.
+     * lokasi, tetapi butuh `keterangan` dan foto; hari itu tidak ada absen pulang. Absen pulang sebelum jam pulang
+     * buka diterima sebagai pulang lebih awal (`pulang_awal` true) kalau `keterangan` diisi, tanpa persetujuan.
+     * Dibatasi 10 kali per menit per pengguna.
      */
     public function store(AbsenRequest $request, #[CurrentUser] User $user): JsonResponse
     {

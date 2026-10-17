@@ -86,7 +86,8 @@ class Absensi extends Model
     }
 
     /**
-     * Sebutan absensi ini di pesan untuk peserta: "Absen masuk", "Absen pulang", "Izin", atau "Sakit".
+     * Sebutan absensi ini di pesan untuk peserta: "Absen masuk", "Absen pulang", "Absen pulang lebih awal", "Izin",
+     * atau "Sakit".
      */
     public function namaAbsen(): string
     {
@@ -94,7 +95,7 @@ class Absensi extends Model
             return $this->status->label();
         }
 
-        return "Absen {$this->jenis->value}";
+        return $this->pulang_awal ? 'Absen pulang lebih awal' : "Absen {$this->jenis->value}";
     }
 
     /**
