@@ -133,7 +133,10 @@ it('menolak absen pulang kalau absen masuk hari itu tercatat tidak hadir', funct
 
     $this->actingAs($this->guru)->post('/api/v1/absensi', isianAbsen('pulang'))
         ->assertStatus(422)
-        ->assertJsonPath('message', 'Absen pulang hanya bisa setelah absen masuk, dan hari ini Anda belum absen masuk.');
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', 'Anda tercatat tidak hadir hari ini. Hubungi Kepala Sekolah kalau perlu koreksi.');
+
+    expect(Absensi::query()->where('jenis', 'pulang')->count())->toBe(0);
 });
 
 it('memvalidasi isian dan foto', function (array $ubah, string $field) {
