@@ -774,7 +774,12 @@ Diambil selama Fase 3:
 - Sudah dikerjakan: `DemoSeeder` membuat kode tautan lewat `KodeTautanService::buat()` (Fase 4), nomor INV/PAY lewat `NomorUrut` dengan awalan dari `TagihanService`/`PembayaranService`, dan potongan lewat `TagihanService::potongan()` (Fase 5). Status dan tanggal data demo (lunas, terlambat, menunggu) tetap disusun seeder karena menggambarkan riwayat tiga bulan. Sejak `be/login-nis` `DemoSeeder` membuat akun wali lewat `WaliMuridService::buatAkunOtomatis()`.
 - Sudah dikerjakan di Fase 7: `PengaturanService` dilengkapi penyimpanan, validasi per kunci, dan cache.
 - Sudah dikerjakan di Fase 8: respons file, 403 di endpoint detail, dan tipe `*_url` nullable di OpenAPI.
-- Belum ada rencana lanjutan dari BE. Yang belum dibuat karena di luar desain saat ini: payment gateway, push notification (FCM), dan unggah lampiran pengumuman.
+
+## Saran dari Claude
+
+- Payment gateway (Midtrans), supaya wali bisa membayar tagihan tanpa mengunggah bukti transfer dan menunggu verifikasi manual; belum dibuat karena A2.5 menetapkannya sebagai pengembangan nanti, di luar desain saat ini.
+- Push notification lewat FCM, supaya notifikasi sampai ke HP tanpa membuka website; belum dibuat karena A2.11 menundanya sampai aplikasi Flutter dibuat.
+- Unggah lampiran pengumuman (kolom `lampiran_path` sudah ada di A4), supaya surat edaran bisa dibagikan sebagai file; belum dibuat karena kontrak A7 tidak punya isian lampiran dan pemilik repo menundanya.
 
 ## Akun seed
 
@@ -824,6 +829,7 @@ Dokumentasi (`dokumentasi.md`, diminta pemilik repo):
 
 - Semua fitur yang sudah di-merge dan dipakai dianggap disetujui pemilik repo. Blok keputusan login Google staff, login terpisah, login NIS, dua revisi audit dashboard, dan Fase 8 dipindah dari "Keputusan menunggu review" ke "Keputusan yang sudah diterapkan" dengan subjudul; isi dan penomoran tetap. Rujukan "Keputusan detail ada di …" di changelog ketiga branch itu dan dua rujukan di "Keputusan teknis" (yang sebenarnya menunjuk keputusan Fase 4–5) diperbarui. Tabel Status memakai "Selesai, disetujui" untuk semua fase dan branch yang sudah di-merge. "Keputusan menunggu review" sekarang hanya berisi pembersihan gambar.
 - Keputusan absensi nomor 20 (blok `be/absensi`): guru yang diaktifkan kembali setelah jam masuk tutup tetap ditandai tidak hadir hari itu dan dikoreksi Kepala Sekolah lewat tab Harian. Disetujui pemilik repo; tidak ada perubahan kode.
+- Baris "Belum ada rencana lanjutan dari BE …" di "Rencana yang sudah disepakati untuk fase berikutnya" diganti bagian baru "Saran dari Claude" berisi payment gateway, push notification (FCM), dan unggah lampiran pengumuman, masing-masing dengan alasan belum dibuat.
 
 ### Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`)
 
