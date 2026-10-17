@@ -124,31 +124,33 @@ class AbsensiService
     }
 
     /**
-     * Absen masuk yang dicatat Kepala Sekolah untuk hari yang belum punya baris, misalnya guru lupa absen padahal
-     * masuk dan scheduler belum menandainya tidak hadir. Barisnya tanpa waktu, lokasi, dan foto, dan langsung
-     * bertanda koreksi: scheduler melewatinya karena sudah ada absen masuk, dan `scopeTidakHadirOtomatis` tidak
-     * mencakupnya saat tanggal libur ditambah.
+     * Absen masuk atau pulang yang dicatat Kepala Sekolah untuk tanggal yang belum punya baris jenis itu, misalnya
+     * guru lupa absen padahal masuk dan scheduler belum menandainya tidak hadir, atau lupa absen pulang. Absen
+     * pulang butuh absen masuk hadir atau terlambat di tanggal itu. Barisnya tanpa waktu, lokasi, dan foto, dan
+     * langsung bertanda koreksi: scheduler melewati peserta yang sudah punya absen masuk, dan
+     * `scopeTidakHadirOtomatis` tidak mencakupnya saat tanggal libur ditambah.
      *
      * @throws BusinessRuleException
      */
-    public function koreksiBaru(int $userId, Carbon $tanggal, StatusAbsensi $status, string $catatan, User $pelaku): Absensi
+    public function koreksiBaru(int $userId, Carbon $tanggal, JenisAbsensi $jenis, ?StatusAbsensi $status, string $catatan, User $pelaku): Absensi
     {
         $peserta = User::query()->pesertaAbsensi()->find($userId)
             ?? throw new BusinessRuleException('Akun ini bukan peserta absensi. Absensi hanya untuk guru aktif dan Kepala Sekolah.');
         $this->pastikanTanggalAbsensi($tanggal);
 
-        $sudahAda = "Absen masuk {$peserta->name} tanggal {$tanggal->translatedFormat('j F Y')} sudah tercatat. Koreksi status absensi yang sudah ada.";
-        if ($peserta->absensi()->masuk()->whereDate('tanggal', $tanggal->toDateString())->exists()) {
-            throw new BusinessRuleException($sudahAda);
-        }
+        $teksTanggal = $tanggal->translatedFormat('j F Y');
+        $sudahAda = $jenis === JenisAbsensi::Masuk
+            ? "Absen masuk {$peserta->name} tanggal {$teksTanggal} sudah tercatat. Koreksi status absensi yang sudah ada."
+            : "Absen pulang {$peserta->name} tanggal {$teksTanggal} sudah tercatat.";
+        $this->pastikanBelumTercatat($peserta, $tanggal, $jenis, $sudahAda);
 
         try {
-            return DB::transaction(function () use ($peserta, $tanggal, $status, $catatan, $pelaku): Absensi {
+            return DB::transaction(function () use ($peserta, $tanggal, $jenis, $status, $catatan, $pelaku): Absensi {
                 $absensi = Absensi::query()->create([
                     'user_id' => $peserta->id,
                     'tanggal' => $tanggal->toDateString(),
-                    'jenis' => JenisAbsensi::Masuk,
-                    'status' => $status,
+                    'jenis' => $jenis,
+                    'status' => $jenis === JenisAbsensi::Masuk ? $status : null,
                     'catatan_koreksi' => $catatan,
                     'dikoreksi_oleh' => $pelaku->id,
                     'dikoreksi_at' => now(),
@@ -244,13 +246,38 @@ class AbsensiService
         return $jumlah;
     }
 
+    /**
+     * @throws BusinessRuleException
+     */
+    private function pastikanBelumTercatat(User $peserta, Carbon $tanggal, JenisAbsensi $jenis, string $sudahAda): void
+    {
+        $tercatat = $this->absensiTanggal($peserta, $tanggal);
+        $masuk = $tercatat->get(JenisAbsensi::Masuk->value);
+        $absenMasuk = "Absen masuk {$peserta->name} tanggal {$tanggal->translatedFormat('j F Y')}";
+
+        if ($jenis === JenisAbsensi::Pulang && $masuk === null) {
+            throw new BusinessRuleException("{$absenMasuk} belum tercatat. Catat absen masuknya dulu sebelum absen pulang.");
+        }
+        if ($jenis === JenisAbsensi::Pulang && $masuk->status === StatusAbsensi::TidakHadir) {
+            throw new BusinessRuleException("{$absenMasuk} tercatat tidak hadir. Koreksi absen masuknya menjadi hadir atau terlambat dulu sebelum absen pulang.");
+        }
+        if ($tercatat->has($jenis->value)) {
+            throw new BusinessRuleException($sudahAda);
+        }
+    }
+
     private function catatKoreksi(Absensi $absensi, ?StatusAbsensi $sebelum, User $pelaku): void
     {
         $tanggal = $absensi->tanggal->toDateString();
 
         activity('absensi')->performedOn($absensi)->causedBy($pelaku)->event('dikoreksi')
-            ->withProperties(['user_id' => $absensi->user_id, 'tanggal' => $tanggal, 'sebelum' => $sebelum?->value, 'sesudah' => $absensi->status?->value, 'catatan' => $absensi->catatan_koreksi])
-            ->log("Mengoreksi absensi {$tanggal} menjadi {$absensi->status?->label()}");
+            ->withProperties([
+                'user_id' => $absensi->user_id, 'tanggal' => $tanggal, 'jenis' => $absensi->jenis->value,
+                'sebelum' => $sebelum?->value, 'sesudah' => $absensi->status?->value, 'catatan' => $absensi->catatan_koreksi,
+            ])
+            ->log($absensi->jenis === JenisAbsensi::Pulang
+                ? "Mencatat absen pulang {$tanggal}"
+                : "Mengoreksi absensi {$tanggal} menjadi {$absensi->status?->label()}");
     }
 
     /**
@@ -349,7 +376,8 @@ class AbsensiService
             throw new BusinessRuleException(match (true) {
                 $sudahAda->waktu !== null => "Anda sudah absen {$jenis->value} hari ini pukul {$sudahAda->waktu->format('H:i')}.",
                 $sudahAda->status === StatusAbsensi::TidakHadir => "Absen {$jenis->value} hari ini sudah tercatat tidak hadir. Hubungi Kepala Sekolah untuk koreksi.",
-                default => "Absen {$jenis->value} hari ini sudah dicatat Kepala Sekolah dengan status {$sudahAda->status?->label()}.",
+                $sudahAda->status !== null => "Absen {$jenis->value} hari ini sudah dicatat Kepala Sekolah dengan status {$sudahAda->status->label()}.",
+                default => "Absen {$jenis->value} hari ini sudah dicatat Kepala Sekolah.",
             });
         }
     }

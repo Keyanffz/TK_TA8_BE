@@ -48,6 +48,20 @@ function isianKoreksiBaru(User $peserta, array $ubah = []): array
     ];
 }
 
+/**
+ * Isian `POST /absensi/koreksi` untuk absen pulang 1 Oktober: tanpa `status`.
+ *
+ * @param  array<string, mixed>  $ubah
+ * @return array<string, mixed>
+ */
+function isianKoreksiPulang(User $peserta, array $ubah = []): array
+{
+    $isian = isianKoreksiBaru($peserta, ['jenis' => 'pulang', 'tanggal' => '2026-10-01', 'catatan' => 'Pulang 12:00 bersama rombongan, lupa absen.', ...$ubah]);
+    unset($isian['status']);
+
+    return $isian;
+}
+
 it('menampilkan absen masuk dan pulang semua peserta pada satu tanggal, urut nama', function () {
     $this->actingAs($this->kepsek)->getJson('/api/v1/absensi/harian?tanggal=2026-10-01')
         ->assertOk()
@@ -172,7 +186,7 @@ it('mencatat absen masuk tanpa waktu, lokasi, dan foto untuk hari yang belum pun
         ->and($log->causer_id)->toBe($this->kepsek->id)
         ->and($log->subject_id)->toBe(Absensi::query()->where('user_id', $this->kepsek->id)->sole()->id)
         ->and($log->properties->all())->toBe([
-            'user_id' => $this->kepsek->id, 'tanggal' => $tanggal, 'sebelum' => null, 'sesudah' => $status,
+            'user_id' => $this->kepsek->id, 'tanggal' => $tanggal, 'jenis' => 'masuk', 'sebelum' => null, 'sesudah' => $status,
             'catatan' => 'Lupa absen, hadir sejak 06:50 menurut buku tamu.',
         ]);
 
@@ -220,7 +234,26 @@ it('memvalidasi isian absen masuk baru', function (array $ubah, string $field) {
     'akun tidak ada' => [['user_id' => 999999], 'user_id'],
     'tanpa tanggal' => [['tanggal' => null], 'tanggal'],
     'format tanggal salah' => [['tanggal' => '2/10/2026'], 'tanggal'],
+    'jenis asing' => [['jenis' => 'istirahat'], 'jenis'],
+    'status untuk absen pulang' => [['jenis' => 'pulang'], 'status'],
+    'jenis masuk tanpa status' => [['jenis' => 'masuk', 'status' => null], 'status'],
 ]);
+
+it('menjelaskan status yang tidak cocok dengan jenis absen', function (array $ubah, string $pesan) {
+    $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiBaru($this->kepsek, $ubah))
+        ->assertStatus(422)
+        ->assertJsonPath('errors.status.0', $pesan);
+})->with([
+    'absen pulang dengan status' => [['jenis' => 'pulang', 'tanggal' => '2026-10-01'], 'Absen pulang tidak punya status. Kosongkan status.'],
+    'absen masuk tanpa status' => [['status' => null], 'Status wajib diisi untuk absen masuk.'],
+]);
+
+it('menerima jenis masuk yang dikirim', function () {
+    $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiBaru($this->dwi, ['jenis' => 'masuk']))
+        ->assertCreated()
+        ->assertJsonPath('data.jenis', 'masuk')
+        ->assertJsonPath('data.status', 'hadir');
+});
 
 it('membiarkan absen masuk dari Kepala Sekolah saat scheduler menandai tidak hadir', function () {
     $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiBaru($this->dwi))->assertCreated();
@@ -264,4 +297,91 @@ it('mengizinkan absen pulang setelah absen masuk dicatat Kepala Sekolah', functi
     $this->actingAs($this->dwi)->post('/api/v1/absensi', isianAbsen('pulang'))
         ->assertCreated()
         ->assertJsonPath('data.jenis', JenisAbsensi::Pulang->value);
+});
+
+it('mencatat absen pulang tanpa status, waktu, lokasi, dan foto setelah absen masuk hadir', function (Closure $siapkanMasuk) {
+    $siapkanMasuk($this);
+
+    $absensi = $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiPulang($this->kepsek))
+        ->assertCreated()
+        ->assertJsonPath('message', 'Absen pulang dicatat.')
+        ->assertJsonPath('data.user_id', $this->kepsek->id)
+        ->assertJsonPath('data.tanggal', '2026-10-01')
+        ->assertJsonPath('data.jenis', 'pulang')
+        ->assertJsonPath('data.status', null)
+        ->assertJsonPath('data.waktu', null)
+        ->assertJsonPath('data.latitude', null)
+        ->assertJsonPath('data.longitude', null)
+        ->assertJsonPath('data.akurasi_meter', null)
+        ->assertJsonPath('data.jarak_meter', null)
+        ->assertJsonPath('data.ada_foto', false)
+        ->assertJsonPath('data.catatan_koreksi', 'Pulang 12:00 bersama rombongan, lupa absen.')
+        ->assertJsonPath('data.dikoreksi_oleh', ['id' => $this->kepsek->id, 'nama' => 'Hj. Umi Kulsum, S.Pd.'])
+        ->assertJsonPath('data.dikoreksi_at', '2026-10-02T08:00:00+07:00')
+        ->json('data');
+
+    $log = Activity::query()->where('log_name', 'absensi')->where('subject_id', $absensi['id'])->sole();
+    expect($log->event)->toBe('dikoreksi')
+        ->and($log->causer_id)->toBe($this->kepsek->id)
+        ->and($log->description)->toBe('Mencatat absen pulang 2026-10-01')
+        ->and($log->properties->all())->toBe([
+            'user_id' => $this->kepsek->id, 'tanggal' => '2026-10-01', 'jenis' => 'pulang', 'sebelum' => null, 'sesudah' => null,
+            'catatan' => 'Pulang 12:00 bersama rombongan, lupa absen.',
+        ]);
+
+    $this->actingAs($this->kepsek)->getJson('/api/v1/absensi/harian?tanggal=2026-10-01')
+        ->assertJsonPath('data.peserta.1.pulang.id', $absensi['id']);
+    $this->actingAs($this->kepsek)->patchJson("/api/v1/absensi/{$absensi['id']}/koreksi", ['status' => 'hadir', 'catatan' => 'Salah pilih.'])
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+})->with([
+    'absen masuk sendiri' => [fn ($test) => Absensi::factory()->for($test->kepsek)->create(['tanggal' => '2026-10-01', 'waktu' => '2026-10-01 06:45:00'])],
+    'absen masuk dicatat Kepala Sekolah' => [fn ($test) => $test->actingAs($test->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiBaru($test->kepsek, ['tanggal' => '2026-10-01', 'status' => 'terlambat']))->assertCreated()],
+]);
+
+it('menolak mencatat absen pulang yang melanggar aturan, tanpa menyimpan apa pun', function (Closure $isian, string $pesan) {
+    aturAbsensi(['tanggal_libur' => ['2026-09-30']]);
+    $sebelum = Absensi::query()->count();
+
+    $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', $isian($this))
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', $pesan);
+
+    expect(Absensi::query()->count())->toBe($sebelum)
+        ->and(Activity::query()->where('log_name', 'absensi')->count())->toBe(0);
+})->with([
+    'wali murid' => [fn ($test) => isianKoreksiPulang(User::factory()->waliMurid()->create()), 'Akun ini bukan peserta absensi. Absensi hanya untuk guru aktif dan Kepala Sekolah.'],
+    'guru nonaktif' => [fn ($test) => isianKoreksiPulang($test->fitri), 'Akun ini bukan peserta absensi. Absensi hanya untuk guru aktif dan Kepala Sekolah.'],
+    'besok' => [fn ($test) => isianKoreksiPulang($test->nur, ['tanggal' => '2026-10-03']), 'Tanggal 3 Oktober 2026 belum tiba. Absensi hanya bisa dicatat untuk hari ini atau sebelumnya.'],
+    'sebelum tanggal mulai' => [fn ($test) => isianKoreksiPulang($test->nur, ['tanggal' => '2026-08-31']), 'Absensi baru berlaku mulai 1 September 2026.'],
+    'bukan hari kerja' => [fn ($test) => isianKoreksiPulang($test->nur, ['tanggal' => '2026-09-27']), 'Minggu, 27 September 2026 bukan hari kerja, jadi tidak ada absensi.'],
+    'tanggal libur' => [fn ($test) => isianKoreksiPulang($test->nur, ['tanggal' => '2026-09-30']), '30 September 2026 termasuk tanggal libur, jadi tidak ada absensi.'],
+    'belum ada absen masuk' => [fn ($test) => isianKoreksiPulang($test->kepsek), 'Absen masuk Hj. Umi Kulsum, S.Pd. tanggal 1 Oktober 2026 belum tercatat. Catat absen masuknya dulu sebelum absen pulang.'],
+    'absen masuk tidak hadir' => [fn ($test) => isianKoreksiPulang($test->dwi), 'Absen masuk Dwi Prasetyo tanggal 1 Oktober 2026 tercatat tidak hadir. Koreksi absen masuknya menjadi hadir atau terlambat dulu sebelum absen pulang.'],
+    'sudah absen pulang' => [fn ($test) => isianKoreksiPulang($test->nur), 'Absen pulang Nur Aini, S.Pd. tanggal 1 Oktober 2026 sudah tercatat.'],
+]);
+
+it('tidak lagi menghitung tidak absen pulang setelah absen pulang dicatat Kepala Sekolah', function () {
+    Absensi::factory()->for($this->kepsek)->create(['tanggal' => '2026-10-01', 'waktu' => '2026-10-01 06:45:00']);
+    $tidakAbsenPulang = fn (): int => collect($this->actingAs($this->kepsek)->getJson('/api/v1/absensi/rekap?bulan=2026-10')->json('data'))
+        ->keyBy('user.id')[$this->kepsek->id]['tidak_absen_pulang'];
+    expect($tidakAbsenPulang())->toBe(1);
+
+    $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiPulang($this->kepsek))->assertCreated();
+
+    expect($tidakAbsenPulang())->toBe(0);
+});
+
+it('menjelaskan absen pulang yang sudah dicatat Kepala Sekolah saat peserta mencoba absen pulang sendiri', function () {
+    $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiBaru($this->dwi))->assertCreated();
+    $this->actingAs($this->kepsek)->postJson('/api/v1/absensi/koreksi', isianKoreksiPulang($this->dwi, ['tanggal' => '2026-10-02']))->assertCreated();
+    Carbon::setTestNow('2026-10-02 12:00:00');
+
+    $this->actingAs($this->dwi)->post('/api/v1/absensi', isianAbsen('pulang'))
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE')
+        ->assertJsonPath('message', 'Absen pulang hari ini sudah dicatat Kepala Sekolah.');
+
+    expect(Absensi::query()->where('user_id', $this->dwi->id)->whereDate('tanggal', '2026-10-02')->where('jenis', 'pulang')->count())->toBe(1);
 });

@@ -152,16 +152,22 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Mencatat absen masuk untuk peserta yang belum punya absen masuk pada tanggal itu, misalnya guru lupa absen
-     * padahal masuk. Catatan wajib; waktu, lokasi, dan foto kosong. Ditolak 422 `BUSINESS_RULE` kalau akun bukan
-     * peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi, bukan hari kerja, tanggal libur,
-     * atau absen masuk tanggal itu sudah ada (koreksi lewat `PATCH /absensi/{id}/koreksi`).
+     * Mencatat absen masuk atau pulang (`jenis`, bawaan `masuk`) untuk peserta yang belum punya absen jenis itu pada
+     * tanggal tersebut, misalnya guru lupa absen padahal masuk atau lupa absen pulang. Catatan wajib; `status` wajib
+     * untuk absen masuk dan tidak boleh dikirim untuk absen pulang; waktu, lokasi, dan foto kosong. Ditolak 422
+     * `BUSINESS_RULE` kalau akun bukan peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi,
+     * bukan hari kerja, tanggal libur, absen jenis itu sudah ada (absen masuk dikoreksi lewat
+     * `PATCH /absensi/{id}/koreksi`), atau untuk absen pulang, belum ada absen masuk hadir atau terlambat.
      */
     public function koreksiBaru(KoreksiAbsensiBaruRequest $request, #[CurrentUser] User $user): JsonResponse
     {
-        $absensi = $this->absensiService->koreksiBaru($request->integer('user_id'), $request->tanggal(), $request->status(), $request->catatan(), $user);
+        $absensi = $this->absensiService->koreksiBaru($request->integer('user_id'), $request->tanggal(), $request->jenis(), $request->status(), $request->catatan(), $user);
 
-        return ApiResponse::success(new AbsensiResource($absensi), "Absen masuk dicatat dengan status {$request->status()->label()}.", status: 201);
+        return ApiResponse::success(
+            new AbsensiResource($absensi),
+            "Absen {$absensi->jenis->value} dicatat".($absensi->status === null ? '.' : " dengan status {$absensi->status->label()}."),
+            status: 201,
+        );
     }
 
     /**
