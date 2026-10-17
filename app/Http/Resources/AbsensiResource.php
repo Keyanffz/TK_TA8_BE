@@ -31,6 +31,8 @@ class AbsensiResource extends JsonResource
             'akurasi_meter' => $this->akurasi_meter,
             'jarak_meter' => $this->jarak_meter,
             'ada_foto' => $this->foto_path !== null,
+            'keterangan' => $this->keterangan,
+            'pulang_awal' => $this->pulang_awal,
             'catatan_koreksi' => $this->catatan_koreksi,
             /** @var array{id: int, nama: string}|null */
             'dikoreksi_oleh' => $this->pengoreksi === null ? null : ['id' => $this->pengoreksi->id, 'nama' => $this->pengoreksi->name],

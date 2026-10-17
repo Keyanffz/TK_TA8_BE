@@ -103,6 +103,11 @@ final readonly class AturanAbsensi
         return $jam >= $jendela['buka'] && $jam <= $jendela['tutup'];
     }
 
+    public function belumBuka(JenisAbsensi $jenis, CarbonInterface $waktu): bool
+    {
+        return $waktu->format('H:i') < $this->jendela($jenis)['buka'];
+    }
+
     public function terlambat(CarbonInterface $waktu): bool
     {
         return $waktu->format('H:i') > $this->jamMasuk['batas_terlambat'];

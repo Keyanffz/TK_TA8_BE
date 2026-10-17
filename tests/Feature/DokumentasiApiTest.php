@@ -137,7 +137,9 @@ it('mendokumentasikan absensi: unggahan multipart, batas role, dan status yang b
     $skema = $dokumen['components']['schemas'];
 
     expect(array_keys($absen['requestBody']['content']))->toBe(['multipart/form-data'])
-        ->and($skema['AbsenRequest']['required'])->toBe(['jenis', 'latitude', 'longitude', 'akurasi', 'foto'])
+        ->and($skema['AbsenRequest']['required'])->toBe(['jenis', 'foto'])
+        ->and($skema['AbsenRequest']['properties']['status']['enum'])->toBe(['izin', 'sakit', null])
+        ->and($skema['AbsensiResource']['required'])->toContain('keterangan', 'pulang_awal')
         ->and($skema['AbsenRequest']['properties']['foto']['format'])->toBe('binary')
         ->and(kodeErrorTerdokumentasi($absen, 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
         ->and(kodeErrorTerdokumentasi($absen, 429))->toBe(['TOO_MANY_REQUESTS'])
@@ -145,15 +147,16 @@ it('mendokumentasikan absensi: unggahan multipart, batas role, dan status yang b
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/absensi/{id}/koreksi']['patch'], 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/absensi/{id}/foto']['get'], 404))->toBe(['NOT_FOUND'])
         ->and($skema['JenisAbsensi']['enum'])->toBe(['masuk', 'pulang'])
-        ->and($skema['StatusAbsensi']['enum'])->toBe(['hadir', 'terlambat', 'tidak_hadir'])
+        ->and($skema['StatusAbsensi']['enum'])->toBe(['hadir', 'terlambat', 'tidak_hadir', 'izin', 'sakit'])
         ->and($skema['AbsensiResource']['properties']['status']['anyOf'])->toContain(['type' => 'null'])
         ->and($skema['AbsensiResource']['properties']['id']['type'])->toBe('integer')
-        ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan']);
+        ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan', 'jumlah_bulan'])
+        ->and(array_column($dokumen['paths']['/absensi']['get']['parameters'], 'name'))->toBe(['bulan', 'jumlah_bulan', 'user_id']);
 
     $koreksiBaru = $dokumen['paths']['/absensi/koreksi']['post'];
     expect($skema['KoreksiAbsensiBaruRequest']['required'])->toBe(['user_id', 'tanggal', 'catatan'])
         ->and($skema['KoreksiAbsensiBaruRequest']['properties']['jenis']['$ref'])->toBe('#/components/schemas/JenisAbsensi')
-        ->and($skema['KoreksiAbsensiBaruRequest']['properties']['status']['enum'])->toBe(['hadir', 'terlambat'])
+        ->and($skema['KoreksiAbsensiBaruRequest']['properties']['status']['enum'])->toBe(['hadir', 'terlambat', 'izin', 'sakit'])
         ->and($koreksiBaru['responses'])->toHaveKey(201)
         ->and(kodeErrorTerdokumentasi($koreksiBaru, 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
         ->and(kodeErrorTerdokumentasi($koreksiBaru, 403))->toContain('FORBIDDEN')

@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Lokasi sekolah fiktif di Semarang dan absensi guru aktif serta Kepala Sekolah untuk hari kerja dalam 14 hari
- * terakhir (tanpa hari ini, supaya absen bisa langsung dicoba). Foto contoh hanya untuk tiga hari terakhir.
+ * terakhir (tanpa hari ini, supaya absen bisa langsung dicoba), termasuk izin dan sakit. Foto contoh hanya untuk
+ * tiga hari terakhir.
  */
 class AbsensiDemoSeeder extends Seeder
 {
@@ -43,13 +44,13 @@ class AbsensiDemoSeeder extends Seeder
             }
 
             foreach ($peserta as $urutan => $user) {
-                $this->buatSatuHari($user, $hari, ($urutan + $mundur) % 7, $mundur <= self::HARI_BERFOTO);
+                $this->buatSatuHari($user, $hari, ($urutan + $mundur) % 9, $mundur <= self::HARI_BERFOTO);
             }
         }
     }
 
     /**
-     * Pola 0–4 hadir, 5 terlambat dan lupa absen pulang, 6 tidak hadir.
+     * Pola 0–4 hadir (1 pulang lebih awal), 5 terlambat dan lupa absen pulang, 6 tidak hadir, 7 izin, 8 sakit.
      */
     private function buatSatuHari(User $user, Carbon $hari, int $pola, bool $berfoto): void
     {
@@ -58,16 +59,31 @@ class AbsensiDemoSeeder extends Seeder
 
             return;
         }
+        if ($pola >= 7) {
+            $izin = $pola === 7;
+            Absensi::query()->create([
+                'user_id' => $user->id,
+                'tanggal' => $hari->toDateString(),
+                'jenis' => JenisAbsensi::Masuk,
+                'status' => $izin ? StatusAbsensi::Izin : StatusAbsensi::Sakit,
+                'waktu' => $hari->copy()->setTime(6, 40),
+                'foto_path' => $berfoto ? GambarContoh::simpan(MediaService::DISK_PRIVAT, AbsensiService::FOLDER_FOTO, 480, 640) : null,
+                'keterangan' => $izin ? 'Mengantar ibu kontrol ke RSUP Kariadi.' : 'Demam sejak semalam, sudah periksa ke puskesmas.',
+            ]);
+
+            return;
+        }
 
         $terlambat = $pola === 5;
         $this->buat($user, $hari->copy()->setTime(7, $terlambat ? 32 : 2 + $pola), JenisAbsensi::Masuk, $terlambat ? StatusAbsensi::Terlambat : StatusAbsensi::Hadir, $berfoto);
 
         if (! $terlambat) {
-            $this->buat($user, $hari->copy()->setTime(12, 10 + $pola), JenisAbsensi::Pulang, null, $berfoto);
+            $pulangAwal = $pola === 1;
+            $this->buat($user, $hari->copy()->setTime($pulangAwal ? 10 : 12, 10 + $pola), JenisAbsensi::Pulang, null, $berfoto, $pulangAwal);
         }
     }
 
-    private function buat(User $user, Carbon $waktu, JenisAbsensi $jenis, ?StatusAbsensi $status, bool $berfoto): void
+    private function buat(User $user, Carbon $waktu, JenisAbsensi $jenis, ?StatusAbsensi $status, bool $berfoto, bool $pulangAwal = false): void
     {
         Absensi::query()->create([
             'user_id' => $user->id,
@@ -80,6 +96,8 @@ class AbsensiDemoSeeder extends Seeder
             'akurasi_meter' => fake()->numberBetween(6, 40),
             'jarak_meter' => fake()->numberBetween(5, 60),
             'foto_path' => $berfoto ? GambarContoh::simpan(MediaService::DISK_PRIVAT, AbsensiService::FOLDER_FOTO, 480, 640) : null,
+            'keterangan' => $pulangAwal ? 'Menjemput anak yang demam dari sekolahnya.' : null,
+            'pulang_awal' => $pulangAwal,
         ]);
     }
 }
