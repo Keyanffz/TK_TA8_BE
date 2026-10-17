@@ -10,3 +10,4 @@ Schedule::command('tagihan:pengingat')->dailyAt('07:00');
 // sudah lewat di hari kerja; menjalankannya berulang tidak membuat baris ganda.
 Schedule::command('absensi:tandai-tidak-hadir')->everyTenMinutes();
 Schedule::command('absensi:hapus-foto-lama')->dailyAt('01:00');
+Schedule::command('pengaturan:bersihkan-gambar')->dailyAt('02:00');

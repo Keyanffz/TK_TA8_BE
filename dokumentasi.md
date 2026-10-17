@@ -28,6 +28,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Izin dan sakit, pulang lebih awal, notifikasi absensi, rekap 1–3 bulan (branch `be/absensi-lanjutan`) | Selesai, di-merge ke `main` |
 | Perapian Bagian C untuk revisi absensi (branch `be/rapikan-slop`) | Selesai, di-merge ke `main` |
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, menunggu review |
+| Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -65,11 +66,21 @@ K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga m
 
 Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum). Akun wali yang masih memakai password awal (`wajib_ganti_password`) hanya bisa memakai `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`; endpoint login lain membalas 403 `PASSWORD_WAJIB_DIGANTI`.
 
-Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `absensi:tandai-tidak-hadir` (tiap 10 menit; hari ini setelah jam masuk tutup, ditambah susulan hari kerja 7 hari ke belakang), `absensi:hapus-foto-lama` (harian 01:00). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
+Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `absensi:tandai-tidak-hadir` (tiap 10 menit; hari ini setelah jam masuk tutup, ditambah susulan hari kerja 7 hari ke belakang), `absensi:hapus-foto-lama` (harian 01:00), `pengaturan:bersihkan-gambar` (harian 02:00; gambar `pengaturan/` yang tidak dipakai dan lebih dari sehari). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
 
 ## Keputusan menunggu review
 
 Keputusan yang diambil saat pengerjaan dan belum dinyatakan disetujui pemilik repo, kecuali yang disebut di kalimat pembuka bloknya. Sebagian blok menyertai perubahan kontrak yang diminta pemilik repo; kontraknya ada di Bagian A dan B. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+### Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`)
+
+Diminta pemilik repo (rencana F7-3 di dokumentasi FE). Yang diputuskan saat pengerjaan:
+
+1. `pengaturan:bersihkan-gambar` hanya memeriksa file langsung di folder `pengaturan/` disk public (tanpa subfolder), karena `POST /pengaturan/upload` selalu menyimpan ke sana dengan nama UUID. Folder lain di disk public (galeri, avatar, foto guru) tidak disentuh.
+2. "Dipakai" = path yang ada di `profil.logo`, `landing.hero.gambar`, atau `landing.fasilitas[].gambar` saat command berjalan, sama dengan daftar yang dipakai `PUT /pengaturan` untuk menghapus gambar yang diganti.
+3. Umur diukur dari waktu ubah file (`lastModified`), batasnya 24 jam (`PengaturanService::UMUR_GAMBAR_TAK_TERPAKAI_JAM`). File yang tepat 24 jam belum dihapus.
+4. Jumlah dan path file yang dihapus ditulis ke log aplikasi (`storage/logs/laravel.log`, level info) setiap kali command berjalan tanpa `--dry-run`, termasuk kalau jumlahnya 0, supaya terlihat bahwa jadwalnya berjalan. Tidak ditulis ke log aktivitas karena bukan tindakan pengguna.
+5. Jadwal harian 02:00 WIB, sejam setelah `absensi:hapus-foto-lama`.
 
 Login Google staff dan guru tanpa pendaftaran mandiri (branch `be/login-google-staff`). Perubahan kontrak diminta pemilik repo dan sudah ditulis ke Bagian A dan B; yang di bawah ini diputuskan saat pengerjaan:
 
@@ -416,7 +427,7 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - `php artisan dev` menjalankan server di port 8000, `queue:listen --tries=1`, dan `pail` (butuh `pcntl`). Tanpa `pcntl`, jalankan `php artisan serve` dan `php artisan queue:listen --tries=1` di dua terminal.
 - Semua notifikasi, baik database maupun email, lewat queue `database`. Tanpa worker, job menunggu di tabel `jobs`: notifikasi belum masuk tabel `notifications` dan email belum ditulis. Untuk memproses antrean sekali lalu berhenti: `php artisan queue:work --stop-when-empty`. `queue:work` yang dibiarkan jalan harus di-restart setelah kode berubah; `queue:listen` tidak.
 - Dengan `MAIL_MAILER=log`, email ditulis ke `storage/logs/laravel.log`, termasuk tautan reset password.
-- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `tagihan:pengingat` 07:00, `absensi:tandai-tidak-hadir` tiap 10 menit, `absensi:hapus-foto-lama` 01:00 (WIB). Tanpa scheduler yang berjalan, peserta yang tidak absen tidak ditandai tidak hadir; setelah berjalan lagi, hari kerja yang terlewat diisi susulan sampai 7 hari ke belakang. Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
+- Jadwal scheduler ada di `routes/console.php` (`php artisan schedule:list`): `tagihan:generate` tanggal 1 pukul 00:10, `tagihan:tandai-terlambat` 00:30, `tagihan:pengingat` 07:00, `absensi:tandai-tidak-hadir` tiap 10 menit, `absensi:hapus-foto-lama` 01:00, `pengaturan:bersihkan-gambar` 02:00 (WIB). Tanpa scheduler yang berjalan, peserta yang tidak absen tidak ditandai tidak hadir; setelah berjalan lagi, hari kerja yang terlewat diisi susulan sampai 7 hari ke belakang. Di lokal jalankan `php artisan schedule:work` di terminal terpisah; di server produksi memakai cron (lihat "Instalasi dan menjalankan"). Semua command bisa dicoba tanpa mengubah data dengan `--dry-run`.
 - Notifikasi tagihan dan pembayaran juga lewat queue: tanpa worker, notifikasi hasil generate masih di tabel `jobs`.
 - Mencoba satu jadwal tanpa menunggu jamnya: `php artisan schedule:test --name=tagihan:generate` (atau nama command lain). Command yang dijalankan scheduler memakai jam sistem sebenarnya.
 
@@ -784,6 +795,19 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`)
+
+Diminta pemilik repo. Bagian B (B2, B5, B6.2) `PROMPT_BE_TK.md` diperbarui; Bagian A dan kontrak A7 tidak berubah. Keputusan detail ada di "Keputusan menunggu review".
+
+Baru:
+
+- `app/Console/Commands/BersihkanGambarPengaturanCommand.php` (`pengaturan:bersihkan-gambar`, `--dry-run`).
+- Test `tests/Feature/Pengaturan/BersihkanGambarPengaturanTest.php`: gambar yang tidak dipakai dan lebih dari sehari dihapus dan tercatat di log, gambar logo, hero, dan fasilitas tetap, unggahan yang belum sehari dan file di luar folder tetap, unggahan itu terhapus setelah lewat sehari, `--dry-run` hanya menghitung, jadwal 02:00.
+
+Diubah:
+
+- `app/Services/PengaturanService.php` (`bersihkanGambar()`, konstanta umur), `routes/console.php` (jadwal harian 02:00).
 
 ### Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`)
 
