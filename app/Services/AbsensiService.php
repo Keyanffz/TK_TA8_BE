@@ -7,6 +7,8 @@ use App\Enums\StatusAbsensi;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Absensi;
 use App\Models\User;
+use App\Notifications\AbsensiDikoreksiNotification;
+use App\Notifications\AbsensiTercatatNotification;
 use App\Support\AturanAbsensi;
 use App\Support\Jarak;
 use Illuminate\Database\Eloquent\Builder;
@@ -80,7 +82,7 @@ class AbsensiService
         $path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
         try {
-            return Absensi::query()->create([
+            $absensi = Absensi::query()->create([
                 'user_id' => $user->id,
                 'tanggal' => $sekarang->toDateString(),
                 'jenis' => $jenis,
@@ -107,6 +109,10 @@ class AbsensiService
                 ? new BusinessRuleException("Anda sudah absen {$jenis->value} hari ini.")
                 : $e;
         }
+
+        $user->notify(new AbsensiTercatatNotification($absensi));
+
+        return $absensi;
     }
 
     /**
@@ -282,6 +288,10 @@ class AbsensiService
         }
     }
 
+    /**
+     * Log aktivitas untuk setiap koreksi, dan notifikasi ke peserta kecuali Kepala Sekolah mengubah absensinya
+     * sendiri. Baris yang baru dibuat (`POST /absensi/koreksi`) diberi tahu sebagai "dicatat", bukan "dikoreksi".
+     */
     private function catatKoreksi(Absensi $absensi, ?StatusAbsensi $sebelum, User $pelaku): void
     {
         $tanggal = $absensi->tanggal->toDateString();
@@ -294,6 +304,10 @@ class AbsensiService
             ->log($absensi->jenis === JenisAbsensi::Pulang
                 ? "Mencatat absen pulang {$tanggal}"
                 : "Mengoreksi absensi {$tanggal} menjadi {$absensi->status?->label()}");
+
+        if ($absensi->user_id !== $pelaku->id) {
+            $absensi->loadMissing('user')->user->notify(new AbsensiDikoreksiNotification($absensi, $absensi->wasRecentlyCreated));
+        }
     }
 
     /**
