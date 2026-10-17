@@ -116,8 +116,9 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Riwayat absensi satu peserta dalam satu bulan, terbaru dulu, tanpa paginasi. Guru hanya melihat
-     * riwayatnya sendiri; Kepala Sekolah bisa membuka riwayat peserta lain lewat `user_id`.
+     * Riwayat absensi satu peserta dalam 1–3 bulan (`jumlah_bulan` bulan yang berakhir di `bulan`), terbaru dulu,
+     * tanpa paginasi. Guru hanya melihat riwayatnya sendiri; Kepala Sekolah bisa membuka riwayat peserta lain lewat
+     * `user_id`.
      */
     public function index(RiwayatAbsensiRequest $request, #[CurrentUser] User $user): JsonResponse
     {
@@ -127,11 +128,11 @@ class AbsensiController extends Controller
             abort(403);
         }
 
-        $bulan = $request->bulan();
+        [$awal, $akhir] = $request->rentang();
         $absensi = Absensi::query()->with('pengoreksi')
             ->where('user_id', $userId)
-            ->whereDate('tanggal', '>=', $bulan->toDateString())
-            ->whereDate('tanggal', '<=', $bulan->copy()->endOfMonth()->toDateString())
+            ->whereDate('tanggal', '>=', $awal->toDateString())
+            ->whereDate('tanggal', '<=', $akhir->toDateString())
             ->orderByDesc('tanggal')
             ->orderBy('jenis')
             ->get();
@@ -224,7 +225,8 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Rekap satu bulan per peserta: jumlah hadir, terlambat, izin, sakit, tidak hadir, dan hari yang tidak absen pulang.
+     * Rekap per peserta untuk 1–3 bulan (`jumlah_bulan` bulan yang berakhir di `bulan`): jumlah hadir, terlambat,
+     * izin, sakit, tidak hadir, dan hari yang tidak absen pulang.
      *
      * @response array{
      *     success: true,
@@ -238,20 +240,22 @@ class AbsensiController extends Controller
      */
     public function rekap(BulanAbsensiRequest $request, RekapAbsensiService $rekap): JsonResponse
     {
-        return ApiResponse::success($rekap->rekap($request->bulan()));
+        return ApiResponse::success($rekap->rekap(...$request->rentang()));
     }
 
     /**
-     * File CSV berisi rekap yang sama dengan `GET /absensi/rekap`.
+     * File CSV berisi rekap yang sama dengan `GET /absensi/rekap`. Nama file menyebut bulannya, misalnya
+     * `rekap-absensi-2026-10.csv` atau `rekap-absensi-2026-08-sampai-2026-10.csv`.
      */
     #[Response(200, 'Rekap absensi (.csv)', mediaType: 'text/csv', type: 'string', format: 'binary')]
     public function export(BulanAbsensiRequest $request, RekapAbsensiService $rekap): HttpResponse
     {
-        $bulan = $request->bulan();
+        [$awal, $akhir] = $request->rentang();
+        $rentang = $awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}";
 
-        return response($rekap->csv($bulan), 200, [
+        return response($rekap->csv($awal, $akhir), 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"rekap-absensi-{$bulan->format('Y-m')}.csv\"",
+            'Content-Disposition' => "attachment; filename=\"rekap-absensi-{$rentang}.csv\"",
         ]);
     }
 }

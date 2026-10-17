@@ -150,7 +150,8 @@ it('mendokumentasikan absensi: unggahan multipart, batas role, dan status yang b
         ->and($skema['StatusAbsensi']['enum'])->toBe(['hadir', 'terlambat', 'tidak_hadir', 'izin', 'sakit'])
         ->and($skema['AbsensiResource']['properties']['status']['anyOf'])->toContain(['type' => 'null'])
         ->and($skema['AbsensiResource']['properties']['id']['type'])->toBe('integer')
-        ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan']);
+        ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan', 'jumlah_bulan'])
+        ->and(array_column($dokumen['paths']['/absensi']['get']['parameters'], 'name'))->toBe(['bulan', 'jumlah_bulan', 'user_id']);
 
     $koreksiBaru = $dokumen['paths']['/absensi/koreksi']['post'];
     expect($skema['KoreksiAbsensiBaruRequest']['required'])->toBe(['user_id', 'tanggal', 'catatan'])

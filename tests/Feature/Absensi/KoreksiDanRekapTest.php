@@ -215,3 +215,61 @@ it('menolak bulan yang formatnya salah', function () {
         ->assertStatus(422)
         ->assertJsonValidationErrors(['bulan']);
 });
+
+it('merekap 1 sampai 3 bulan yang berakhir di bulan yang dipilih', function (int $jumlahBulan, array $nur) {
+    Absensi::factory()->for($this->nur)->create(['tanggal' => '2026-08-03']);
+    Absensi::factory()->for($this->nur)->pulang()->create(['tanggal' => '2026-08-03']);
+    Absensi::factory()->for($this->nur)->create(['tanggal' => '2026-07-31']);
+    Absensi::factory()->for($this->nur)->create(['tanggal' => '2026-11-02']);
+
+    $rekap = collect($this->actingAs($this->kepsek)->getJson("/api/v1/absensi/rekap?bulan=2026-10&jumlah_bulan={$jumlahBulan}")->assertOk()->json('data'))->keyBy('user.id');
+
+    expect($rekap[$this->nur->id])->toMatchArray($nur);
+})->with([
+    'satu bulan' => [1, ['hadir' => 1, 'terlambat' => 1, 'tidak_hadir' => 0]],
+    'dua bulan' => [2, ['hadir' => 1, 'terlambat' => 1, 'tidak_hadir' => 1]],
+    'tiga bulan' => [3, ['hadir' => 2, 'terlambat' => 1, 'tidak_hadir' => 1, 'tidak_absen_pulang' => 0]],
+]);
+
+it('ikut merekap akun nonaktif yang punya absensi di salah satu bulan rentang', function () {
+    $fitri = buatGuru(StatusAkun::Nonaktif)->user;
+    Absensi::factory()->for($fitri)->create(['tanggal' => '2026-08-20']);
+
+    $peserta = fn (int $jumlah) => collect($this->actingAs($this->kepsek)->getJson("/api/v1/absensi/rekap?bulan=2026-10&jumlah_bulan={$jumlah}")->json('data'))->pluck('user.id');
+
+    expect($peserta(3))->toContain($fitri->id)
+        ->and($peserta(2))->not->toContain($fitri->id);
+});
+
+it('menamai file ekspor menurut rentang bulannya', function (string $query, string $nama) {
+    $this->actingAs($this->kepsek)->get("/api/v1/absensi/rekap/export?{$query}")
+        ->assertOk()
+        ->assertHeader('Content-Disposition', "attachment; filename=\"{$nama}\"");
+})->with([
+    'tiga bulan' => ['bulan=2026-10&jumlah_bulan=3', 'rekap-absensi-2026-08-sampai-2026-10.csv'],
+    'melewati tahun' => ['bulan=2026-01&jumlah_bulan=2', 'rekap-absensi-2025-12-sampai-2026-01.csv'],
+    'satu bulan' => ['bulan=2026-10&jumlah_bulan=1', 'rekap-absensi-2026-10.csv'],
+]);
+
+it('menampilkan riwayat satu peserta untuk beberapa bulan sekaligus', function () {
+    Absensi::factory()->for($this->nur)->create(['tanggal' => '2026-08-03']);
+
+    $this->actingAs($this->kepsek)->getJson("/api/v1/absensi?bulan=2026-10&jumlah_bulan=2&user_id={$this->nur->id}")
+        ->assertOk()
+        ->assertJsonCount(4, 'data')
+        ->assertJsonPath('data.0.tanggal', '2026-10-02')
+        ->assertJsonPath('data.3.tanggal', '2026-09-30');
+    $this->actingAs($this->nur)->getJson('/api/v1/absensi?bulan=2026-10&jumlah_bulan=3')->assertJsonCount(5, 'data');
+});
+
+it('menolak jumlah bulan di luar 1 sampai 3', function (string $url, string $jumlah) {
+    $this->actingAs($this->kepsek)->getJson("{$url}?bulan=2026-10&jumlah_bulan={$jumlah}")
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'VALIDATION_ERROR')
+        ->assertJsonValidationErrors(['jumlah_bulan']);
+})->with([
+    'rekap nol' => ['/api/v1/absensi/rekap', '0'],
+    'rekap empat' => ['/api/v1/absensi/rekap', '4'],
+    'ekspor empat' => ['/api/v1/absensi/rekap/export', '4'],
+    'riwayat bukan angka' => ['/api/v1/absensi', 'dua'],
+]);
