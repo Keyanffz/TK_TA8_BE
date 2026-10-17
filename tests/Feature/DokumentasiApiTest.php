@@ -151,7 +151,8 @@ it('mendokumentasikan absensi: unggahan multipart, batas role, dan status yang b
         ->and(array_column($dokumen['paths']['/absensi/rekap']['get']['parameters'], 'name'))->toBe(['bulan']);
 
     $koreksiBaru = $dokumen['paths']['/absensi/koreksi']['post'];
-    expect($skema['KoreksiAbsensiBaruRequest']['required'])->toBe(['user_id', 'tanggal', 'status', 'catatan'])
+    expect($skema['KoreksiAbsensiBaruRequest']['required'])->toBe(['user_id', 'tanggal', 'catatan'])
+        ->and($skema['KoreksiAbsensiBaruRequest']['properties']['jenis']['$ref'])->toBe('#/components/schemas/JenisAbsensi')
         ->and($skema['KoreksiAbsensiBaruRequest']['properties']['status']['enum'])->toBe(['hadir', 'terlambat'])
         ->and($koreksiBaru['responses'])->toHaveKey(201)
         ->and(kodeErrorTerdokumentasi($koreksiBaru, 422))->toEqualCanonicalizing(['VALIDATION_ERROR', 'BUSINESS_RULE'])
