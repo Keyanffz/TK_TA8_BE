@@ -79,37 +79,24 @@ class AbsensiService
 
         $jarak = $posisi !== null && $lokasi !== null ? $this->jarakDalamRadius($aturan, $lokasi, $posisi) : null;
 
-        $path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
-
-        try {
-            $absensi = Absensi::query()->create([
-                'user_id' => $user->id,
-                'tanggal' => $sekarang->toDateString(),
-                'jenis' => $jenis,
-                'status' => match (true) {
-                    $jenis === JenisAbsensi::Pulang => null,
-                    $berhalangan !== null => $berhalangan,
-                    $aturan->terlambat($sekarang) => StatusAbsensi::Terlambat,
-                    default => StatusAbsensi::Hadir,
-                },
-                'waktu' => $sekarang,
-                'latitude' => $posisi['latitude'] ?? null,
-                'longitude' => $posisi['longitude'] ?? null,
-                'akurasi_meter' => $posisi === null ? null : (int) ceil($posisi['akurasi']),
-                'jarak_meter' => $jarak === null ? null : (int) round($jarak),
-                'foto_path' => $path,
-                'keterangan' => $keterangan,
-                'pulang_awal' => $pulangAwal,
-            ])->load('pengoreksi');
-        } catch (Throwable $e) {
-            $this->media->hapus($path, MediaService::DISK_PRIVAT);
-
-            // Dua permintaan bersamaan sama-sama lolos pengecekan; unique (user, tanggal, jenis) menolak yang kedua.
-            throw $e instanceof UniqueConstraintViolationException
-                ? new BusinessRuleException("Anda sudah absen {$jenis->value} hari ini.")
-                : $e;
-        }
-
+        $absensi = $this->simpanDenganFoto($jenis, [
+            'user_id' => $user->id,
+            'tanggal' => $sekarang->toDateString(),
+            'jenis' => $jenis,
+            'status' => match (true) {
+                $jenis === JenisAbsensi::Pulang => null,
+                $berhalangan !== null => $berhalangan,
+                $aturan->terlambat($sekarang) => StatusAbsensi::Terlambat,
+                default => StatusAbsensi::Hadir,
+            },
+            'waktu' => $sekarang,
+            'latitude' => $posisi['latitude'] ?? null,
+            'longitude' => $posisi['longitude'] ?? null,
+            'akurasi_meter' => $posisi === null ? null : (int) ceil($posisi['akurasi']),
+            'jarak_meter' => $jarak === null ? null : (int) round($jarak),
+            'keterangan' => $keterangan,
+            'pulang_awal' => $pulangAwal,
+        ], $foto);
         $user->notify(new AbsensiTercatatNotification($absensi));
 
         return $absensi;
@@ -263,6 +250,30 @@ class AbsensiService
         });
 
         return $jumlah;
+    }
+
+    /**
+     * Foto disimpan dulu, lalu barisnya. Kalau baris gagal disimpan, foto dihapus lagi supaya tidak ada file tanpa
+     * absensi.
+     *
+     * @param  array<string, mixed>  $isi
+     *
+     * @throws BusinessRuleException
+     */
+    private function simpanDenganFoto(JenisAbsensi $jenis, array $isi, UploadedFile $foto): Absensi
+    {
+        $path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
+
+        try {
+            return Absensi::query()->create([...$isi, 'foto_path' => $path])->load('pengoreksi');
+        } catch (Throwable $e) {
+            $this->media->hapus($path, MediaService::DISK_PRIVAT);
+
+            // Dua permintaan bersamaan sama-sama lolos pengecekan; unique (user, tanggal, jenis) menolak yang kedua.
+            throw $e instanceof UniqueConstraintViolationException
+                ? new BusinessRuleException("Anda sudah absen {$jenis->value} hari ini.")
+                : $e;
+        }
     }
 
     /**
