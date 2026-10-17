@@ -53,7 +53,7 @@ it('menolak pulang lebih awal yang melanggar aturan absen pulang', function (Clo
     expect(Absensi::query()->where('jenis', 'pulang')->where('pulang_awal', true)->count())->toBe(0);
 })->with([
     'belum absen masuk' => [fn ($test) => $test->masuk->delete(), [], 'Absen pulang hanya bisa setelah absen masuk, dan hari ini Anda belum absen masuk.'],
-    'absen masuk tidak hadir' => [fn ($test) => $test->masuk->update(['status' => StatusAbsensi::TidakHadir, 'waktu' => null]), [], 'Absen pulang hanya bisa setelah absen masuk, dan hari ini Anda belum absen masuk.'],
+    'absen masuk tidak hadir' => [fn ($test) => $test->masuk->update(['status' => StatusAbsensi::TidakHadir, 'waktu' => null]), [], 'Anda tercatat tidak hadir hari ini. Hubungi Kepala Sekolah kalau perlu koreksi.'],
     'sedang izin' => [fn ($test) => $test->masuk->update(['status' => StatusAbsensi::Izin]), [], 'Hari ini Anda tercatat izin, jadi tidak perlu absen pulang.'],
     'sudah absen pulang' => [fn ($test) => Absensi::factory()->for($test->guru)->pulang()->create(['tanggal' => '2026-10-01', 'waktu' => '2026-10-01 09:30:00']), [], 'Anda sudah absen pulang hari ini pukul 09:30.'],
     'di luar radius' => [fn () => null, ['latitude' => LATITUDE_SEKOLAH + 0.002], 'Anda berada 223 m dari sekolah, di luar radius absen 100 m. Absen dari area sekolah.'],

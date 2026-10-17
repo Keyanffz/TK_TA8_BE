@@ -422,6 +422,9 @@ class AbsensiService
         if ($jenis === JenisAbsensi::Pulang && $masuk?->status?->berhalangan()) {
             throw new BusinessRuleException('Hari ini Anda tercatat '.Str::lower($masuk->namaAbsen()).', jadi tidak perlu absen pulang.');
         }
+        if ($jenis === JenisAbsensi::Pulang && $masuk?->status === StatusAbsensi::TidakHadir) {
+            throw new BusinessRuleException('Anda tercatat tidak hadir hari ini. Hubungi Kepala Sekolah kalau perlu koreksi.');
+        }
         if ($jenis === JenisAbsensi::Pulang && $masuk?->status?->perluAbsenPulang() !== true) {
             throw new BusinessRuleException('Absen pulang hanya bisa setelah absen masuk, dan hari ini Anda belum absen masuk.');
         }
