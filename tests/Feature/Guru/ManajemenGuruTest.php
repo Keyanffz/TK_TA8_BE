@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Enums\StatusAkun;
 use App\Models\Guru;
 use App\Models\User;
@@ -10,6 +12,17 @@ use Spatie\Activitylog\Models\Activity;
 beforeEach(function () {
     $this->kepsek = buatKepalaSekolah();
 });
+
+function guruBerizinPenuh(): Guru
+{
+    $guru = buatGuru();
+
+    foreach (ModulIzin::cases() as $modul) {
+        $guru->izin()->create(['modul' => $modul, 'level' => LevelIzin::Kelola]);
+    }
+
+    return $guru;
+}
 
 function dataGuru(array $timpa = []): array
 {
@@ -38,7 +51,7 @@ it('hanya bisa diakses Kepala Sekolah', function (Closure $akun, string $metode,
         ->and(User::query()->where('email', 'nur.aini@gmail.com')->exists())->toBeFalse();
 })->with([
     'guru' => [fn () => buatGuru()->user],
-    'guru dengan izin keuangan' => [fn () => buatGuru(atributGuru: ['bisa_kelola_keuangan' => true])->user],
+    'guru dengan semua izin modul' => [fn () => guruBerizinPenuh()->user],
     'wali murid' => [fn () => User::factory()->waliMurid()->create()],
 ])->with([
     'daftar' => ['GET', fn () => '/api/v1/guru'],
@@ -114,20 +127,19 @@ it('membuat akun guru aktif tanpa password dengan email Google huruf kecil', fun
 
     $response = $this->actingAs($this->kepsek)->post('/api/v1/guru', dataGuru([
         'email' => ' Nur.Aini@Gmail.com ',
-        'bisa_kelola_keuangan' => '1',
         'foto' => UploadedFile::fake()->image('guru.jpg', 800, 1000),
     ]))
         ->assertCreated()
         ->assertJsonPath('message', 'Akun guru Nur Aini dibuat. Guru bisa masuk dengan akun Google nur.aini@gmail.com.')
         ->assertJsonPath('data.user.email', 'nur.aini@gmail.com')
         ->assertJsonPath('data.user.status', 'aktif')
+        ->assertJsonPath('data.izin', ['keuangan' => null, 'konten_website' => null, 'laporan_absensi' => null, 'data_murid' => null, 'pengumuman' => null])
         ->assertJsonMissingPath('data.password_awal');
 
     $guru = Guru::query()->with('user')->whereHas('user', fn ($q) => $q->where('email', 'nur.aini@gmail.com'))->sole();
 
     expect($guru->user->password)->toBeNull()
         ->and($guru->user->google_sub)->toBeNull()
-        ->and($guru->bisa_kelola_keuangan)->toBeTrue()
         ->and($response->json('data.foto_url'))->toBe(Storage::disk('public')->url((string) $guru->foto_path));
 
     $this->postJson('/api/v1/auth/staff/login', ['email' => 'nur.aini@gmail.com', 'password' => 'apaSaja123'])
@@ -166,44 +178,27 @@ it('mempertahankan akun Google yang terikat kalau email tidak berubah', function
     expect($guru->user->fresh()?->google_sub)->toBe('109876543210987654321');
 });
 
-it('memperbarui data guru dan mencatat perubahan izin keuangan', function () {
-    $guru = buatGuru(atributGuru: ['user_id' => User::factory()->create(['email' => 'nur.aini@gmail.com'])]);
+it('memperbarui data guru tanpa menyentuh izinnya', function () {
+    $guru = Guru::factory()->kelolaKeuangan()->create(['user_id' => User::factory()->create(['email' => 'nur.aini@gmail.com'])]);
 
     $this->actingAs($this->kepsek)->putJson("/api/v1/guru/{$guru->id}", dataGuru([
         'name' => 'Nur Aini Fitriani',
-        'bisa_kelola_keuangan' => true,
         'tampil_di_landing' => true,
     ]))
         ->assertOk()
         ->assertJsonPath('data.user.name', 'Nur Aini Fitriani')
-        ->assertJsonPath('data.bisa_kelola_keuangan', true)
+        ->assertJsonPath('data.izin.keuangan', 'kelola')
         ->assertJsonPath('data.tampil_di_landing', true);
-
-    $log = Activity::query()->where('log_name', 'guru')->sole();
-    expect($log->event)->toBe('izin_keuangan_diberikan')
-        ->and($log->causer_id)->toBe($this->kepsek->id)
-        ->and($log->subject_id)->toBe($guru->id);
 });
 
-it('tidak mencatat log izin keuangan kalau izinnya tidak berubah', function () {
-    $guru = buatGuru(atributGuru: ['user_id' => User::factory()->create(['email' => 'nur.aini@gmail.com'])]);
-
-    $this->actingAs($this->kepsek)->putJson("/api/v1/guru/{$guru->id}", dataGuru(['bisa_kelola_keuangan' => false]))->assertOk();
-
-    expect(Activity::query()->where('log_name', 'guru')->count())->toBe(0);
-});
-
-it('menolak pencabutan izin keuangan profil Kepala Sekolah tetapi data lain boleh diubah', function () {
+it('mengizinkan Kepala Sekolah mengubah data profil gurunya sendiri', function () {
     $profil = $this->kepsek->guru;
     $data = dataGuru(['name' => $this->kepsek->name, 'email' => $this->kepsek->email, 'jabatan' => 'Kepala Sekolah']);
 
-    $this->actingAs($this->kepsek)->putJson("/api/v1/guru/{$profil?->id}", [...$data, 'bisa_kelola_keuangan' => false])
-        ->assertStatus(422)
-        ->assertJsonPath('code', 'BUSINESS_RULE');
-
-    $this->putJson("/api/v1/guru/{$profil?->id}", [...$data, 'pendidikan_terakhir' => 'S2 PAUD'])
+    $this->actingAs($this->kepsek)->putJson("/api/v1/guru/{$profil?->id}", [...$data, 'pendidikan_terakhir' => 'S2 PAUD'])
         ->assertOk()
-        ->assertJsonPath('data.pendidikan_terakhir', 'S2 PAUD');
+        ->assertJsonPath('data.pendidikan_terakhir', 'S2 PAUD')
+        ->assertJsonPath('data.izin.keuangan', 'kelola');
 });
 
 it('menonaktifkan guru, mencabut semua sesinya, dan menolak login Google berikutnya', function () {

@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 /**
  * Melengkapi respons error per operasi:
  * - kode dari konfigurasi route yang tidak terdeteksi Scramble dari isi controller: middleware
- *   `akun.aktif` (ACCOUNT_*), `password.diganti` (PASSWORD_WAJIB_DIGANTI), `role:`, `can:`, dan `signed`
+ *   `akun.aktif` (ACCOUNT_*), `password.diganti` (PASSWORD_WAJIB_DIGANTI), `role:`, `izin:`, `can:`, dan `signed`
  *   (FORBIDDEN), `throttle:` (TOO_MANY_REQUESTS, dengan header `Retry-After`),
  *   parameter path yang datanya bisa tidak ada (NOT_FOUND);
  * - beberapa exception dengan status sama (misal 422 VALIDATION_ERROR dan BUSINESS_RULE) digabung
@@ -43,7 +43,7 @@ class ResponsErrorRouteExtension extends OperationExtension
             }
         }
 
-        if ($diawali('role:') || $diawali('can:') || $diawali('signed')) {
+        if ($diawali('role:') || $diawali('izin:') || $diawali('can:') || $diawali('signed')) {
             $kodePerStatus[403] = [KodeError::Forbidden, ...$kodePerStatus[403] ?? []];
         }
         if (in_array('akun.aktif', $middleware, true)) {

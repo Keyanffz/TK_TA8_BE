@@ -9,6 +9,7 @@ use App\Enums\StatusTagihan;
 use App\Models\ElemenPenilaian;
 use App\Models\GaleriAlbum;
 use App\Models\Guru;
+use App\Models\IzinGuru;
 use App\Models\KegiatanFoto;
 use App\Models\Kelas;
 use App\Models\Murid;
@@ -85,7 +86,8 @@ it('mengisi data demo sesuai B8', function () {
 
     expect($kelasAktif->pluck('nama')->sort()->values()->all())->toBe(['TK A1', 'TK A2', 'TK B1', 'TK B2'])
         ->and($guruAktif->count())->toBe(6)
-        ->and((clone $guruAktif)->where('bisa_kelola_keuangan', true)->count())->toBe(1)
+        ->and(User::query()->where('role', Role::Guru)->petugasKeuanganAktif()->pluck('email')->all())->toBe(['siti.rahmawati@guru.tkta8.test'])
+        ->and(IzinGuru::query()->count())->toBe(3)
         ->and(User::query()->where('role', Role::Guru)->where('status', StatusAkun::Nonaktif)->count())->toBe(1)
         ->and(User::query()->where('role', Role::Guru)->whereNotNull('password')->exists())->toBeFalse()
         ->and(Murid::query()->has('kelas')->count())->toBe(60)

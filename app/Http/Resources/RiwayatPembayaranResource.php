@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ModulIzin;
 use App\Enums\Role;
 use App\Models\Pembayaran;
 use App\Models\User;
@@ -25,7 +26,7 @@ class RiwayatPembayaranResource extends JsonResource
     {
         $penampil = $request->user();
         $bolehLihatBukti = $penampil instanceof User
-            && ($penampil->role === Role::WaliMurid || $penampil->bisaKelolaKeuangan());
+            && ($penampil->role === Role::WaliMurid || $penampil->punyaIzin(ModulIzin::Keuangan));
 
         return [
             'id' => $this->id,

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Enums\NadaInfo;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
@@ -136,7 +138,7 @@ class DashboardService
             'pengumuman_terbaru' => $this->pengumumanTerbaru($user),
             'agenda_mendatang' => $this->agendaMendatang(),
             'keuangan_kelas' => ['lunas' => $lunas, 'belum' => $tagihanBulanIni->count() - $lunas],
-            'pembayaran_menunggu' => $user->bisaKelolaKeuangan() ? Pembayaran::query()->where('status', StatusPembayaran::Menunggu)->count() : null,
+            'pembayaran_menunggu' => $user->punyaIzin(ModulIzin::Keuangan, LevelIzin::Kelola) ? Pembayaran::query()->where('status', StatusPembayaran::Menunggu)->count() : null,
         ];
     }
 

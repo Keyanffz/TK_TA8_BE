@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\EnsureIzin;
 use App\Http\Middleware\EnsurePasswordDiganti;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\ForceJsonResponse;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'akun.aktif' => EnsureAccountActive::class,
             'password.diganti' => EnsurePasswordDiganti::class,
             'role' => EnsureRole::class,
+            'izin' => EnsureIzin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

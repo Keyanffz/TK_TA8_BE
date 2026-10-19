@@ -41,7 +41,14 @@ class MuridResource extends JsonResource
             'catatan_khusus' => $this->catatan_khusus,
             'status' => $this->status,
             'tanggal_masuk' => $this->tanggal_masuk->toDateString(),
+            /** Tanggal lulus, pindah, atau keluar; null untuk murid aktif dan alumni lama yang tanggalnya tidak diketahui. */
             'tanggal_keluar' => $this->tanggal_keluar?->toDateString(),
+            /** Hanya untuk murid berstatus lulus. */
+            'tahun_lulus' => $this->tahun_lulus,
+            /** Hanya untuk murid berstatus pindah. */
+            'sekolah_tujuan' => $this->sekolah_tujuan,
+            /** Keterangan perubahan status terakhir; null untuk murid aktif. */
+            'keterangan_status' => $this->keterangan_status,
             /** @var array{id: int, nama: string, tingkat: Tingkat}|null */
             'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama, 'tingkat' => $kelas->tingkat],
             'created_at' => $this->created_at,

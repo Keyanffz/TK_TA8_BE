@@ -169,7 +169,6 @@ return [
         'nik' => 'NIK',
         'nip' => 'NIP',
         'nuptk' => 'NUPTK',
-        'bisa_kelola_keuangan' => 'izin kelola keuangan',
         'per_page' => 'jumlah per halaman',
         'nisn' => 'NISN',
         'tahun_ajaran_id' => 'tahun ajaran',

@@ -365,16 +365,19 @@ it('mendokumentasikan PUT /kegiatan/{id} tanpa kelas_id dan foto, sesuai validas
         ->and($simpan['skema']['properties'])->toHaveKey('foto');
 });
 
-it('mendokumentasikan status murid sebagai enum wajib hanya di PUT /murid/{id}', function () {
+it('mendokumentasikan status murid sebagai enum wajib hanya di PATCH /murid/{id}/status', function () {
     $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
 
+    $status = skemaBodyRequest($dokumen, '/murid/{id}/status', 'patch')['skema'];
     $perbarui = skemaBodyRequest($dokumen, '/murid/{id}', 'put')['skema'];
     $simpan = skemaBodyRequest($dokumen, '/murid', 'post')['skema'];
 
-    expect($perbarui['properties']['status']['$ref'])->toBe('#/components/schemas/StatusMurid')
+    expect($status['properties']['status']['$ref'])->toBe('#/components/schemas/StatusMurid')
         ->and($dokumen['components']['schemas']['StatusMurid']['enum'])->toEqualCanonicalizing(array_column(StatusMurid::cases(), 'value'))
-        ->and($perbarui['required'])->toContain('status')
-        ->and($perbarui['properties'])->toHaveKey('tanggal_keluar')
+        ->and($status['required'])->toEqualCanonicalizing(['status', 'tanggal'])
+        ->and($status['properties'])->toHaveKeys(['tahun_lulus', 'sekolah_tujuan', 'keterangan'])
+        ->and($perbarui['properties'])->not->toHaveKeys(['status', 'tanggal_keluar'])
         ->and($simpan['properties'])->not->toHaveKeys(['status', 'tanggal_keluar'])
+        ->and($perbarui['required'])->toContain('nama_lengkap')
         ->and($simpan['required'])->toContain('nama_lengkap');
 });

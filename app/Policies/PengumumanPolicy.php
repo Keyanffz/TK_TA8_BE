@@ -2,13 +2,15 @@
 
 namespace App\Policies;
 
-use App\Enums\Role;
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Models\Pengumuman;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
 /**
- * Pengumuman di luar feed pengguna dibalas 404. Mengubah dan menghapus hanya untuk penulisnya dan Kepala Sekolah.
+ * Pengumuman di luar feed pengguna dibalas 404. Mengubah dan menghapus hanya untuk penulisnya, Kepala Sekolah, dan
+ * pemegang izin kelola pengumuman.
  */
 class PengumumanPolicy
 {
@@ -23,7 +25,7 @@ class PengumumanPolicy
     {
         $lihat = $this->view($user, $pengumuman);
 
-        if ($lihat->denied() || $user->role === Role::SuperAdmin || $user->id === $pengumuman->penulis_id) {
+        if ($lihat->denied() || $user->punyaIzin(ModulIzin::Pengumuman, LevelIzin::Kelola) || $user->id === $pengumuman->penulis_id) {
             return $lihat;
         }
 

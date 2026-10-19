@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\JenisKelamin;
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Enums\Role;
 use Database\Factories\GuruFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'user_id', 'nip', 'nuptk', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'alamat',
-    'pendidikan_terakhir', 'jabatan', 'foto_path', 'bisa_kelola_keuangan', 'tampil_di_landing',
+    'pendidikan_terakhir', 'jabatan', 'foto_path', 'tampil_di_landing',
 ])]
 class Guru extends Model
 {
@@ -33,14 +35,13 @@ class Guru extends Model
         return [
             'jenis_kelamin' => JenisKelamin::class,
             'tanggal_lahir' => 'date',
-            'bisa_kelola_keuangan' => 'boolean',
             'tampil_di_landing' => 'boolean',
         ];
     }
 
     /**
      * Profil guru milik Kepala Sekolah (A2.1): tidak tampil di `GET /guru`, tidak bisa dinonaktifkan,
-     * dan izin keuangannya tidak bisa diubah.
+     * dan izinnya tidak bisa diubah (Kepala Sekolah selalu punya semua izin).
      */
     public function milikKepalaSekolah(): bool
     {
@@ -78,6 +79,31 @@ class Guru extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return HasMany<IzinGuru, $this>
+     */
+    public function izin(): HasMany
+    {
+        return $this->hasMany(IzinGuru::class);
+    }
+
+    /**
+     * Izin yang tersimpan untuk profil ini, berisi semua modul (null = tidak punya izin). Untuk izin yang berlaku
+     * pada akun (termasuk Kepala Sekolah) pakai `User::izinEfektif()`.
+     *
+     * @return array<string, LevelIzin|null>
+     */
+    public function izinPerModul(): array
+    {
+        $izin = array_fill_keys(array_column(ModulIzin::cases(), 'value'), null);
+
+        foreach ($this->izin as $satu) {
+            $izin[$satu->modul->value] = $satu->level;
+        }
+
+        return $izin;
     }
 
     /**

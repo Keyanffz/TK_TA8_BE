@@ -3,6 +3,7 @@
 namespace Database\Seeders\Demo;
 
 use App\Enums\Hubungan;
+use App\Enums\PresetIzin;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Enums\Tingkat;
@@ -17,7 +18,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Tahun ajaran 2026/2027, 6 guru aktif + 1 guru nonaktif, 4 kelas @15 murid, dan akun wali per murid.
+ * Tahun ajaran 2026/2027, 6 guru aktif + 1 guru nonaktif, 4 kelas @15 murid, dan akun wali per murid. Dua guru diberi
+ * izin modul lewat preset: Siti Rahmawati sebagai Bendahara, Rina Kusumawati sebagai Admin Website.
  * 10 keluarga punya dua anak, 3 keluarga menautkan ayah dan ibu, 9 keluarga belum pernah login (password awal).
  */
 class SekolahDemoSeeder extends Seeder
@@ -29,12 +31,12 @@ class SekolahDemoSeeder extends Seeder
     public const TANGGAL_LAHIR_AKUN_BELUM_DIPAKAI = '2021-11-05';
 
     private const GURU = [
-        ['Siti Rahmawati, S.Pd.', 'siti.rahmawati', true],
-        ['Nur Aini, S.Pd.', 'nur.aini', false],
-        ['Dwi Lestari, S.Pd.', 'dwi.lestari', false],
-        ['Sri Wahyuni, S.Pd.', 'sri.wahyuni', false],
-        ['Endang Susilowati, S.Pd.', 'endang.susilowati', false],
-        ['Rina Kusumawati, A.Md.', 'rina.kusumawati', false],
+        ['Siti Rahmawati, S.Pd.', 'siti.rahmawati', PresetIzin::Bendahara],
+        ['Nur Aini, S.Pd.', 'nur.aini', null],
+        ['Dwi Lestari, S.Pd.', 'dwi.lestari', null],
+        ['Sri Wahyuni, S.Pd.', 'sri.wahyuni', null],
+        ['Endang Susilowati, S.Pd.', 'endang.susilowati', null],
+        ['Rina Kusumawati, A.Md.', 'rina.kusumawati', PresetIzin::AdminWebsite],
     ];
 
     /** Guru yang sudah tidak mengajar: akunnya dinonaktifkan, bukan dihapus. */
@@ -71,18 +73,21 @@ class SekolahDemoSeeder extends Seeder
     {
         $guru = [];
 
-        foreach (self::GURU as [$nama, $email, $kelolaKeuangan]) {
-            $guru[] = Guru::factory()
+        foreach (self::GURU as [$nama, $email, $preset]) {
+            $satu = Guru::factory()
                 ->for(User::factory()->create([
                     'name' => $nama,
                     'email' => $email.'@guru.tkta8.test',
                     'role' => Role::Guru,
                     'status' => StatusAkun::Aktif,
                 ]))
-                ->create([
-                    'bisa_kelola_keuangan' => $kelolaKeuangan,
-                    'tampil_di_landing' => true,
-                ]);
+                ->create(['tampil_di_landing' => true]);
+
+            foreach ($preset?->izin() ?? [] as $modul => $level) {
+                $satu->izin()->create(['modul' => $modul, 'level' => $level]);
+            }
+
+            $guru[] = $satu;
         }
 
         [$nama, $email] = self::GURU_NONAKTIF;

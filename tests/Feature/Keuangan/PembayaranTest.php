@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\Hubungan;
+use App\Enums\LevelIzin;
 use App\Enums\MetodeBayar;
+use App\Enums\ModulIzin;
 use App\Enums\StatusPembayaran;
 use App\Enums\StatusTagihan;
 use App\Models\Guru;
@@ -288,10 +290,10 @@ it('memberi guru akses verifikasi setelah izin keuangannya diberikan, dan mencab
 
     $this->actingAs($this->buAini->user)->postJson("/api/v1/pembayaran/{$pembayaran->id}/terima")->assertForbidden();
 
-    $this->buAini->update(['bisa_kelola_keuangan' => true]);
+    $izin = $this->buAini->izin()->create(['modul' => ModulIzin::Keuangan, 'level' => LevelIzin::Kelola]);
     $this->actingAs($this->buAini->user->fresh())->getJson('/api/v1/pembayaran')->assertOk()->assertJsonPath('meta.total', 1);
 
-    $this->buAini->update(['bisa_kelola_keuangan' => false]);
+    $izin->delete();
     $this->actingAs($this->buAini->user->fresh())->getJson('/api/v1/laporan/tunggakan')->assertForbidden();
 });
 

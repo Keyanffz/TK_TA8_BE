@@ -38,7 +38,6 @@ class SimpanGuruRequest extends FormRequest
             'alamat' => ['nullable', 'string', 'max:500'],
             'pendidikan_terakhir' => ['nullable', 'string', 'max:100'],
             'jabatan' => ['sometimes', 'string', 'max:100'],
-            'bisa_kelola_keuangan' => ['sometimes', 'boolean'],
             'tampil_di_landing' => ['sometimes', 'boolean'],
             'foto' => ['nullable', ...MediaService::aturanGambar()],
         ];

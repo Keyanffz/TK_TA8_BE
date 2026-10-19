@@ -19,17 +19,19 @@ use Illuminate\Validation\ValidationException;
 class WaliMuridService
 {
     /**
-     * Akun wali untuk murid yang belum tertaut ke wali mana pun (murid baru atau pendaftar PPDB tanpa login):
-     * username NIS murid, password awal tanggal lahir anak (DDMMYYYY) yang wajib diganti saat login pertama, dan
-     * nama sementara sampai wali melengkapi profilnya. Wali ini menjadi kontak utama murid.
+     * Akun wali untuk murid yang belum tertaut ke wali mana pun (murid baru, pendaftar PPDB tanpa login, atau murid
+     * aktif hasil import): username NIS murid, password awal tanggal lahir anak (DDMMYYYY) yang wajib diganti saat
+     * login pertama, dan nama sementara sampai wali melengkapi profilnya. Wali ini menjadi kontak utama murid.
+     * Import mengirim hash password awal yang sudah dibuat di luar transaksi (`$hashPasswordAwal`), karena hashing
+     * ratusan password memakan waktu.
      */
-    public function buatAkunOtomatis(Murid $murid, Hubungan $hubungan, ?string $noHp, User $pelaku): WaliMurid
+    public function buatAkunOtomatis(Murid $murid, Hubungan $hubungan, ?string $noHp, User $pelaku, ?string $hashPasswordAwal = null): WaliMurid
     {
-        return DB::transaction(function () use ($murid, $hubungan, $noHp, $pelaku): WaliMurid {
+        return DB::transaction(function () use ($murid, $hubungan, $noHp, $pelaku, $hashPasswordAwal): WaliMurid {
             $user = User::query()->create([
                 'name' => 'Wali '.$murid->nama_panggilan,
                 'username' => $murid->nis,
-                'password' => $murid->passwordAwalWali(),
+                'password' => $hashPasswordAwal ?? $murid->passwordAwalWali(),
                 'wajib_ganti_password' => true,
                 'role' => Role::WaliMurid,
                 'status' => StatusAkun::Aktif,

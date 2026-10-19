@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\JenisAbsensi;
-use App\Enums\Role;
+use App\Enums\ModulIzin;
 use App\Enums\StatusAbsensi;
 use Database\Factories\AbsensiFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -51,13 +51,13 @@ class Absensi extends Model
     }
 
     /**
-     * Kepala Sekolah melihat absensi semua peserta, guru hanya miliknya.
+     * Kepala Sekolah dan pemegang izin lihat laporan absensi melihat absensi semua peserta, guru lain hanya miliknya.
      *
      * @param  Builder<self>  $query
      */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if ($user->role !== Role::SuperAdmin) {
+        if (! $user->punyaIzin(ModulIzin::LaporanAbsensi)) {
             $query->where('user_id', $user->id);
         }
     }

@@ -23,11 +23,10 @@ it('memberi token dan data user sesuai kontrak A7 saat Kepala Sekolah login deng
             'avatar_url' => null,
             'guru' => [
                 'id' => $kepsek->guru?->id,
-                'bisa_kelola_keuangan' => true,
                 'kelas_diampu' => [],
             ],
             'wali_murid' => null,
-            'permissions' => ['kelola_keuangan' => true],
+            'izin' => ['keuangan' => 'kelola', 'konten_website' => 'kelola', 'laporan_absensi' => 'kelola', 'data_murid' => 'kelola', 'pengumuman' => 'kelola'],
         ]);
 
     expect($kepsek->tokens()->sole()->name)->toBe('web')

@@ -36,11 +36,10 @@ it('memberi token dan data user sesuai kontrak A7 saat guru login dengan Google'
             'avatar_url' => null,
             'guru' => [
                 'id' => $guru->guru?->id,
-                'bisa_kelola_keuangan' => false,
                 'kelas_diampu' => [['id' => $kelas->id, 'nama' => 'TK A1']],
             ],
             'wali_murid' => null,
-            'permissions' => ['kelola_keuangan' => false],
+            'izin' => ['keuangan' => null, 'konten_website' => null, 'laporan_absensi' => null, 'data_murid' => null, 'pengumuman' => null],
         ]);
 
     expect($guru->fresh()?->google_sub)->toBe(SUB_GOOGLE)
@@ -56,7 +55,8 @@ it('membolehkan Kepala Sekolah login dengan Google', function () {
     $this->postJson('/api/v1/auth/staff/google', ['credential' => idTokenGoogle(['email' => $kepsek->email]), 'perangkat' => 'mobile'])
         ->assertOk()
         ->assertJsonPath('data.user.role', 'super_admin')
-        ->assertJsonPath('data.user.permissions.kelola_keuangan', true);
+        ->assertJsonPath('data.user.izin.keuangan', 'kelola')
+        ->assertJsonPath('data.user.izin.data_murid', 'kelola');
 
     expect($kepsek->tokens()->sole()->name)->toBe('mobile');
 });

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\LevelIzin;
 use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\User;
@@ -21,7 +22,7 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $this->resource->loadMissing(['guru', 'waliMurid.murid.kelasAktif']);
+        $this->resource->loadMissing(['guru.izin', 'waliMurid.murid.kelasAktif']);
         $media = app(MediaService::class);
 
         return [
@@ -40,7 +41,6 @@ class UserResource extends JsonResource
             'avatar_url' => $media->urlPublik($this->avatar_path),
             'guru' => $this->guru === null ? null : [
                 'id' => $this->guru->id,
-                'bisa_kelola_keuangan' => $this->guru->bisa_kelola_keuangan,
                 'kelas_diampu' => Kelas::query()->diampuOleh($this->resource)->orderBy('nama')->get(['kelas.id', 'kelas.nama'])
                     ->map(fn (Kelas $kelas): array => ['id' => $kelas->id, 'nama' => $kelas->nama])
                     ->all(),
@@ -55,6 +55,8 @@ class UserResource extends JsonResource
                     ->map(fn (Murid $anak): array => [
                         'id' => $anak->id,
                         'nama_panggilan' => $anak->nama_panggilan,
+                        /** Anak yang sudah lulus, pindah, atau keluar tetap tampil untuk tagihan lama dan rapor. */
+                        'status' => $anak->status,
                         'kelas' => $anak->kelasAktif->first()?->nama,
                         /** @var string|null */
                         'foto_url' => $media->urlPrivat($anak->foto_path),
@@ -62,9 +64,13 @@ class UserResource extends JsonResource
                     ->values()
                     ->all(),
             ],
-            'permissions' => [
-                'kelola_keuangan' => $this->bisaKelolaKeuangan(),
-            ],
+            /**
+             * Izin efektif per modul (A2.13), dipakai FE untuk menu, penjaga halaman, dan tombol aksi. Kepala Sekolah
+             * `kelola` semua modul; wali murid null semua.
+             *
+             * @var array{keuangan: LevelIzin|null, konten_website: LevelIzin|null, laporan_absensi: LevelIzin|null, data_murid: LevelIzin|null, pengumuman: LevelIzin|null}
+             */
+            'izin' => $this->izinEfektif(),
         ];
     }
 }

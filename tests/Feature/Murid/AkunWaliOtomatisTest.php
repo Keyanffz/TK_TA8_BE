@@ -91,10 +91,7 @@ it('tidak menyentuh akun wali yang sudah dipakai saat murid dihapus', function (
 
 function ubahTanggalLahir(object $test, User $kepsek, Murid $murid, string $tanggalLahir): void
 {
-    $test->actingAs($kepsek)->putJson("/api/v1/murid/{$murid->id}", [
-        ...dataMuridBaru(['tanggal_lahir' => $tanggalLahir]),
-        'status' => 'aktif',
-    ])->assertOk();
+    $test->actingAs($kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMuridBaru(['tanggal_lahir' => $tanggalLahir]))->assertOk();
 }
 
 it('mengganti password awal akun otomatis yang belum dipakai saat tanggal lahir murid dikoreksi', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ModulIzin;
 use App\Enums\StatusTagihan;
 use Database\Factories\TagihanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -39,13 +40,13 @@ class Tagihan extends Model
     }
 
     /**
-     * Petugas keuangan: semua tagihan. Guru lain dan wali murid: tagihan murid yang terlihat olehnya.
+     * Pemegang izin lihat keuangan: semua tagihan. Guru lain dan wali murid: tagihan murid yang terlihat olehnya.
      *
      * @param  Builder<self>  $query
      */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if ($user->bisaKelolaKeuangan()) {
+        if ($user->punyaIzin(ModulIzin::Keuangan)) {
             return;
         }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Dashboard\DashboardController;
 use App\Http\Controllers\Api\V1\Galeri\GaleriController;
 use App\Http\Controllers\Api\V1\Guru\GuruController;
+use App\Http\Controllers\Api\V1\Guru\IzinGuruController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Kegiatan\KegiatanKelasController;
 use App\Http\Controllers\Api\V1\Kelas\KelasController;
@@ -19,7 +20,9 @@ use App\Http\Controllers\Api\V1\Keuangan\PembayaranController;
 use App\Http\Controllers\Api\V1\Keuangan\TagihanController;
 use App\Http\Controllers\Api\V1\LogAktivitas\LogAktivitasController;
 use App\Http\Controllers\Api\V1\MediaController;
+use App\Http\Controllers\Api\V1\Murid\ImportMuridController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
+use App\Http\Controllers\Api\V1\Murid\StatusMuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
 use App\Http\Controllers\Api\V1\Pengaturan\PengaturanController;
 use App\Http\Controllers\Api\V1\Pengumuman\PengumumanController;
@@ -61,6 +64,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'throttle:api'])->prefix('auth'
 Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:api'])->group(function () {
     Route::put('/auth/profil', [ProfilController::class, 'perbarui']);
 
+    // Tidak bisa didelegasikan ke guru (A2.13), atau tidak termasuk modul izin mana pun.
     Route::middleware('role:super_admin')->group(function () {
         Route::get('/guru', [GuruController::class, 'index']);
         Route::post('/guru', [GuruController::class, 'store']);
@@ -68,6 +72,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/guru/{id}', [GuruController::class, 'update']);
         Route::patch('/guru/{id}/status', [GuruController::class, 'ubahStatus']);
         Route::post('/guru/{id}/reset-google', [GuruController::class, 'resetGoogle']);
+
+        Route::get('/izin', [IzinGuruController::class, 'index']);
+        Route::put('/guru/{id}/izin', [IzinGuruController::class, 'update']);
+        Route::post('/guru/{id}/izin/preset', [IzinGuruController::class, 'preset']);
 
         Route::get('/wali-murid', [WaliMuridController::class, 'index']);
         Route::get('/wali-murid/{id}', [WaliMuridController::class, 'show']);
@@ -87,10 +95,6 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::delete('/kelas/{id}/murid/{murid_id}', [PenempatanMuridController::class, 'keluarkan']);
         Route::post('/kelas/kenaikan', [PenempatanMuridController::class, 'kenaikan']);
 
-        Route::post('/murid', [MuridController::class, 'store']);
-        Route::put('/murid/{id}', [MuridController::class, 'update']);
-        Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
-        Route::get('/murid/{id}/kartu-akun', [MuridController::class, 'kartuAkun']);
         Route::patch('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'ubahWali']);
         Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
 
@@ -109,18 +113,6 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'update']);
         Route::delete('/elemen-penilaian/{id}', [ElemenPenilaianController::class, 'destroy']);
 
-        Route::put('/pengaturan', [PengaturanController::class, 'update']);
-        Route::post('/pengaturan/upload', [PengaturanController::class, 'upload']);
-
-        Route::get('/galeri-album', [GaleriController::class, 'index']);
-        Route::post('/galeri-album', [GaleriController::class, 'store']);
-        Route::get('/galeri-album/{id}', [GaleriController::class, 'show']);
-        Route::put('/galeri-album/{id}', [GaleriController::class, 'update']);
-        Route::delete('/galeri-album/{id}', [GaleriController::class, 'destroy']);
-        Route::post('/galeri-album/{id}/foto', [GaleriController::class, 'tambahFoto']);
-        Route::put('/galeri-foto/{id}', [GaleriController::class, 'perbaruiFoto']);
-        Route::delete('/galeri-foto/{id}', [GaleriController::class, 'hapusFoto']);
-
         Route::post('/pendaftaran/{id}/verifikasi', [PendaftaranController::class, 'verifikasi']);
         Route::post('/pendaftaran/{id}/terima', [PendaftaranController::class, 'terima']);
         Route::post('/pendaftaran/{id}/tolak', [PendaftaranController::class, 'tolak']);
@@ -130,19 +122,18 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/agenda', [AgendaController::class, 'store']);
         Route::put('/agenda/{id}', [AgendaController::class, 'update']);
         Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
-
-        Route::get('/absensi/rekap', [AbsensiController::class, 'rekap']);
-        Route::get('/absensi/rekap/export', [AbsensiController::class, 'export']);
-        Route::get('/absensi/harian', [AbsensiController::class, 'harian']);
-        Route::post('/absensi/koreksi', [AbsensiController::class, 'koreksiBaru']);
-        Route::patch('/absensi/{id}/koreksi', [AbsensiController::class, 'koreksi']);
     });
 
-    Route::middleware('can:kelola-keuangan')->group(function () {
-        Route::get('/pengaturan', [PengaturanController::class, 'index']);
+    Route::middleware('izin:keuangan,lihat')->group(function () {
         Route::get('/jenis-tagihan', [JenisTagihanController::class, 'index']);
-
         Route::get('/keringanan', [KeringananController::class, 'index']);
+
+        Route::get('/laporan/keuangan', [LaporanController::class, 'keuangan']);
+        Route::get('/laporan/keuangan/export', [LaporanController::class, 'export']);
+        Route::get('/laporan/tunggakan', [LaporanController::class, 'tunggakan']);
+    });
+
+    Route::middleware('izin:keuangan,kelola')->group(function () {
         Route::post('/keringanan', [KeringananController::class, 'store']);
         Route::put('/keringanan/{id}', [KeringananController::class, 'update']);
         Route::delete('/keringanan/{id}', [KeringananController::class, 'destroy']);
@@ -151,10 +142,49 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/tagihan/{id}', [TagihanController::class, 'update']);
         Route::post('/pembayaran/{id}/terima', [PembayaranController::class, 'terima']);
         Route::post('/pembayaran/{id}/tolak', [PembayaranController::class, 'tolak']);
+    });
 
-        Route::get('/laporan/keuangan', [LaporanController::class, 'keuangan']);
-        Route::get('/laporan/keuangan/export', [LaporanController::class, 'export']);
-        Route::get('/laporan/tunggakan', [LaporanController::class, 'tunggakan']);
+    Route::middleware('izin:konten_website,lihat')->group(function () {
+        Route::get('/galeri-album', [GaleriController::class, 'index']);
+        Route::get('/galeri-album/{id}', [GaleriController::class, 'show']);
+    });
+
+    Route::middleware('izin:konten_website,kelola')->group(function () {
+        Route::post('/pengaturan/upload', [PengaturanController::class, 'upload']);
+
+        Route::post('/galeri-album', [GaleriController::class, 'store']);
+        Route::put('/galeri-album/{id}', [GaleriController::class, 'update']);
+        Route::delete('/galeri-album/{id}', [GaleriController::class, 'destroy']);
+        Route::post('/galeri-album/{id}/foto', [GaleriController::class, 'tambahFoto']);
+        Route::put('/galeri-foto/{id}', [GaleriController::class, 'perbaruiFoto']);
+        Route::delete('/galeri-foto/{id}', [GaleriController::class, 'hapusFoto']);
+    });
+
+    Route::middleware('izin:laporan_absensi,lihat')->group(function () {
+        Route::get('/absensi/rekap', [AbsensiController::class, 'rekap']);
+        Route::get('/absensi/rekap/export', [AbsensiController::class, 'export']);
+        Route::get('/absensi/harian', [AbsensiController::class, 'harian']);
+    });
+
+    Route::middleware('izin:laporan_absensi,kelola')->group(function () {
+        Route::post('/absensi/koreksi', [AbsensiController::class, 'koreksiBaru']);
+        Route::patch('/absensi/{id}/koreksi', [AbsensiController::class, 'koreksi']);
+    });
+
+    Route::get('/murid/tahun-lulus', [StatusMuridController::class, 'tahunLulus'])->middleware('izin:data_murid,lihat');
+
+    Route::middleware('izin:data_murid,kelola')->group(function () {
+        Route::post('/murid', [MuridController::class, 'store']);
+        Route::put('/murid/{id}', [MuridController::class, 'update']);
+        Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
+        Route::get('/murid/{id}/kartu-akun', [MuridController::class, 'kartuAkun']);
+
+        Route::patch('/murid/{id}/status', [StatusMuridController::class, 'ubah']);
+        Route::post('/murid/status-massal', [StatusMuridController::class, 'massal']);
+
+        Route::get('/murid/import/template', [ImportMuridController::class, 'template']);
+        Route::post('/murid/import/pratinjau', [ImportMuridController::class, 'pratinjau']);
+        Route::post('/murid/import', [ImportMuridController::class, 'simpan']);
     });
 
     Route::middleware('role:super_admin,guru')->group(function () {
@@ -162,6 +192,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::get('/kelas', [KelasController::class, 'index']);
         Route::get('/kelas/{id}', [KelasController::class, 'show']);
         Route::get('/elemen-penilaian', [ElemenPenilaianController::class, 'index']);
+
+        // Izin per grup diperiksa di controller: grup pengaturan diatur modul yang berbeda-beda.
+        Route::get('/pengaturan', [PengaturanController::class, 'index']);
+        Route::put('/pengaturan', [PengaturanController::class, 'update']);
 
         Route::post('/kegiatan', [KegiatanKelasController::class, 'store']);
         Route::put('/kegiatan/{id}', [KegiatanKelasController::class, 'update']);

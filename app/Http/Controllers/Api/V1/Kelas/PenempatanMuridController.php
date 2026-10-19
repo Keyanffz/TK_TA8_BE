@@ -8,9 +8,11 @@ use App\Http\Requests\Kelas\TempatkanMuridRequest;
 use App\Http\Resources\KelasDetailResource;
 use App\Models\Kelas;
 use App\Models\TahunAjaran;
+use App\Models\User;
 use App\Services\KelasService;
 use App\Services\KenaikanKelasService;
 use App\Support\ApiResponse;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
 
 class PenempatanMuridController extends Controller
@@ -42,12 +44,13 @@ class PenempatanMuridController extends Controller
      * Kenaikan kelas massal dari tahun ajaran aktif ke tahun ajaran tujuan, dalam satu transaksi.
      *
      * Murid `naik`/`tinggal` wajib punya `kelas_tujuan_id` di tahun ajaran tujuan; murid `lulus` tanpa kelas
-     * tujuan dan statusnya menjadi lulus.
+     * tujuan, statusnya menjadi lulus dengan tahun lulus = tahun akhir tahun ajaran aktif, dan tercatat di riwayat
+     * status murid.
      */
-    public function kenaikan(KenaikanKelasRequest $request, KenaikanKelasService $kenaikanKelas): JsonResponse
+    public function kenaikan(KenaikanKelasRequest $request, KenaikanKelasService $kenaikanKelas, #[CurrentUser] User $kepalaSekolah): JsonResponse
     {
         $tujuan = TahunAjaran::query()->findOrFail($request->integer('tahun_ajaran_tujuan_id'));
-        $hasil = $kenaikanKelas->proses($tujuan, $request->penempatan());
+        $hasil = $kenaikanKelas->proses($tujuan, $request->penempatan(), $kepalaSekolah);
 
         return ApiResponse::success(
             $hasil,

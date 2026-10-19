@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api\V1\Absensi;
 
 use App\Enums\JenisAbsensi;
-use App\Enums\Role;
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Absensi\AbsenRequest;
 use App\Http\Requests\Absensi\BulanAbsensiRequest;
@@ -117,15 +118,15 @@ class AbsensiController extends Controller
 
     /**
      * Riwayat absensi satu peserta dalam 1–3 bulan (`jumlah_bulan` bulan yang berakhir di `bulan`), terbaru dulu,
-     * tanpa paginasi. Guru hanya melihat riwayatnya sendiri; Kepala Sekolah bisa membuka riwayat peserta lain lewat
-     * `user_id`.
+     * tanpa paginasi. Guru hanya melihat riwayatnya sendiri; Kepala Sekolah dan pemegang izin lihat laporan absensi
+     * bisa membuka riwayat peserta lain lewat `user_id`.
      */
     public function index(RiwayatAbsensiRequest $request, #[CurrentUser] User $user): JsonResponse
     {
         $userId = $request->userId() ?? $user->id;
 
-        if ($user->role !== Role::SuperAdmin && $userId !== $user->id) {
-            abort(403);
+        if ($userId !== $user->id) {
+            $user->pastikanIzin(ModulIzin::LaporanAbsensi, LevelIzin::Lihat);
         }
 
         [$awal, $akhir] = $request->rentang();
@@ -141,7 +142,8 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Foto absensi. Hanya pemilik absensi dan Kepala Sekolah; guru lain dibalas 404. Absensi tanpa foto
+     * Foto absensi. Hanya pemilik absensi, Kepala Sekolah, dan pemegang izin lihat laporan absensi; guru lain dibalas
+     * 404. Absensi tanpa foto
      * (tidak hadir, atau foto sudah melewati masa simpan) juga 404.
      */
     #[Response(200, 'Foto absensi (JPEG)', mediaType: 'image/jpeg', type: 'string', format: 'binary')]
@@ -154,7 +156,8 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Mengoreksi status absen masuk dengan catatan wajib. Pengoreksi dan waktunya tersimpan di absensi itu.
+     * Mengoreksi status absen masuk dengan catatan wajib. Pengoreksi dan waktunya tersimpan di absensi itu. Pemegang
+     * izin kelola laporan absensi tidak bisa mengoreksi absensinya sendiri (422 `BUSINESS_RULE`).
      */
     public function koreksi(KoreksiAbsensiRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
@@ -169,7 +172,8 @@ class AbsensiController extends Controller
      * untuk absen masuk dan tidak boleh dikirim untuk absen pulang; waktu, lokasi, dan foto kosong. Ditolak 422
      * `BUSINESS_RULE` kalau akun bukan peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi,
      * bukan hari kerja, tanggal libur, absen jenis itu sudah ada (absen masuk dikoreksi lewat
-     * `PATCH /absensi/{id}/koreksi`), atau untuk absen pulang, belum ada absen masuk hadir atau terlambat.
+     * `PATCH /absensi/{id}/koreksi`), untuk absen pulang belum ada absen masuk hadir atau terlambat, atau guru
+     * mencatat absensinya sendiri.
      */
     public function koreksiBaru(KoreksiAbsensiBaruRequest $request, #[CurrentUser] User $user): JsonResponse
     {

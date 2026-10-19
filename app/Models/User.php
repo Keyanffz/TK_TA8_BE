@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
+use App\Enums\StatusMurid;
+use App\Exceptions\IzinKurangException;
 use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -70,7 +74,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Penerima notifikasi `pembayaran_masuk`: Kepala Sekolah dan guru berizin keuangan yang akunnya aktif.
+     * Penerima notifikasi `pembayaran_masuk`: Kepala Sekolah dan guru berizin kelola keuangan yang akunnya aktif.
      *
      * @param  Builder<self>  $query
      */
@@ -81,7 +85,22 @@ class User extends Authenticatable
                 ->where('role', Role::SuperAdmin)
                 ->orWhere(fn (Builder $guru) => $guru
                     ->where('role', Role::Guru)
-                    ->whereHas('guru', fn (Builder $profil) => $profil->where('bisa_kelola_keuangan', true))));
+                    ->whereHas('guru.izin', fn (Builder $izin) => $izin
+                        ->where('modul', ModulIzin::Keuangan)
+                        ->where('level', LevelIzin::Kelola))));
+    }
+
+    /**
+     * Wali murid yang masih punya anak berstatus aktif. Wali yang semua anaknya sudah lulus, pindah, atau keluar
+     * tidak lagi menerima pengumuman umum (target `semua` dan `wali_murid`), tetapi akunnya tetap aktif untuk
+     * tagihan lama, kwitansi, rapor, dan PPDB adik (A2.14).
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWaliDenganAnakAktif(Builder $query): void
+    {
+        $query->where('role', Role::WaliMurid)
+            ->whereHas('waliMurid.murid', fn (Builder $murid) => $murid->where('status', StatusMurid::Aktif));
     }
 
     /**
@@ -140,14 +159,35 @@ class User extends Authenticatable
     }
 
     /**
-     * Petugas keuangan: Kepala Sekolah, atau guru yang diberi izin `bisa_kelola_keuangan`.
+     * Izin per modul (A2.13): Kepala Sekolah selalu kelola semua modul, guru sesuai `izin_guru`, wali murid tidak
+     * punya izin. Dibaca dari database di setiap request tanpa cache, jadi izin yang dicabut Kepala Sekolah langsung
+     * berlaku di request berikutnya.
+     *
+     * @return array<string, LevelIzin|null> level per nilai `ModulIzin`, berisi semua modul
      */
-    public function bisaKelolaKeuangan(): bool
+    public function izinEfektif(): array
     {
+        $modul = array_column(ModulIzin::cases(), 'value');
+
         return match ($this->role) {
-            Role::SuperAdmin => true,
-            Role::Guru => $this->guru?->bisa_kelola_keuangan === true,
-            Role::WaliMurid => false,
+            Role::SuperAdmin => array_fill_keys($modul, LevelIzin::Kelola),
+            Role::Guru => $this->loadMissing('guru.izin')->guru?->izinPerModul() ?? array_fill_keys($modul, null),
+            Role::WaliMurid => array_fill_keys($modul, null),
         };
+    }
+
+    public function punyaIzin(ModulIzin $modul, LevelIzin $level = LevelIzin::Lihat): bool
+    {
+        return $this->izinEfektif()[$modul->value]?->mencakup($level) ?? false;
+    }
+
+    /**
+     * @throws IzinKurangException
+     */
+    public function pastikanIzin(ModulIzin $modul, LevelIzin $level): void
+    {
+        if (! $this->punyaIzin($modul, $level)) {
+            throw IzinKurangException::untuk($modul, $level);
+        }
     }
 }

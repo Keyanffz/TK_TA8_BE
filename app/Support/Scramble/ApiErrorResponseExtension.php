@@ -5,6 +5,7 @@ namespace App\Support\Scramble;
 use App\Enums\KodeError;
 use App\Exceptions\AksesAkunDitolakException;
 use App\Exceptions\BusinessRuleException;
+use App\Exceptions\IzinKurangException;
 use App\Exceptions\LayananTidakTersediaException;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
@@ -32,6 +33,7 @@ class ApiErrorResponseExtension extends ExceptionToResponseExtension
         ValidationException::class => [KodeError::ValidationError],
         BusinessRuleException::class => [KodeError::BusinessRule],
         AksesAkunDitolakException::class => [KodeError::AccountInactive],
+        IzinKurangException::class => [KodeError::Forbidden],
         AuthenticationException::class => [KodeError::Unauthenticated],
         AuthorizationException::class => [KodeError::Forbidden],
         AccessDeniedHttpException::class => [KodeError::Forbidden],
