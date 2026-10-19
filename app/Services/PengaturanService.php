@@ -2,8 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Enums\NadaInfo;
+use App\Enums\Role;
 use App\Exceptions\BusinessRuleException;
+use App\Exceptions\IzinKurangException;
 use App\Models\Absensi;
 use App\Models\Pengaturan;
 use App\Models\TahunAjaran;
@@ -99,6 +103,32 @@ class PengaturanService
         }
 
         return $hasil;
+    }
+
+    /**
+     * Grup `profil`, `landing`, `beranda` butuh izin lihat konten website dan grup `keuangan` izin lihat keuangan;
+     * grup lain dan semua grup sekaligus (`$grup` null) khusus Kepala Sekolah.
+     *
+     * @throws IzinKurangException
+     */
+    public function pastikanBolehBaca(User $user, ?string $grup): void
+    {
+        $modul = $grup === null ? null : ModulIzin::untukBacaPengaturan($grup);
+        $this->pastikanIzin($user, $modul, LevelIzin::Lihat);
+    }
+
+    /**
+     * Setiap kunci diperiksa menurut grupnya; satu kunci yang tidak diizinkan menolak seluruh permintaan.
+     *
+     * @param  array<string, mixed>  $items
+     *
+     * @throws IzinKurangException
+     */
+    public function pastikanBolehUbah(User $user, array $items): void
+    {
+        foreach (array_unique(array_map(fn (string $kunci): string => (string) strstr($kunci.'.', '.', true), array_keys($items))) as $grup) {
+            $this->pastikanIzin($user, ModulIzin::untukUbahPengaturan($grup), LevelIzin::Kelola);
+        }
     }
 
     /**
@@ -283,6 +313,18 @@ class PengaturanService
             'absensi.masa_simpan_foto_bulan' => ['integer', 'between:1,60'],
             AturanAbsensi::KUNCI_TANGGAL_MULAI => ['required', 'date_format:Y-m-d'],
         ];
+    }
+
+    /**
+     * @throws IzinKurangException
+     */
+    private function pastikanIzin(User $user, ?ModulIzin $modul, LevelIzin $level): void
+    {
+        if ($modul !== null) {
+            $user->pastikanIzin($modul, $level);
+        } elseif ($user->role !== Role::SuperAdmin) {
+            throw IzinKurangException::khususKepalaSekolah();
+        }
     }
 
     /**

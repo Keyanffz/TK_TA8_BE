@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\Role;
+use App\Enums\ModulIzin;
 use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pengumuman;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,7 +24,7 @@ class PengumumanResource extends JsonResource
     public function toArray(Request $request): array
     {
         $user = $request->user();
-        $bolehLihatSasaran = $user !== null && ($user->role === Role::SuperAdmin || $user->id === $this->penulis_id);
+        $bolehLihatSasaran = $user instanceof User && ($user->punyaIzin(ModulIzin::Pengumuman) || $user->id === $this->penulis_id);
 
         return [
             'id' => $this->id,
@@ -32,10 +33,10 @@ class PengumumanResource extends JsonResource
             /** HTML yang sudah disanitasi. */
             'isi' => $this->isi,
             'target' => $this->target,
-            /** Hanya untuk Kepala Sekolah dan penulis. */
+            /** Hanya untuk Kepala Sekolah, pemegang izin lihat pengumuman, dan penulis. */
             'kelas' => $this->when($bolehLihatSasaran && $this->relationLoaded('kelas'), fn () => $this->kelas
                 ->map(fn (Kelas $kelas): array => ['id' => $kelas->id, 'nama' => $kelas->nama])->values()->all()),
-            /** Hanya untuk Kepala Sekolah dan penulis. */
+            /** Hanya untuk Kepala Sekolah, pemegang izin lihat pengumuman, dan penulis. */
             'murid' => $this->when($bolehLihatSasaran && $this->relationLoaded('murid'), fn () => $this->murid
                 ->map(fn (Murid $murid): array => ['id' => $murid->id, 'nama_lengkap' => $murid->nama_lengkap])->values()->all()),
             'is_publik' => $this->is_publik,

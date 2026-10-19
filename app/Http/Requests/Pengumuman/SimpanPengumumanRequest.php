@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests\Pengumuman;
 
-use App\Enums\Role;
+use App\Enums\LevelIzin;
+use App\Enums\ModulIzin;
 use App\Enums\TargetPengumuman;
 use App\Models\Kelas;
 use App\Models\Murid;
@@ -13,9 +14,9 @@ use Illuminate\Validation\Rule;
 use LogicException;
 
 /**
- * `POST /pengumuman` dan `PUT /pengumuman/{id}` (B6.10). Kepala Sekolah bebas memilih target; guru hanya
- * `kelas` (kelas yang dia ampu) atau `murid` (murid di kelasnya). `is_publik` hanya untuk target `semua`.
- * `publish: false` menyimpan sebagai draft.
+ * `POST /pengumuman` dan `PUT /pengumuman/{id}` (B6.10). Kepala Sekolah dan pemegang izin kelola pengumuman bebas
+ * memilih target; guru lain hanya `kelas` (kelas yang dia ampu) atau `murid` (murid di kelasnya). `is_publik` hanya
+ * untuk target `semua`. `publish: false` menyimpan sebagai draft.
  */
 class SimpanPengumumanRequest extends FormRequest
 {
@@ -26,7 +27,7 @@ class SimpanPengumumanRequest extends FormRequest
      */
     public function rules(): array
     {
-        $target = $this->guru() ? Rule::enum(TargetPengumuman::class)->only(self::TARGET_GURU) : Rule::enum(TargetPengumuman::class);
+        $target = $this->targetTerbatas() ? Rule::enum(TargetPengumuman::class)->only(self::TARGET_GURU) : Rule::enum(TargetPengumuman::class);
 
         return [
             'judul' => ['required', 'string', 'max:255'],
@@ -48,7 +49,7 @@ class SimpanPengumumanRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'target.enum' => $this->guru()
+            'target.enum' => $this->targetTerbatas()
                 ? 'Guru hanya bisa membuat pengumuman untuk kelas yang diampu atau murid di kelasnya.'
                 : 'Target pengumuman tidak dikenal.',
             'kelas_ids.required_if' => 'Pilih minimal satu kelas.',
@@ -87,16 +88,21 @@ class SimpanPengumumanRequest extends FormRequest
         return array_map(intval(...), $this->validated('murid_ids', []));
     }
 
-    private function guru(): bool
+    /**
+     * Guru tanpa izin kelola pengumuman hanya boleh menyasar kelas yang diampu dan murid di kelasnya.
+     */
+    private function targetTerbatas(): bool
     {
-        return $this->user()?->role === Role::Guru;
+        $user = $this->user();
+
+        return $user instanceof User && ! $user->punyaIzin(ModulIzin::Pengumuman, LevelIzin::Kelola);
     }
 
     private function kelasDiampu(string $attribute, mixed $value, Closure $fail): void
     {
         $user = $this->user();
 
-        if ($this->guru() && $user instanceof User && ! Kelas::query()->diampuOleh($user)->whereKey($value)->exists()) {
+        if ($this->targetTerbatas() && $user instanceof User && ! Kelas::query()->diampuOleh($user)->whereKey($value)->exists()) {
             $fail('Anda hanya bisa memilih kelas yang Anda ampu.');
         }
     }
@@ -105,7 +111,7 @@ class SimpanPengumumanRequest extends FormRequest
     {
         $user = $this->user();
 
-        if ($this->guru() && $user instanceof User && ! Murid::query()->visibleTo($user)->whereKey($value)->exists()) {
+        if ($this->targetTerbatas() && $user instanceof User && ! Murid::query()->visibleTo($user)->whereKey($value)->exists()) {
             $fail('Anda hanya bisa memilih murid di kelas yang Anda ampu.');
         }
     }

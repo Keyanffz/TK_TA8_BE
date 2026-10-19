@@ -9,6 +9,7 @@ use App\Models\Kelas;
 use App\Models\KelasMurid;
 use App\Models\Murid;
 use App\Models\TahunAjaran;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,15 @@ use Illuminate\Support\Facades\DB;
 /**
  * Kenaikan kelas massal di akhir tahun ajaran (B6.5), dalam satu transaksi: penempatan di tahun ajaran
  * aktif ditutup dengan status naik/tinggal/lulus, lalu murid yang naik atau tinggal ditempatkan di kelas
- * tahun ajaran tujuan. Murid lulus berstatus `lulus` dengan tanggal keluar = akhir tahun ajaran aktif.
+ * tahun ajaran tujuan. Murid lulus berstatus `lulus` dengan tanggal keluar = akhir tahun ajaran aktif dan tahun
+ * lulus = tahunnya, dicatat di riwayat status seperti perubahan status lain.
  */
 class KenaikanKelasService
 {
-    public function __construct(private readonly KelasService $kelasService) {}
+    public function __construct(
+        private readonly KelasService $kelasService,
+        private readonly StatusMuridService $statusMurid,
+    ) {}
 
     /**
      * @param  list<array{murid_id: int, status: StatusKelasMurid, kelas_tujuan_id: int|null}>  $penempatan
@@ -28,7 +33,7 @@ class KenaikanKelasService
      *
      * @throws BusinessRuleException
      */
-    public function proses(TahunAjaran $tujuan, array $penempatan): array
+    public function proses(TahunAjaran $tujuan, array $penempatan, User $kepalaSekolah): array
     {
         $asal = TahunAjaran::query()->aktif()->first()
             ?? throw new BusinessRuleException('Belum ada tahun ajaran aktif. Aktifkan tahun ajaran yang sedang berjalan terlebih dahulu.');
@@ -37,7 +42,7 @@ class KenaikanKelasService
             throw new BusinessRuleException('Tahun ajaran tujuan harus berbeda dengan tahun ajaran aktif.');
         }
 
-        return DB::transaction(function () use ($asal, $tujuan, $penempatan): array {
+        return DB::transaction(function () use ($asal, $tujuan, $penempatan, $kepalaSekolah): array {
             $murid = Murid::query()->whereKey(array_column($penempatan, 'murid_id'))->lockForUpdate()->get();
             $this->kelasService->pastikanMuridAktif($murid);
             $this->kelasService->pastikanBelumPunyaKelas($murid, $tujuan->id);
@@ -46,7 +51,7 @@ class KenaikanKelasService
             $this->pastikanKelasTujuanValid($penempatan, $tujuan);
 
             foreach ($penempatan as $baris) {
-                $this->terapkan($baris, $penempatanLama[$baris['murid_id']], $murid->find($baris['murid_id']), $asal);
+                $this->terapkan($baris, $penempatanLama[$baris['murid_id']], $murid->find($baris['murid_id']), $asal, $kepalaSekolah);
             }
 
             return [
@@ -104,8 +109,10 @@ class KenaikanKelasService
 
     /**
      * @param  array{murid_id: int, status: StatusKelasMurid, kelas_tujuan_id: int|null}  $baris
+     *
+     * @throws BusinessRuleException
      */
-    private function terapkan(array $baris, KelasMurid $penempatanLama, ?Murid $murid, TahunAjaran $asal): void
+    private function terapkan(array $baris, KelasMurid $penempatanLama, ?Murid $murid, TahunAjaran $asal, User $kepalaSekolah): void
     {
         $penempatanLama->update(['status' => $baris['status']]);
 
@@ -119,6 +126,14 @@ class KenaikanKelasService
             return;
         }
 
-        $murid?->update(['status' => StatusMurid::Lulus, 'tanggal_keluar' => $asal->tanggal_selesai]);
+        if ($murid !== null) {
+            $this->statusMurid->terapkan($murid, [
+                'status' => StatusMurid::Lulus,
+                'tanggal' => $asal->tanggal_selesai->copy(),
+                'tahun_lulus' => $asal->tanggal_selesai->year,
+                'sekolah_tujuan' => null,
+                'keterangan' => "Lulus lewat kenaikan kelas tahun ajaran {$asal->nama}.",
+            ], $kepalaSekolah);
+        }
     }
 }

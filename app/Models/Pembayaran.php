@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MetodeBayar;
+use App\Enums\ModulIzin;
 use App\Enums\StatusPembayaran;
 use Database\Factories\PembayaranFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -37,14 +38,14 @@ class Pembayaran extends Model
     }
 
     /**
-     * Petugas keuangan: semua pembayaran. Lainnya: pembayaran dari tagihan yang terlihat olehnya
+     * Pemegang izin lihat keuangan: semua pembayaran. Lainnya: pembayaran dari tagihan yang terlihat olehnya
      * (guru melihat riwayat pembayaran di detail tagihan murid kelasnya).
      *
      * @param  Builder<self>  $query
      */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if ($user->bisaKelolaKeuangan()) {
+        if ($user->punyaIzin(ModulIzin::Keuangan)) {
             return;
         }
 

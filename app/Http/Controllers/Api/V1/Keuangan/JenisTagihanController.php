@@ -7,8 +7,10 @@ use App\Http\Requests\JenisTagihan\DaftarJenisTagihanRequest;
 use App\Http\Requests\JenisTagihan\SimpanJenisTagihanRequest;
 use App\Http\Resources\JenisTagihanResource;
 use App\Models\JenisTagihan;
+use App\Models\User;
 use App\Services\JenisTagihanService;
 use App\Support\ApiResponse;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -33,9 +35,9 @@ class JenisTagihanController extends Controller
         return ApiResponse::paginated(JenisTagihanResource::collection($jenisTagihan));
     }
 
-    public function store(SimpanJenisTagihanRequest $request): JsonResponse
+    public function store(SimpanJenisTagihanRequest $request, #[CurrentUser] User $user): JsonResponse
     {
-        $jenisTagihan = $this->jenisTagihanService->buat($request->validated());
+        $jenisTagihan = $this->jenisTagihanService->buat($request->validated(), $user);
 
         return ApiResponse::success(new JenisTagihanResource($jenisTagihan->load('tahunAjaran')), "Jenis tagihan {$jenisTagihan->nama} dibuat.", status: 201);
     }
@@ -43,9 +45,9 @@ class JenisTagihanController extends Controller
     /**
      * Mengubah jenis tagihan. Nominal baru hanya berlaku untuk tagihan berikutnya.
      */
-    public function update(SimpanJenisTagihanRequest $request, int $id): JsonResponse
+    public function update(SimpanJenisTagihanRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        $jenisTagihan = $this->jenisTagihanService->perbarui(JenisTagihan::query()->findOrFail($id), $request->validated());
+        $jenisTagihan = $this->jenisTagihanService->perbarui(JenisTagihan::query()->findOrFail($id), $request->validated(), $user);
 
         return ApiResponse::success(new JenisTagihanResource($jenisTagihan->load('tahunAjaran')), 'Jenis tagihan tersimpan.');
     }
@@ -53,10 +55,10 @@ class JenisTagihanController extends Controller
     /**
      * Menghapus jenis tagihan yang belum dipakai di tagihan atau keringanan.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id, #[CurrentUser] User $user): JsonResponse
     {
         $jenisTagihan = JenisTagihan::query()->findOrFail($id);
-        $this->jenisTagihanService->hapus($jenisTagihan);
+        $this->jenisTagihanService->hapus($jenisTagihan, $user);
 
         return ApiResponse::success(null, "Jenis tagihan {$jenisTagihan->nama} dihapus.");
     }

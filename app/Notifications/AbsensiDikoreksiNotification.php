@@ -4,11 +4,13 @@ namespace App\Notifications;
 
 use App\Enums\JenisAbsensi;
 use App\Enums\JenisNotifikasi;
+use App\Enums\Role;
 use App\Models\Absensi;
+use App\Models\User;
 
 /**
- * Dikirim ke peserta saat Kepala Sekolah mengoreksi absen masuknya atau mencatat absensi untuknya, supaya peserta
- * tahu riwayatnya berubah tanpa ia sendiri yang absen.
+ * Dikirim ke peserta saat Kepala Sekolah (atau guru berizin kelola laporan absensi) mengoreksi absen masuknya atau
+ * mencatat absensi untuknya, supaya peserta tahu riwayatnya berubah tanpa ia sendiri yang absen.
  */
 class AbsensiDikoreksiNotification extends NotifikasiDatabase
 {
@@ -22,16 +24,19 @@ class AbsensiDikoreksiNotification extends NotifikasiDatabase
 
     private readonly string $catatan;
 
+    private readonly string $pengoreksi;
+
     /**
      * @param  bool  $baru  true kalau barisnya baru dibuat lewat `POST /absensi/koreksi`
      */
-    public function __construct(Absensi $absensi, private readonly bool $baru)
+    public function __construct(Absensi $absensi, private readonly bool $baru, User $pelaku)
     {
         $this->jenisAbsen = $absensi->jenis === JenisAbsensi::Masuk ? 'absen masuk' : 'absen pulang';
         $this->tanggal = $absensi->tanggal->translatedFormat('l, j F Y');
         $this->bulan = $absensi->tanggal->format('Y-m');
         $this->status = $absensi->status?->label();
         $this->catatan = rtrim((string) $absensi->catatan_koreksi, '. ');
+        $this->pengoreksi = $pelaku->role === Role::SuperAdmin ? Role::SuperAdmin->label() : $pelaku->name;
     }
 
     protected function jenis(): JenisNotifikasi
@@ -41,7 +46,7 @@ class AbsensiDikoreksiNotification extends NotifikasiDatabase
 
     protected function judul(): string
     {
-        return $this->baru ? 'Absensi dicatat Kepala Sekolah' : 'Absensi dikoreksi Kepala Sekolah';
+        return $this->baru ? "Absensi dicatat {$this->pengoreksi}" : "Absensi dikoreksi {$this->pengoreksi}";
     }
 
     protected function pesan(object $notifiable): string
@@ -52,7 +57,7 @@ class AbsensiDikoreksiNotification extends NotifikasiDatabase
             default => "mencatat {$this->jenisAbsen} {$this->tanggal}",
         };
 
-        return "Kepala Sekolah {$perubahan}. Catatan: {$this->catatan}.";
+        return "{$this->pengoreksi} {$perubahan}. Catatan: {$this->catatan}.";
     }
 
     protected function url(object $notifiable): string

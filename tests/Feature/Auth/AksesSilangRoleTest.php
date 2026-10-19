@@ -85,7 +85,7 @@ it('menolak token guru di endpoint khusus Kepala Sekolah dengan 403', function (
 ]);
 
 /*
- * Route login tanpa middleware `role:`/`can:` dipakai semua role dengan data yang dibatasi scope `visibleTo` dan
+ * Route login tanpa middleware `role:`/`izin:`/`can:` dipakai semua role dengan data yang dibatasi scope `visibleTo` dan
  * Policy (A7 "Scoping data otomatis"). Route login baru yang tidak dibatasi role harus ditambahkan ke daftar ini
  * dengan sengaja, supaya tidak ada endpoint staff atau wali yang terbuka untuk role lain karena lupa middleware.
  */
@@ -106,7 +106,7 @@ it('membatasi role di setiap route login kecuali route bersama yang dipakai semu
     $tanpaBatasRole = collect(Route::getRoutes()->getRoutes())
         ->filter(fn (RouteLaravel $route) => in_array('auth:sanctum', $route->gatherMiddleware(), true))
         ->reject(fn (RouteLaravel $route) => collect($route->gatherMiddleware())
-            ->contains(fn (mixed $middleware) => is_string($middleware) && Str::startsWith($middleware, ['role:', 'can:'])))
+            ->contains(fn (mixed $middleware) => is_string($middleware) && Str::startsWith($middleware, ['role:', 'izin:', 'can:'])))
         ->flatMap(fn (RouteLaravel $route) => collect($route->methods())
             ->reject(fn (string $metode) => $metode === 'HEAD')
             ->map(fn (string $metode) => "{$metode} {$route->uri()}"))

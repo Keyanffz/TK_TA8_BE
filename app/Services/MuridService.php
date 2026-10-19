@@ -3,15 +3,12 @@
 namespace App\Services;
 
 use App\Enums\Hubungan;
-use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
-use App\Models\KelasMurid;
 use App\Models\Murid;
 use App\Models\MuridWali;
 use App\Models\User;
 use App\Support\NomorUrut;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +21,6 @@ class MuridService
 
     public function __construct(
         private readonly MediaService $media,
-        private readonly KelasService $kelasService,
         private readonly WaliMuridService $waliMuridService,
     ) {}
 
@@ -36,20 +32,21 @@ class MuridService
      *
      * @throws BusinessRuleException
      */
-    public function buat(array $data, ?UploadedFile $foto, User $kepalaSekolah): Murid
+    public function buat(array $data, ?UploadedFile $foto, User $pembuat): Murid
     {
         $fotoPath = $foto === null ? null : $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
-        return DB::transaction(function () use ($data, $fotoPath, $kepalaSekolah): Murid {
+        return DB::transaction(function () use ($data, $fotoPath, $pembuat): Murid {
             $murid = $this->buatDenganFotoTersimpan($data, $fotoPath);
-            $this->waliMuridService->buatAkunOtomatis($murid, Hubungan::Wali, null, $kepalaSekolah);
+            $this->waliMuridService->buatAkunOtomatis($murid, Hubungan::Wali, null, $pembuat);
 
             return $murid;
         });
     }
 
     /**
-     * Sama dengan `buat()`, untuk foto yang sudah ada di disk private (misalnya salinan pas foto PPDB).
+     * Sama dengan `buat()` tanpa akun wali, untuk foto yang sudah ada di disk private (misalnya salinan pas foto
+     * PPDB). Status bawaan aktif; import murid mengirim status lain untuk data alumni.
      *
      * @param  array<string, mixed>  $data
      *
@@ -58,30 +55,25 @@ class MuridService
     public function buatDenganFotoTersimpan(array $data, ?string $fotoPath): Murid
     {
         return DB::transaction(fn (): Murid => Murid::query()->create([
+            'status' => StatusMurid::Aktif,
             ...$data,
             'nis' => $this->nisBaru(Carbon::parse($data['tanggal_masuk'])),
-            'status' => StatusMurid::Aktif,
             'foto_path' => $fotoPath,
         ]));
     }
 
     /**
-     * Perubahan status ikut mengubah penempatan murid di tahun ajaran aktif: lulus → `lulus`,
-     * pindah/keluar → `keluar`, kembali aktif → penempatan dibuka lagi (dengan cek kapasitas). Tanggal lahir yang
-     * berubah ikut mengganti password awal akun wali otomatis yang belum pernah dipakai.
+     * Status murid diubah lewat `StatusMuridService`, bukan di sini. Tanggal lahir yang berubah ikut mengganti
+     * password awal akun wali otomatis yang belum pernah dipakai.
      *
      * @param  array<string, mixed>  $data
-     *
-     * @throws BusinessRuleException
      */
-    public function perbarui(Murid $murid, array $data, ?UploadedFile $foto, User $kepalaSekolah): Murid
+    public function perbarui(Murid $murid, array $data, ?UploadedFile $foto, User $pengubah): Murid
     {
         $fotoLama = $murid->foto_path;
-        $statusLama = $murid->status;
-        $statusBaru = StatusMurid::from($data['status']);
 
-        DB::transaction(function () use ($murid, $data, $foto, $statusLama, $statusBaru, $kepalaSekolah): void {
-            $murid->fill([...$data, 'tanggal_keluar' => $statusBaru === StatusMurid::Aktif ? null : $data['tanggal_keluar']]);
+        DB::transaction(function () use ($murid, $data, $foto, $pengubah): void {
+            $murid->fill($data);
 
             if ($foto !== null) {
                 $murid->foto_path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
@@ -91,10 +83,7 @@ class MuridService
             $murid->save();
 
             if ($tanggalLahirBerubah) {
-                $this->waliMuridService->sesuaikanPasswordAwal($murid, $kepalaSekolah);
-            }
-            if ($statusLama !== $statusBaru) {
-                $this->sesuaikanPenempatan($murid, $statusBaru);
+                $this->waliMuridService->sesuaikanPasswordAwal($murid, $pengubah);
             }
         });
 
@@ -112,14 +101,14 @@ class MuridService
      *
      * @throws BusinessRuleException
      */
-    public function hapus(Murid $murid, User $kepalaSekolah): void
+    public function hapus(Murid $murid, User $penghapus): void
     {
         if ($murid->tagihan()->exists() || $murid->rapor()->exists() || $murid->pendaftaran()->exists()) {
             throw new BusinessRuleException("{$murid->nama_lengkap} sudah punya tagihan, rapor, atau data PPDB sehingga tidak bisa dihapus. Ubah statusnya menjadi pindah atau keluar.");
         }
 
-        DB::transaction(function () use ($murid, $kepalaSekolah): void {
-            $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $kepalaSekolah);
+        DB::transaction(function () use ($murid, $penghapus): void {
+            $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $penghapus);
             $murid->kelasMurid()->delete();
             $murid->delete();
         });
@@ -200,35 +189,5 @@ class MuridService
         $awalan = 'TA'.$tanggalMasuk->year;
 
         return NomorUrut::format($awalan, NomorUrut::berikutnya(Murid::withTrashed(), 'nis', $awalan, self::DIGIT_URUT_NIS), self::DIGIT_URUT_NIS);
-    }
-
-    /**
-     * @throws BusinessRuleException
-     */
-    private function sesuaikanPenempatan(Murid $murid, StatusMurid $statusBaru): void
-    {
-        [$dari, $ke] = match ($statusBaru) {
-            StatusMurid::Aktif => [[StatusKelasMurid::Lulus, StatusKelasMurid::Keluar], StatusKelasMurid::Aktif],
-            StatusMurid::Lulus => [[StatusKelasMurid::Aktif], StatusKelasMurid::Lulus],
-            StatusMurid::Pindah, StatusMurid::Keluar => [[StatusKelasMurid::Aktif], StatusKelasMurid::Keluar],
-        };
-
-        $penempatan = KelasMurid::query()
-            ->with('kelas')
-            ->where('murid_id', $murid->id)
-            ->whereIn('status', $dari)
-            ->whereHas('kelas.tahunAjaran', fn (Builder $tahunAjaran) => $tahunAjaran->where('is_aktif', true))
-            ->lockForUpdate()
-            ->first();
-
-        if ($penempatan === null) {
-            return;
-        }
-
-        if ($ke === StatusKelasMurid::Aktif) {
-            $this->kelasService->pastikanMuatKapasitas($penempatan->kelas, 1);
-        }
-
-        $penempatan->update(['status' => $ke]);
     }
 }

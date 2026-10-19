@@ -1,9 +1,7 @@
 <?php
 
-use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
 use App\Models\Kelas;
-use App\Models\KelasMurid;
 use App\Models\Murid;
 use App\Models\Rapor;
 use App\Models\Tagihan;
@@ -83,56 +81,20 @@ it('memvalidasi isian murid', function (array $data, string $field) {
     'foto bukan gambar' => [['foto' => 'bukan-file'], 'foto'],
 ]);
 
-it('mengubah status murid menjadi pindah dan menutup penempatan kelasnya', function () {
-    $kelas = Kelas::factory()->for(TahunAjaran::factory()->aktif())->create();
-    $murid = Murid::factory()->create();
-    $kelas->murid()->attach($murid);
-
-    $this->actingAs($this->kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMurid([
-        'status' => 'pindah',
-        'tanggal_keluar' => '2026-09-15',
-    ]))
-        ->assertOk()
-        ->assertJsonPath('data.status', 'pindah')
-        ->assertJsonPath('data.tanggal_keluar', '2026-09-15')
-        ->assertJsonPath('data.nis', $murid->nis);
-
-    expect(KelasMurid::query()->where('murid_id', $murid->id)->value('status'))->toBe(StatusKelasMurid::Keluar)
-        ->and($kelas->muridAktif()->count())->toBe(0);
-});
-
-it('membuka kembali penempatan kelas saat murid diaktifkan lagi', function () {
-    $kelas = Kelas::factory()->for(TahunAjaran::factory()->aktif())->create();
-    $murid = Murid::factory()->create(['status' => StatusMurid::Keluar, 'tanggal_keluar' => '2026-09-15']);
-    $kelas->murid()->attach($murid, ['status' => StatusKelasMurid::Keluar]);
-
-    $this->actingAs($this->kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMurid(['status' => 'aktif']))
-        ->assertOk()
-        ->assertJsonPath('data.tanggal_keluar', null);
-
-    expect($kelas->muridAktif()->count())->toBe(1);
-});
-
 it('menolak status dan tanggal keluar saat menambah murid', function () {
     $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMurid(['status' => 'lulus', 'tanggal_keluar' => '2027-06-25']))
         ->assertStatus(422)
         ->assertJsonValidationErrors(['status', 'tanggal_keluar']);
 });
 
-it('mewajibkan status saat memperbarui murid', function () {
+it('menolak status dan tanggal keluar saat memperbarui data murid karena status punya endpoint sendiri', function () {
     $murid = Murid::factory()->create();
 
-    $this->actingAs($this->kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMurid())
+    $this->actingAs($this->kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMurid(['status' => 'keluar', 'tanggal_keluar' => '2026-09-15']))
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['status']);
-});
+        ->assertJsonValidationErrors(['status', 'tanggal_keluar']);
 
-it('mewajibkan tanggal keluar untuk murid yang tidak aktif', function () {
-    $murid = Murid::factory()->create();
-
-    $this->actingAs($this->kepsek)->putJson("/api/v1/murid/{$murid->id}", dataMurid(['status' => 'keluar']))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['tanggal_keluar']);
+    expect($murid->fresh()?->status)->toBe(StatusMurid::Aktif);
 });
 
 it('mengganti foto murid dan menghapus foto lama', function () {
@@ -141,7 +103,6 @@ it('mengganti foto murid dan menghapus foto lama', function () {
     $murid = Murid::factory()->create(['foto_path' => 'murid/lama.jpg']);
 
     $this->actingAs($this->kepsek)->put("/api/v1/murid/{$murid->id}", dataMurid([
-        'status' => 'aktif',
         'foto' => UploadedFile::fake()->image('baru.jpg'),
     ]))->assertOk();
 

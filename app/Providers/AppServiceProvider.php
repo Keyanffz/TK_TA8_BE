@@ -63,8 +63,6 @@ class AppServiceProvider extends ServiceProvider
     private function daftarkanGate(): void
     {
         Gate::define('viewApiDocs', fn (?User $user = null): bool => ! $this->app->isProduction());
-
-        Gate::define('kelola-keuangan', fn (User $user): bool => $user->bisaKelolaKeuangan());
     }
 
     /**

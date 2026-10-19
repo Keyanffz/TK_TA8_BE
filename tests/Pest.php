@@ -24,7 +24,7 @@ pest()->extend(TestCase::class)
 function buatKepalaSekolah(): User
 {
     $user = User::factory()->superAdmin()->create();
-    Guru::factory()->for($user)->kelolaKeuangan()->create(['jabatan' => Guru::JABATAN_KEPALA_SEKOLAH]);
+    Guru::factory()->for($user)->create(['jabatan' => Guru::JABATAN_KEPALA_SEKOLAH]);
 
     return $user;
 }

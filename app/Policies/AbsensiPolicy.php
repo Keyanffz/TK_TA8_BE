@@ -9,7 +9,8 @@ use Illuminate\Auth\Access\Response;
 class AbsensiPolicy
 {
     /**
-     * Absensi dan fotonya hanya untuk pemiliknya dan Kepala Sekolah; guru lain dibalas 404 (B4).
+     * Absensi dan fotonya hanya untuk pemiliknya, Kepala Sekolah, dan pemegang izin lihat laporan absensi; guru lain
+     * dibalas 404 (B4).
      */
     public function view(User $user, Absensi $absensi): Response
     {

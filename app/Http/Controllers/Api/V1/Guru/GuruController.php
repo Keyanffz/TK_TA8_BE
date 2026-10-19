@@ -23,7 +23,7 @@ class GuruController extends Controller
     public function __construct(private readonly GuruService $guruService) {}
 
     /**
-     * Daftar guru (tanpa profil guru milik Kepala Sekolah).
+     * Daftar guru (tanpa profil guru milik Kepala Sekolah) beserta izin modulnya.
      *
      * Filter `filter[status]` = `aktif` | `nonaktif`. Urutan `sort` = `nama` | `created_at`
      * (awali `-` untuk menurun). `search` mencari nama, email, NIP, dan NUPTK.
@@ -35,7 +35,7 @@ class GuruController extends Controller
             $menurun ? 'desc' : 'asc',
         ));
 
-        $guru = QueryBuilder::for(Guru::query()->bukanKepalaSekolah()->with('user')->cari($request->kataCari()), $request)
+        $guru = QueryBuilder::for(Guru::query()->bukanKepalaSekolah()->with(['user', 'izin'])->cari($request->kataCari()), $request)
             ->allowedFilters(AllowedFilter::callback('status', fn (Builder $query, mixed $status) => $query
                 ->whereHas('user', fn (Builder $user) => $user->whereIn('status', (array) $status))))
             ->allowedSorts($urutNama, AllowedSort::field('created_at'))
@@ -72,13 +72,13 @@ class GuruController extends Controller
     }
 
     /**
-     * Mengubah data guru, termasuk izin kelola keuangan dan tampil di landing page.
+     * Mengubah data guru, termasuk tampil di landing page. Izin modul diubah lewat `PUT /guru/{id}/izin`.
      *
      * Mengganti `email` melepas akun Google yang sebelumnya terikat, jadi guru masuk dengan akun Google email baru.
      */
-    public function update(SimpanGuruRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function update(SimpanGuruRequest $request, int $id): JsonResponse
     {
-        $guru = $this->guruService->perbarui($this->cariGuru($id), $request->validated(), $request->foto(), $kepalaSekolah);
+        $guru = $this->guruService->perbarui($this->cariGuru($id), $request->validated(), $request->foto());
 
         return ApiResponse::success(new GuruResource($guru), 'Data guru tersimpan.');
     }
@@ -113,6 +113,6 @@ class GuruController extends Controller
 
     private function cariGuru(int $id): Guru
     {
-        return Guru::query()->with('user')->findOrFail($id);
+        return Guru::query()->with(['user', 'izin'])->findOrFail($id);
     }
 }

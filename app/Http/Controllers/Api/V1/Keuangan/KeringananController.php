@@ -49,19 +49,19 @@ class KeringananController extends Controller
     {
         $keringanan = $this->keringananService->buat($request->validated(), $user);
 
-        return ApiResponse::success(new KeringananResource($keringanan->load(self::RELASI)), 'Keringanan tersimpan.', status: 201);
+        return ApiResponse::success(new KeringananResource($keringanan->loadMissing(self::RELASI)), 'Keringanan tersimpan.', status: 201);
     }
 
-    public function update(SimpanKeringananRequest $request, int $id): JsonResponse
+    public function update(SimpanKeringananRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        $keringanan = $this->keringananService->perbarui(Keringanan::query()->findOrFail($id), $request->validated());
+        $keringanan = $this->keringananService->perbarui(Keringanan::query()->findOrFail($id), $request->validated(), $user);
 
         return ApiResponse::success(new KeringananResource($keringanan->load(self::RELASI)), 'Keringanan tersimpan.');
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id, #[CurrentUser] User $user): JsonResponse
     {
-        Keringanan::query()->findOrFail($id)->delete();
+        $this->keringananService->hapus(Keringanan::query()->findOrFail($id), $user);
 
         return ApiResponse::success(null, 'Keringanan dihapus.');
     }

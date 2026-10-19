@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\JenisKelamin;
+use App\Enums\ModulIzin;
 use App\Enums\Role;
 use App\Enums\StatusMurid;
+use Carbon\CarbonInterface;
 use Database\Factories\MuridFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'nis', 'nisn', 'nik', 'nama_lengkap', 'nama_panggilan', 'jenis_kelamin', 'tempat_lahir',
     'tanggal_lahir', 'agama', 'alamat', 'anak_ke', 'foto_path', 'catatan_khusus', 'status',
-    'tanggal_masuk', 'tanggal_keluar',
+    'tanggal_masuk', 'tanggal_keluar', 'tahun_lulus', 'sekolah_tujuan', 'keterangan_status',
 ])]
 class Murid extends Model
 {
@@ -39,6 +41,7 @@ class Murid extends Model
             'status' => StatusMurid::class,
             'tanggal_masuk' => 'date',
             'tanggal_keluar' => 'date',
+            'tahun_lulus' => 'integer',
         ];
     }
 
@@ -47,7 +50,12 @@ class Murid extends Model
      */
     public function passwordAwalWali(): string
     {
-        return $this->tanggal_lahir->format('dmY');
+        return self::passwordAwalDari($this->tanggal_lahir);
+    }
+
+    public static function passwordAwalDari(CarbonInterface $tanggalLahir): string
+    {
+        return $tanggalLahir->format('dmY');
     }
 
     /**
@@ -63,6 +71,28 @@ class Murid extends Model
             Role::Guru => $query->whereHas('kelas', fn (Builder $kelas) => $kelas->diampuOleh($user)),
             Role::WaliMurid => $query->whereHas('waliMurid', fn (Builder $wali) => $wali->where('user_id', $user->id)),
         };
+    }
+
+    /**
+     * Daftar dan detail murid (`GET /murid`): pemegang izin lihat data murid melihat semua murid, termasuk alumni;
+     * selain itu sama dengan `visibleTo`. Scope lain (tagihan, rapor, pengumuman) tetap memakai `visibleTo`, supaya
+     * izin data murid tidak ikut membuka data modul lain.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeDataMuridUntuk(Builder $query, User $user): void
+    {
+        if (! $user->punyaIzin(ModulIzin::DataMurid)) {
+            $query->visibleTo($user);
+        }
+    }
+
+    /**
+     * Relasi yang ditampilkan `MuridDetailResource`: kelas aktif, wali yang tertaut, dan riwayat status.
+     */
+    public function muatDetail(): static
+    {
+        return $this->load(['kelasAktif', 'waliMurid.user', 'riwayatStatus.pengubah']);
     }
 
     /**
@@ -118,6 +148,16 @@ class Murid extends Model
     public function kelasMurid(): HasMany
     {
         return $this->hasMany(KelasMurid::class);
+    }
+
+    /**
+     * Terbaru dulu.
+     *
+     * @return HasMany<RiwayatStatusMurid, $this>
+     */
+    public function riwayatStatus(): HasMany
+    {
+        return $this->hasMany(RiwayatStatusMurid::class)->latest('tanggal')->latest('id');
     }
 
     /**

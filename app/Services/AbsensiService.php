@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\JenisAbsensi;
+use App\Enums\Role;
 use App\Enums\StatusAbsensi;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Absensi;
@@ -103,13 +104,15 @@ class AbsensiService
     }
 
     /**
-     * Koreksi status absen masuk oleh Kepala Sekolah. Pengoreksi dan waktunya disimpan di baris absensi dan
-     * di log aktivitas (status sebelum dan sesudah).
+     * Koreksi status absen masuk oleh Kepala Sekolah atau pemegang izin kelola laporan absensi. Pengoreksi dan
+     * waktunya disimpan di baris absensi dan di log aktivitas (status sebelum dan sesudah).
      *
      * @throws BusinessRuleException
      */
     public function koreksi(Absensi $absensi, StatusAbsensi $status, string $catatan, User $pelaku): Absensi
     {
+        $this->pastikanBukanAbsensiSendiri($absensi->user_id, $pelaku);
+
         if ($absensi->jenis !== JenisAbsensi::Masuk) {
             throw new BusinessRuleException('Hanya status absen masuk yang bisa dikoreksi. Absen pulang tidak punya status.');
         }
@@ -130,8 +133,9 @@ class AbsensiService
     }
 
     /**
-     * Absen masuk atau pulang yang dicatat Kepala Sekolah untuk tanggal yang belum punya baris jenis itu, misalnya
-     * guru lupa absen padahal masuk dan scheduler belum menandainya tidak hadir, atau lupa absen pulang. Absen
+     * Absen masuk atau pulang yang dicatat Kepala Sekolah (atau pemegang izin kelola laporan absensi) untuk tanggal
+     * yang belum punya baris jenis itu, misalnya guru lupa absen padahal masuk dan scheduler belum menandainya tidak
+     * hadir, atau lupa absen pulang. Absen
      * pulang butuh absen masuk hadir atau terlambat di tanggal itu. Barisnya tanpa waktu, lokasi, dan foto, dan
      * langsung bertanda koreksi: scheduler melewati peserta yang sudah punya absen masuk, dan
      * `scopeTidakHadirOtomatis` tidak mencakupnya saat tanggal libur ditambah.
@@ -140,6 +144,7 @@ class AbsensiService
      */
     public function koreksiBaru(int $userId, Carbon $tanggal, JenisAbsensi $jenis, ?StatusAbsensi $status, string $catatan, User $pelaku): Absensi
     {
+        $this->pastikanBukanAbsensiSendiri($userId, $pelaku);
         $peserta = User::query()->pesertaAbsensi()->find($userId)
             ?? throw new BusinessRuleException('Akun ini bukan peserta absensi. Absensi hanya untuk guru aktif dan Kepala Sekolah.');
         $this->pastikanTanggalAbsensi($tanggal);
@@ -300,6 +305,19 @@ class AbsensiService
     }
 
     /**
+     * Guru yang diberi izin kelola laporan absensi tidak boleh mengoreksi atau mencatat absensinya sendiri; itu tetap
+     * dilakukan Kepala Sekolah.
+     *
+     * @throws BusinessRuleException
+     */
+    private function pastikanBukanAbsensiSendiri(int $pesertaId, User $pelaku): void
+    {
+        if ($pesertaId === $pelaku->id && $pelaku->role !== Role::SuperAdmin) {
+            throw new BusinessRuleException('Absensi Anda sendiri hanya bisa dikoreksi atau dicatat Kepala Sekolah.');
+        }
+    }
+
+    /**
      * Log aktivitas untuk setiap koreksi, dan notifikasi ke peserta kecuali Kepala Sekolah mengubah absensinya
      * sendiri. Baris yang baru dibuat (`POST /absensi/koreksi`) diberi tahu sebagai "dicatat", bukan "dikoreksi".
      */
@@ -317,7 +335,7 @@ class AbsensiService
                 : "Mengoreksi absensi {$tanggal} menjadi {$absensi->status?->label()}");
 
         if ($absensi->user_id !== $pelaku->id) {
-            $absensi->loadMissing('user')->user->notify(new AbsensiDikoreksiNotification($absensi, $absensi->wasRecentlyCreated));
+            $absensi->loadMissing('user')->user->notify(new AbsensiDikoreksiNotification($absensi, $absensi->wasRecentlyCreated, $pelaku));
         }
     }
 

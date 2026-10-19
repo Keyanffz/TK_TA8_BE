@@ -130,8 +130,12 @@ class TagihanService
         });
 
         $this->beriTahuWali($dibuat);
+        $dilewati = count($muridIds) - $dibuat->count();
+        activity('tagihan')->causedBy($pembuat)->performedOn($jenis)->event('dibuat_sekali')
+            ->withProperties(['jenis_tagihan_id' => $jenis->id, 'dibuat' => $dibuat->count(), 'dilewati' => $dilewati])
+            ->log("Membuat tagihan {$jenis->nama}: {$dibuat->count()} dibuat, {$dilewati} dilewati");
 
-        return ['dibuat' => $dibuat->count(), 'dilewati' => count($muridIds) - $dibuat->count()];
+        return ['dibuat' => $dibuat->count(), 'dilewati' => $dilewati];
     }
 
     /**

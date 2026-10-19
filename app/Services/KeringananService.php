@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Keringanan dipakai saat tagihan dibuat (generate bulanan dan tagihan sekali). Tagihan yang sudah ada
- * tidak dihitung ulang ketika keringanan ditambah, diubah, atau dihapus.
+ * tidak dihitung ulang ketika keringanan ditambah, diubah, atau dihapus. Setiap perubahan dicatat di log
+ * aktivitas `keringanan`, karena guru berizin kelola keuangan juga bisa mengubahnya.
  */
 class KeringananService
 {
@@ -21,11 +22,14 @@ class KeringananService
      */
     public function buat(array $data, User $pembuat): Keringanan
     {
-        return DB::transaction(function () use ($data, $pembuat): Keringanan {
+        $keringanan = DB::transaction(function () use ($data, $pembuat): Keringanan {
             $this->pastikanTidakTumpangTindih($data);
 
             return Keringanan::query()->create([...$data, 'dibuat_oleh' => $pembuat->id]);
         });
+        $this->catatLog($keringanan, $pembuat, 'dibuat', 'Menambah');
+
+        return $keringanan;
     }
 
     /**
@@ -33,14 +37,33 @@ class KeringananService
      *
      * @throws BusinessRuleException
      */
-    public function perbarui(Keringanan $keringanan, array $data): Keringanan
+    public function perbarui(Keringanan $keringanan, array $data, User $pelaku): Keringanan
     {
-        return DB::transaction(function () use ($keringanan, $data): Keringanan {
+        DB::transaction(function () use ($keringanan, $data): void {
             $this->pastikanTidakTumpangTindih($data, $keringanan->id);
             $keringanan->update($data);
-
-            return $keringanan;
         });
+        $this->catatLog($keringanan, $pelaku, 'diubah', 'Mengubah');
+
+        return $keringanan;
+    }
+
+    public function hapus(Keringanan $keringanan, User $pelaku): void
+    {
+        $keringanan->delete();
+        $this->catatLog($keringanan, $pelaku, 'dihapus', 'Menghapus');
+    }
+
+    private function catatLog(Keringanan $keringanan, User $pelaku, string $event, string $kataKerja): void
+    {
+        $keringanan->loadMissing(['murid', 'jenisTagihan']);
+
+        activity('keringanan')->causedBy($pelaku)->performedOn($keringanan)->event($event)
+            ->withProperties([
+                'murid_id' => $keringanan->murid_id, 'jenis_tagihan_id' => $keringanan->jenis_tagihan_id,
+                'tipe' => $keringanan->tipe->value, 'nilai' => $keringanan->nilai,
+            ])
+            ->log("{$kataKerja} keringanan {$keringanan->jenisTagihan->nama} untuk {$keringanan->murid->nama_lengkap}");
     }
 
     /**

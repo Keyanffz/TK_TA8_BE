@@ -81,7 +81,8 @@ class PengumumanService
 
     /**
      * Pengguna aktif yang menjadi sasaran pengumuman, selain penulisnya. Untuk target kelas dan murid: wali
-     * murid yang anaknya disasar ditambah guru yang mengampu kelas itu, sama dengan yang melihatnya di feed.
+     * murid yang anaknya disasar ditambah guru yang mengampu kelas itu, sama dengan yang melihatnya di feed. Target
+     * semua dan wali murid hanya sampai ke wali yang masih punya anak aktif.
      *
      * @return Builder<User>
      */
@@ -90,9 +91,11 @@ class PengumumanService
         $query = User::query()->where('status', StatusAkun::Aktif)->whereKeyNot($pengumuman->penulis_id);
 
         return match ($pengumuman->target) {
-            TargetPengumuman::Semua => $query->whereIn('role', [Role::Guru, Role::WaliMurid]),
+            TargetPengumuman::Semua => $query->where(fn (Builder $user) => $user
+                ->where('role', Role::Guru)
+                ->orWhere(fn (Builder $wali) => $wali->waliDenganAnakAktif())),
             TargetPengumuman::Guru => $query->where('role', Role::Guru),
-            TargetPengumuman::WaliMurid => $query->where('role', Role::WaliMurid),
+            TargetPengumuman::WaliMurid => $query->waliDenganAnakAktif(),
             TargetPengumuman::Kelas => $this->waliDanGuruKelas(
                 $query,
                 fn (Builder $murid) => $murid->whereHas('kelasMurid', fn (Builder $penempatan) => $penempatan

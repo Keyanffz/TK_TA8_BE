@@ -11,7 +11,10 @@ class DaftarLogAktivitasRequest extends FormRequest
     use MemvalidasiDaftar;
 
     /** Nilai `log_name` yang ditulis aplikasi (B7). */
-    public const JENIS = ['akun', 'guru', 'wali', 'tagihan', 'pembayaran', 'rapor', 'ppdb', 'pengaturan'];
+    public const JENIS = [
+        'akun', 'guru', 'izin', 'wali', 'murid', 'jenis_tagihan', 'keringanan', 'tagihan', 'pembayaran', 'rapor', 'ppdb',
+        'pengaturan', 'absensi',
+    ];
 
     /**
      * @return array<string, mixed>

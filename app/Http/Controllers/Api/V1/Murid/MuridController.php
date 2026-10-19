@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1\Murid;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Murid\DaftarMuridRequest;
-use App\Http\Requests\Murid\PerbaruiMuridRequest;
 use App\Http\Requests\Murid\SimpanMuridRequest;
 use App\Http\Requests\Murid\UbahTautanWaliRequest;
 use App\Http\Resources\MuridDetailResource;
@@ -29,25 +28,27 @@ class MuridController extends Controller
     public function __construct(private readonly MuridService $muridService) {}
 
     /**
-     * Daftar murid. Kepala Sekolah melihat semua murid, guru hanya murid di kelas yang dia ampu pada tahun
-     * ajaran aktif, wali murid hanya anaknya sendiri.
+     * Daftar murid. Kepala Sekolah dan pemegang izin lihat data murid melihat semua murid, guru lain hanya murid di
+     * kelas yang dia ampu pada tahun ajaran aktif, wali murid hanya anaknya sendiri.
      *
-     * Filter `filter[kelas_id]`, `filter[status]`, `filter[tingkat]` (tingkat kelas di tahun ajaran aktif).
-     * `search` mencari nama lengkap, nama panggilan, NIS, dan NISN. Urutan `sort` = `nama` | `nis` | `created_at`.
+     * Filter `filter[kelas_id]`, `filter[status]`, `filter[tingkat]` (tingkat kelas di tahun ajaran aktif),
+     * `filter[tahun_lulus]` (daftar alumni bersama `filter[status]=lulus`). `search` mencari nama lengkap, nama
+     * panggilan, NIS, dan NISN. Urutan `sort` = `nama` | `nis` | `created_at` | `tahun_lulus`.
      */
     public function index(DaftarMuridRequest $request, #[CurrentUser] User $user): JsonResponse
     {
         $urutNama = AllowedSort::field('nama', 'nama_lengkap');
 
-        $murid = QueryBuilder::for(Murid::query()->visibleTo($user)->with('kelasAktif')->cari($request->kataCari()), $request)
+        $murid = QueryBuilder::for(Murid::query()->dataMuridUntuk($user)->with('kelasAktif')->cari($request->kataCari()), $request)
             ->allowedFilters(
                 AllowedFilter::callback('kelas_id', fn (Builder $query, mixed $kelasId) => $query
                     ->whereHas('kelas', fn (Builder $kelas) => $kelas->whereKey($kelasId))),
                 AllowedFilter::exact('status'),
                 AllowedFilter::callback('tingkat', fn (Builder $query, mixed $tingkat) => $query
                     ->whereHas('kelasAktif', fn (Builder $kelas) => $kelas->where('tingkat', $tingkat))),
+                AllowedFilter::exact('tahun_lulus'),
             )
-            ->allowedSorts($urutNama, AllowedSort::field('nis'), AllowedSort::field('created_at'))
+            ->allowedSorts($urutNama, AllowedSort::field('nis'), AllowedSort::field('created_at'), AllowedSort::field('tahun_lulus'))
             ->defaultSort($urutNama)
             ->paginate($request->perHalaman())
             ->withQueryString();
@@ -56,14 +57,14 @@ class MuridController extends Controller
     }
 
     /**
-     * Detail murid beserta kelas di tahun ajaran aktif dan wali yang tertaut.
+     * Detail murid beserta kelas di tahun ajaran aktif, wali yang tertaut, dan riwayat status (terbaru dulu).
      */
     public function show(int $id): JsonResponse
     {
         $murid = Murid::query()->findOrFail($id);
         Jangkauan::pastikanTerlihat($murid);
 
-        return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])));
+        return ApiResponse::success(new MuridDetailResource($murid->muatDetail()));
     }
 
     /**
@@ -73,38 +74,39 @@ class MuridController extends Controller
      * Murid baru langsung dibuatkan akun wali: username NIS, password awal tanggal lahir anak (DDMMYYYY) yang
      * wajib diganti saat login pertama, hubungan `wali` sebagai kontak utama. Akun ini muncul di `wali`.
      */
-    public function store(SimpanMuridRequest $request, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function store(SimpanMuridRequest $request, #[CurrentUser] User $user): JsonResponse
     {
-        $murid = $this->muridService->buat($request->dataMurid(), $request->foto(), $kepalaSekolah);
+        $murid = $this->muridService->buat($request->dataMurid(), $request->foto(), $user);
 
         return ApiResponse::success(
-            new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])),
+            new MuridDetailResource($murid->muatDetail()),
             "{$murid->nama_lengkap} ditambahkan dengan NIS {$murid->nis}. Akun wali murid memakai NIS ini sebagai username.",
             status: 201,
         );
     }
 
     /**
-     * Mengubah data murid, termasuk status (lulus, pindah, keluar) dan tanggal keluarnya.
+     * Mengubah data murid. Status diubah lewat `PATCH /murid/{id}/status`; `status` dan `tanggal_keluar` di sini
+     * ditolak 422 `VALIDATION_ERROR`.
      *
      * Kalau `tanggal_lahir` berubah dan akun wali otomatis murid ini belum pernah dipakai (password awal belum
      * diganti), password awalnya ikut diganti ke tanggal lahir baru (DDMMYYYY).
      */
-    public function update(PerbaruiMuridRequest $request, int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function update(SimpanMuridRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        $murid = $this->muridService->perbarui(Murid::query()->findOrFail($id), $request->dataMurid(), $request->foto(), $kepalaSekolah);
+        $murid = $this->muridService->perbarui(Murid::query()->findOrFail($id), $request->dataMurid(), $request->foto(), $user);
 
-        return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])), 'Data murid tersimpan.');
+        return ApiResponse::success(new MuridDetailResource($murid->muatDetail()), 'Data murid tersimpan.');
     }
 
     /**
      * Menghapus murid yang salah input. Murid yang sudah punya tagihan, rapor, atau data PPDB ditolak. Akun wali
      * otomatis murid ini yang belum pernah dipakai ikut dinonaktifkan.
      */
-    public function destroy(int $id, #[CurrentUser] User $kepalaSekolah): JsonResponse
+    public function destroy(int $id, #[CurrentUser] User $user): JsonResponse
     {
         $murid = Murid::query()->findOrFail($id);
-        $this->muridService->hapus($murid, $kepalaSekolah);
+        $this->muridService->hapus($murid, $user);
 
         return ApiResponse::success(null, "Data {$murid->nama_lengkap} dihapus.");
     }
@@ -131,7 +133,7 @@ class MuridController extends Controller
         $murid = Murid::query()->findOrFail($id);
         $this->muridService->ubahTautanWali($murid, $wali_murid_id, $request->hubungan(), $request->kontakUtama(), $kepalaSekolah);
 
-        return ApiResponse::success(new MuridDetailResource($murid->load(['kelasAktif', 'waliMurid.user'])), "Data wali {$murid->nama_panggilan} tersimpan.");
+        return ApiResponse::success(new MuridDetailResource($murid->muatDetail()), "Data wali {$murid->nama_panggilan} tersimpan.");
     }
 
     /**

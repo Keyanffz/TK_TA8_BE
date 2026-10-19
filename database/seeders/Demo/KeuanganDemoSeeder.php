@@ -44,7 +44,7 @@ class KeuanganDemoSeeder extends Seeder
     {
         $tahunAjaran = TahunAjaran::query()->aktif()->firstOrFail();
         $kepalaSekolah = User::query()->where('role', Role::SuperAdmin)->firstOrFail();
-        $bendahara = User::query()->whereHas('guru', fn ($guru) => $guru->where('bisa_kelola_keuangan', true))->firstOrFail();
+        $bendahara = User::query()->where('role', Role::Guru)->petugasKeuanganAktif()->firstOrFail();
         $this->petugasKeuangan = [$kepalaSekolah->id, $bendahara->id];
 
         $spp = JenisTagihan::query()->create([

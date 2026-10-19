@@ -17,7 +17,7 @@ class GuruService
 
     private const KOLOM_PROFIL = [
         'nip', 'nuptk', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'alamat',
-        'pendidikan_terakhir', 'jabatan', 'bisa_kelola_keuangan', 'tampil_di_landing',
+        'pendidikan_terakhir', 'jabatan', 'tampil_di_landing',
     ];
 
     public function __construct(private readonly MediaService $media) {}
@@ -42,23 +42,16 @@ class GuruService
             ]);
         });
 
-        return $guru->load('user');
+        return $guru->load(['user', 'izin']);
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * Izin modul guru diubah lewat `IzinGuruService`, bukan di sini.
      *
-     * @throws BusinessRuleException
+     * @param  array<string, mixed>  $data
      */
-    public function perbarui(Guru $guru, array $data, ?UploadedFile $foto, User $kepalaSekolah): Guru
+    public function perbarui(Guru $guru, array $data, ?UploadedFile $foto): Guru
     {
-        $izinKeuanganBaru = array_key_exists('bisa_kelola_keuangan', $data) ? (bool) $data['bisa_kelola_keuangan'] : null;
-        $izinKeuanganBerubah = $izinKeuanganBaru !== null && $izinKeuanganBaru !== $guru->bisa_kelola_keuangan;
-
-        if ($izinKeuanganBerubah && $guru->milikKepalaSekolah()) {
-            throw new BusinessRuleException('Izin keuangan profil Kepala Sekolah tidak bisa diubah karena Kepala Sekolah selalu menjadi petugas keuangan.');
-        }
-
         $fotoLama = $guru->foto_path;
 
         DB::transaction(function () use ($guru, $data, $foto): void {
@@ -81,12 +74,6 @@ class GuruService
 
         if ($foto !== null) {
             $this->media->hapus($fotoLama, MediaService::DISK_PUBLIK);
-        }
-
-        if ($izinKeuanganBerubah) {
-            activity('guru')->causedBy($kepalaSekolah)->performedOn($guru)
-                ->event($izinKeuanganBaru ? 'izin_keuangan_diberikan' : 'izin_keuangan_dicabut')
-                ->log(($izinKeuanganBaru ? 'Memberi' : 'Mencabut')." izin kelola keuangan untuk {$guru->user->name}");
         }
 
         return $guru;

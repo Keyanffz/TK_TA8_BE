@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\LevelIzin;
 use App\Models\Guru;
 use App\Services\MediaService;
 use Illuminate\Http\Request;
@@ -30,7 +31,12 @@ class GuruResource extends JsonResource
             'jabatan' => $this->jabatan,
             /** @var string|null */
             'foto_url' => app(MediaService::class)->urlPublik($this->foto_path),
-            'bisa_kelola_keuangan' => $this->bisa_kelola_keuangan,
+            /**
+             * Izin per modul (A2.13); null = tidak punya izin. Profil Kepala Sekolah selalu `kelola` semua modul.
+             *
+             * @var array{keuangan: LevelIzin|null, konten_website: LevelIzin|null, laporan_absensi: LevelIzin|null, data_murid: LevelIzin|null, pengumuman: LevelIzin|null}
+             */
+            'izin' => $this->milikKepalaSekolah() ? $this->user->izinEfektif() : $this->izinPerModul(),
             'tampil_di_landing' => $this->tampil_di_landing,
             /** Sudah pernah masuk dengan Google (akun Google terikat). Nilai `sub` Google tidak dikirim. */
             'terhubung_google' => $this->user->google_sub !== null,
