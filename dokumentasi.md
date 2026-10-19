@@ -29,6 +29,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Perapian Bagian C untuk revisi absensi (branch `be/rapikan-slop`) | Selesai, disetujui |
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, disetujui |
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, menunggu review |
+| Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -38,31 +39,32 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Auth publik | `POST /auth/staff/google` (guru, Kepala Sekolah), `POST /auth/staff/login`, `POST /auth/forgot-password`, `POST /auth/reset-password` (Kepala Sekolah), `POST /auth/wali/login` |
 | Auth (login) | `GET /auth/me`, `POST /auth/logout` (semua), `PUT /auth/password` (Kepala Sekolah, wali murid; tetap terbuka saat wajib ganti password), `PUT /auth/profil` (semua) |
 | Guru (SA) | `GET/POST /guru`, `GET/PUT /guru/{id}`, `PATCH /guru/{id}/status` (tanpa hapus), `POST /guru/{id}/reset-google` |
+| Hak akses guru (SA) | `GET /izin`, `PUT /guru/{id}/izin`, `POST /guru/{id}/izin/preset`; izin guru juga ada di `GET /guru` |
 | Wali murid (SA) | `GET /wali-murid`, `GET /wali-murid/{id}`, `PUT /wali-murid/{id}`, `PATCH /wali-murid/{id}/status`, `POST /wali-murid/{id}/reset-password` |
 | Wali (W) | `PUT /wali/profil`, `POST /wali/tambah-anak`, `GET /wali/anak` |
 | Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
 | Kelas | `GET /kelas`, `GET /kelas/{id}` (SA, G terbatas), `POST /kelas`, `PUT/DELETE /kelas/{id}`, `POST /kelas/{id}/murid`, `DELETE /kelas/{id}/murid/{murid_id}`, `POST /kelas/kenaikan` (SA) |
-| Murid | `GET /murid`, `GET /murid/{id}` (SA, G terbatas, W anak sendiri), `POST /murid`, `PUT/DELETE /murid/{id}`, `GET /murid/{id}/kartu-akun`, `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
-| Jenis tagihan | `GET /jenis-tagihan` (K), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
-| Keringanan (K) | `GET/POST /keringanan`, `PUT/DELETE /keringanan/{id}` |
-| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (K semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan`, `POST /tagihan/{id}/aktifkan` (SA) |
-| Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai atau transfer), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (K, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
-| Laporan (K) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
+| Murid | `GET /murid`, `GET /murid/{id}` (SA dan izin lihat data murid semua, G terbatas, W anak sendiri; filter `tahun_lulus` untuk alumni), `GET /murid/tahun-lulus` (izin lihat data murid), `POST /murid`, `PUT/DELETE /murid/{id}`, `GET /murid/{id}/kartu-akun`, `PATCH /murid/{id}/status`, `POST /murid/status-massal`, `GET /murid/import/template`, `POST /murid/import/pratinjau`, `POST /murid/import` (izin kelola data murid), `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
+| Jenis tagihan | `GET /jenis-tagihan` (izin lihat keuangan), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
+| Keringanan | `GET /keringanan` (izin lihat keuangan), `POST /keringanan`, `PUT/DELETE /keringanan/{id}` (K) |
+| Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (izin lihat keuangan semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan`, `POST /tagihan/{id}/aktifkan` (SA) |
+| Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai atau transfer), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (izin lihat keuangan, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
+| Laporan (izin lihat keuangan) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
 | Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
-| Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role), `POST /pengumuman` (SA, G), `PUT/DELETE /pengumuman/{id}` (penulis, SA) |
+| Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role; izin lihat pengumuman semua), `POST /pengumuman` (SA, G; target bebas untuk izin kelola pengumuman), `PUT/DELETE /pengumuman/{id}` (penulis, SA, izin kelola pengumuman) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
-| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, SA) |
-| Pengaturan | `GET /pengaturan?grup=` (SA; K hanya `grup=keuangan`), `PUT /pengaturan`, `POST /pengaturan/upload` (SA). Grup `absensi` berisi aturan absensi |
-| Galeri (SA) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
+| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan; izin lihat laporan absensi) |
+| Pengaturan | `GET /pengaturan?grup=` (SA; grup `profil`/`landing`/`beranda` izin lihat konten website, grup `keuangan` izin lihat keuangan), `PUT /pengaturan` (SA; izin kelola konten website hanya grup `profil`/`landing`/`beranda`), `POST /pengaturan/upload` (izin kelola konten website). Grup `absensi` berisi aturan absensi |
+| Galeri (izin konten website: lihat untuk GET, kelola untuk lainnya) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
 
-K = petugas keuangan (Kepala Sekolah atau guru `bisa_kelola_keuangan`), dijaga middleware `can:kelola-keuangan`.
+K = petugas keuangan (Kepala Sekolah atau guru dengan izin `keuangan` `kelola`). Route modul dijaga middleware `izin:modul,level` (A2.13); izin dibaca dari database di setiap request, jadi izin yang dicabut langsung berlaku. Kunci izin, preset, dan peta route lengkap ada di `docs/kontrak-api-fitur-baru.md`.
 
 Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum). Akun wali yang masih memakai password awal (`wajib_ganti_password`) hanya bisa memakai `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`; endpoint login lain membalas 403 `PASSWORD_WAJIB_DIGANTI`.
 
@@ -71,6 +73,26 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+### Hak akses guru, status murid, alumni, dan import (branch `be/hak-akses-status-murid`)
+
+Disetujui pemilik repo setelah analisis (usulan 1–13, dengan perubahan di nomor 9 dan 10). Yang diputuskan:
+
+1. Izin disimpan di tabel sendiri `izin_guru` (satu baris per guru per modul) dan diperiksa middleware `izin:modul,level`, bukan `spatie/laravel-permission`. Izin dibaca dari database di setiap request tanpa cache supaya pencabutan langsung berlaku.
+2. `keuangan` `kelola` sama persis dengan petugas keuangan lama. Jenis tagihan (tambah/ubah/hapus), generate manual, batal/aktifkan tagihan, dan rekening serta aturan tagihan (grup pengaturan `keuangan`) tetap khusus Kepala Sekolah. `keuangan` `lihat` baru: semua tagihan, pembayaran, laporan, tanpa aksi.
+3. Route di luar lima modul tetap khusus Kepala Sekolah: guru dan izin, wali murid dan ubah/lepas tautan wali, tahun ajaran, kelas, penempatan, kenaikan, keputusan rapor, elemen penilaian, PPDB, agenda, log aktivitas, pengaturan grup `ppdb` dan `absensi`.
+4. `laporan_absensi` `lihat` termasuk riwayat dan foto absensi peserta lain; `kelola` = koreksi dan catat absensi peserta lain, ditolak 422 `BUSINESS_RULE` untuk absensinya sendiri. Notifikasi `absensi_dikoreksi` menyebut nama guru pengoreksi (Kepala Sekolah tetap "Kepala Sekolah").
+5. `data_murid` membuka semua murid termasuk `catatan_khusus` (pemegang izin kelola harus bisa mengubahnya), lewat scope terpisah `Murid::dataMuridUntuk`. Scope tagihan, rapor, kegiatan, dan pengumuman tetap memakai `Murid::visibleTo`, jadi izin data murid tidak membuka modul lain.
+6. `pengumuman` `lihat` = semua pengumuman termasuk draft dan sasaran kelas/murid; `kelola` = target apa pun termasuk tampil di website, serta ubah dan hapus pengumuman siapa pun. Agenda tetap khusus Kepala Sekolah.
+7. Kolom dan field `bisa_kelola_keuangan` dihapus tanpa kompatibilitas mundur; datanya dipindah migration ke `izin_guru`. `permissions` di respons auth diganti `izin` (kelima modul).
+8. Status murid hanya diubah lewat `PATCH /murid/{id}/status` dan `POST /murid/status-massal`; `PUT /murid/{id}` menolak `status` dan `tanggal_keluar`, supaya setiap perubahan tercatat di riwayat.
+9. Isian status: `tanggal` wajib dan tidak setelah hari ini; tidak sebelum tanggal masuk; `tahun_lulus` wajib untuk lulus (1950 sampai tahun ini, tidak sebelum tahun masuk); `sekolah_tujuan` opsional, hanya untuk pindah; `keterangan` opsional. Status yang sama ditolak; massal melewatinya.
+10. `tanggal_keluar` yang sudah ada dipakai sebagai tanggal status. Riwayat dicatat untuk setiap perubahan; murid baru dari `POST /murid` dan import tidak punya baris riwayat awal. Murid yang sudah lulus sebelum migration diberi `tahun_lulus` dari tahun `tanggal_keluar`.
+11. Wali yang semua anaknya tidak aktif: akun tetap aktif dan tidak dinonaktifkan otomatis (keputusan pemilik repo, termasuk akun yang belum pernah dipakai). Wali itu tidak melihat dan tidak menerima notifikasi pengumuman target `semua` dan `wali_murid`; pengumuman yang menyasar anaknya tetap sampai. `wali_murid.anak[].status` dikirim untuk badge status anak.
+12. Import tanpa tabel penyimpanan: pratinjau dan simpan menerima file yang sama, dan simpan memeriksa ulang. Laporan baris gagal dibuat FE dari `gagal`. Kolom `kelas` opsional untuk murid aktif. Duplikat lewat NISN, atau nama lengkap + tanggal lahir untuk baris tanpa NISN. Untuk alumni NISN dan tanggal status opsional (keputusan pemilik repo); lulus tanpa tanggal memakai akhir tahun ajaran yang selesai di tahun lulus, atau 30 Juni kalau tahun ajarannya tidak tercatat; pindah dan keluar tanpa tanggal disimpan tanpa tanggal. Format xlsx dan csv (koma atau titik koma), maks 2 MB dan 500 baris.
+13. Hash password awal murid aktif dibuat di luar transaksi per kelompok 50 baris, dengan `set_time_limit(60)` diulang setiap kelompok lalu dikembalikan ke nilai awal (diminta pemilik repo). Hashing bcrypt sekitar 0,17 detik per murid di laptop, jadi 500 murid aktif sekitar 90 detik. Batas waktu di luar PHP tetap berlaku: `fastcgi_read_timeout` Nginx (bawaan 60 detik) dan `request_terminate_timeout` PHP-FPM perlu dinaikkan untuk import sebesar itu, atau file dibagi.
+14. Preset ditulis di kode (`PresetIzin`), tanpa kelola preset: Bendahara, Admin Website (konten website dan pengumuman), Admin Absensi, Tata Usaha (data murid). `DemoSeeder`: Siti Rahmawati Bendahara, Rina Kusumawati Admin Website.
+15. Log aktivitas baru: `izin`, `murid`, `keringanan`, `jenis_tagihan`, dan event `tagihan`/`dibuat_sekali`. Aksi keuangan lain sudah tercatat sebelumnya. `filter[jenis]` juga menerima `absensi` (log `absensi` sudah ditulis sejak `be/absensi` tetapi belum bisa disaring).
 
 ### Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`)
 
@@ -546,6 +568,7 @@ Pemetaan exception ke format A7 (`App\Exceptions\ApiExceptionRenderer`, didaftar
 | `BusinessRuleException` | 422 | `BUSINESS_RULE` |
 | `AuthorizationException` / 403 | 403 | `FORBIDDEN` |
 | `AksesAkunDitolakException` (login dengan akun nonaktif) | 403 | `ACCOUNT_INACTIVE` |
+| `IzinKurangException` (guru tanpa izin modul, atau grup pengaturan khusus Kepala Sekolah) | 403 | `FORBIDDEN` (pesan menyebut izin yang perlu diminta, atau "Bagian ini khusus Kepala Sekolah.") |
 | `LayananTidakTersediaException` (`GOOGLE_CLIENT_ID` kosong, kunci publik Google gagal diunduh) | 503 | `SERVER_ERROR` |
 | `InvalidSignatureException` (signed URL media kedaluwarsa atau diubah) | 403 | `FORBIDDEN` ("Tautan file sudah kedaluwarsa atau tidak valid. …") |
 | `ModelNotFoundException` / `abort(404)` di route yang ada | 404 | `NOT_FOUND` ("Data tidak ditemukan.") |
@@ -563,6 +586,7 @@ Middleware:
 - `akun.aktif` (`EnsureAccountActive`): token milik akun `nonaktif` ditolak 403 `ACCOUNT_INACTIVE`.
 - `password.diganti` (`EnsurePasswordDiganti`): akun dengan `wajib_ganti_password` ditolak 403 `PASSWORD_WAJIB_DIGANTI`. Dipasang di semua route login kecuali `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout` (grup route terpisah di `routes/api.php`). Terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`.
 - `role:super_admin,guru` (`EnsureRole`): role di luar daftar ditolak 403 `FORBIDDEN`. Nama role yang salah ketik di route memicu error 500 supaya cepat ketahuan.
+- `izin:modul,level` (`EnsureIzin`): Kepala Sekolah lolos, guru butuh izin modul itu di level yang sama atau `kelola`, wali murid ditolak; lewat `IzinKurangException`. Nama modul atau level yang salah ketik memicu error 500. Terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`.
 - Policy (`app/Policies`, ditemukan otomatis dari nama model): `KelasPolicy`, `MuridPolicy`, `TagihanPolicy` memeriksa per data dengan scope yang sama seperti daftar (`Kelas::diampuOleh`, `Murid::visibleTo`, `Tagihan::visibleTo`) dan menolak dengan `Response::denyAsNotFound()`. Laravel mengubah penolakan itu menjadi `HttpException` 404 sebelum `ApiExceptionRenderer`, sehingga balasannya 404 `NOT_FOUND` "Data tidak ditemukan.", sama persis dengan id yang memang tidak ada. Setelah `findOrFail`, controller memanggil `Jangkauan::pastikanTerlihat($model)` untuk Policy `view` yang hanya membalas 404, dan `Gate::authorize(...)` untuk aksi yang bisa membalas 403.
 - `signed:relative`: hanya di `GET /media/{token}`.
 - Rate limiter (`AppServiceProvider`): `login-staff` 3/menit per email + IP dan 10/menit per IP, `login-google` 10/menit per IP, `login-wali` 5/menit per username + IP dan 20/menit per IP, `tambah-anak` 5/menit per user, `pendaftaran-publik` 3/jam per IP, `status-pendaftaran` 10/menit per IP, `absen` 10/menit per user, dan `api` 120/menit (per user kalau sudah login, per IP kalau belum) untuk semua endpoint kecuali `/health` dan `/media/{token}`.
@@ -577,7 +601,7 @@ Middleware:
 - Lupa dan reset password hanya untuk Kepala Sekolah. Balasan tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun guru (login lewat Google) atau wali murid (tidak punya email; reset lewat Kepala Sekolah). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
 - Password baru (ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
-- Gate `kelola-keuangan` memakai `User::bisaKelolaKeuangan()`; endpoint khusus petugas keuangan memakai middleware `can:kelola-keuangan` (403 `FORBIDDEN`, terdokumentasi di OpenAPI lewat `ResponsErrorRouteExtension`). Pembatasan per role lewat middleware `role:`.
+- Izin modul guru (A2.13): `User::izinEfektif()` (Kepala Sekolah `kelola` semua modul, guru dari `izin_guru`, wali murid tanpa izin), `User::punyaIzin()`, dan `User::pastikanIzin()`. Endpoint modul memakai middleware `izin:modul,level`; pembatasan per role lewat middleware `role:`. Gate `kelola-keuangan` dan kolom `guru.bisa_kelola_keuangan` dihapus di `be/hak-akses-status-murid`.
 
 ## File dan media
 
@@ -590,7 +614,7 @@ Middleware:
 
 ## Skema database
 
-- 36 tabel: 27 tabel domain A4 (termasuk `users`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
+- 38 tabel: 29 tabel domain A4 (termasuk `users`, `izin_guru`, dan `riwayat_status_murid`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
 - Foreign key: tabel anak dan pivot `cascade` (`murid_wali`, `kelas_murid`, `pengumuman_kelas`, `pengumuman_murid`, `kegiatan_foto`, `rapor_detail`, `pendaftaran_dokumen`, `galeri_foto`, profil `guru`/`wali_murid` ke `users`); kolom pelaku (`dibuat_oleh`, `diverifikasi_oleh`, `disetujui_oleh`, `diproses_oleh`, `dibayar_oleh`) `null on delete`; `kelas.wali_kelas_id`, `kelas.guru_pendamping_id`, `pendaftaran.murid_id` `null on delete`; sisanya (data keuangan, rapor, kegiatan, tahun ajaran) `restrict`. `users`, `murid`, dan `pengumuman` memakai soft delete, jadi hapus fisik jarang terjadi.
 - Cascade di database tidak menjalankan observer Eloquent. Penghapusan data yang punya file (kegiatan, rapor, PPDB, galeri) harus lewat Eloquent di service supaya file fisiknya ikut terhapus (B5).
 - Scope visibilitas (B4), dipakai semua endpoint terkait mulai Fase 3:
@@ -600,15 +624,16 @@ Middleware:
 | `Kelas::diampuOleh($user)` | – | kelas di tahun ajaran aktif tempat dia wali kelas atau guru pendamping | – |
 | `GET /kelas`, `GET /kelas/{id}` | semua kelas | `Kelas::diampuOleh` | ditolak 403 (`role:`) |
 | `Murid::visibleTo` | semua | murid di kelas yang diampu | anaknya |
-| `Tagihan::visibleTo` | semua | petugas keuangan: semua; lainnya: murid yang terlihat | tagihan anaknya |
-| `Pembayaran::visibleTo` | semua | petugas keuangan: semua; lainnya: pembayaran dari tagihan yang terlihat (riwayat di detail tagihan) | pembayaran tagihan anaknya |
+| `Murid::dataMuridUntuk` (`GET /murid`, detail murid) | semua | izin lihat data murid: semua; lainnya `visibleTo` | anaknya |
+| `Tagihan::visibleTo` | semua | izin lihat keuangan: semua; lainnya: murid yang terlihat (`visibleTo`) | tagihan anaknya |
+| `Pembayaran::visibleTo` | semua | izin lihat keuangan: semua; lainnya: pembayaran dari tagihan yang terlihat (riwayat di detail tagihan) | pembayaran tagihan anaknya |
 | `KegiatanKelas::visibleTo` | semua | kelas yang diampu | kelas yang pernah atau sedang diikuti anaknya |
 | `Rapor::visibleTo` | semua | kelas yang diampu | rapor anaknya berstatus `terbit` |
-| `Pengumuman::visibleTo` (feed) | semua, termasuk draft | terbit untuk semua / guru / kelas yang diampu / murid di kelasnya, plus tulisannya sendiri (termasuk draft) | terbit untuk semua / wali murid / kelas anaknya / anaknya, plus tulisannya sendiri |
+| `Pengumuman::visibleTo` (feed) | semua, termasuk draft | izin lihat pengumuman: semua; lainnya: terbit untuk semua / guru / kelas yang diampu / murid di kelasnya, plus tulisannya sendiri (termasuk draft) | terbit untuk semua / wali murid (hanya kalau masih punya anak aktif) / kelas anaknya / anaknya, plus tulisannya sendiri |
 | `Pendaftaran::visibleTo` | semua | tidak ada | miliknya |
-| `Absensi::visibleTo` | semua | miliknya | ditolak 403 (`role:`) |
+| `Absensi::visibleTo` | semua | izin lihat laporan absensi: semua; lainnya: miliknya | ditolak 403 (`role:`) |
 
-`User::bisaKelolaKeuangan()` menentukan petugas keuangan (Kepala Sekolah, atau guru dengan `bisa_kelola_keuangan`).
+`User::punyaIzin()` menentukan cakupan per modul; petugas keuangan = izin `keuangan` `kelola`.
 
 ## Perubahan dari spesifikasi awal
 
@@ -678,6 +703,13 @@ Absensi (branch `be/absensi`, diminta pemilik repo; Bagian A disalin identik ke 
 41. "Tidak ada modul absensi" di A1 diganti absensi guru aktif dan Kepala Sekolah berbasis lokasi dan foto (A1, A2.12, A3, A6).
 42. Tabel `absensi`, grup pengaturan `absensi` dengan 8 kunci, enum `JenisAbsensi` dan `StatusAbsensi` (A4, A5).
 43. Endpoint `GET /absensi/hari-ini`, `POST /absensi`, `GET /absensi`, `GET /absensi/{id}/foto`, `PATCH /absensi/{id}/koreksi`, `GET /absensi/rekap`, `GET /absensi/rekap/export`; `grup=absensi` di `GET /pengaturan` (A7, B2, B4, B5, B6.2, B6.14, B7, B8).
+
+Hak akses guru dan status murid (branch `be/hak-akses-status-murid`, diminta pemilik repo; Bagian A disalin identik ke `PROMPT_FE_TK.md` di branch `fe/hak-akses-status-murid`):
+
+44. Izin modul guru `keuangan`, `konten_website`, `laporan_absensi`, `data_murid`, `pengumuman` dengan level `lihat`/`kelola`, preset, dan endpoint `GET /izin`, `PUT /guru/{id}/izin`, `POST /guru/{id}/izin/preset`; `user.izin` menggantikan `permissions.kelola_keuangan`; `guru.bisa_kelola_keuangan` dihapus (A1, A2.1, A2.6, A2.13, A3, A4, A5, A6, A7, B1, B4, B6.15, B7, B8).
+45. Status murid lanjutan (`tahun_lulus`, `sekolah_tujuan`, `keterangan_status`), tabel `riwayat_status_murid`, `PATCH /murid/{id}/status`, `POST /murid/status-massal`, `GET /murid/tahun-lulus`, filter `tahun_lulus`; `PUT /murid/{id}` tidak lagi menerima status (A2.14, A3, A4, A6, A7, B6.16).
+46. Import murid `GET /murid/import/template`, `POST /murid/import/pratinjau`, `POST /murid/import` (A2.14, A7, B6.17).
+47. Wali yang semua anaknya tidak aktif tidak menerima pengumuman target `semua` dan `wali_murid`; `wali_murid.anak[].status` di `/auth/me` (A2.14, A7).
 
 ## Keputusan teknis
 
@@ -788,12 +820,12 @@ Diambil selama Fase 3:
 
 | Email | Keterangan |
 |---|---|
-| `siti.rahmawati@guru.tkta8.test` | petugas keuangan (`bisa_kelola_keuangan`), guru pendamping TK B1 |
+| `siti.rahmawati@guru.tkta8.test` | preset Bendahara (izin kelola keuangan), guru pendamping TK B1 |
 | `nur.aini@guru.tkta8.test` | wali kelas TK A1 |
 | `dwi.lestari@guru.tkta8.test` | wali kelas TK A2 |
 | `sri.wahyuni@guru.tkta8.test` | wali kelas TK B1 |
 | `endang.susilowati@guru.tkta8.test` | wali kelas TK B2 |
-| `rina.kusumawati@guru.tkta8.test` | guru pendamping TK A1 |
+| `rina.kusumawati@guru.tkta8.test` | preset Admin Website (izin kelola konten website dan pengumuman), guru pendamping TK A1 |
 | `fitri.handayani@guru.tkta8.test` | status `nonaktif` |
 
 - Wali murid demo (`DemoSeeder`): setiap murid punya akun wali dengan username NIS. Akun yang sudah dipakai memakai password `wali2026`; akun yang belum pernah login memakai password awal tanggal lahir anak (DDMMYYYY, lihat `tanggal_lahir` di `GET /murid/{id}`).
@@ -811,6 +843,38 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Hak akses guru, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`)
+
+Diminta pemilik repo. Bagian A (A1, A2.1, A2.6, A2.13, A2.14, A3, A4, A5, A6, A7) dan Bagian B (B1, B2, B4, B6.7, B6.13, B6.15–B6.17, B7, B8) `PROMPT_BE_TK.md` diperbarui; Bagian A disalin identik ke repo FE. Kontrak lengkap di `docs/kontrak-api-fitur-baru.md`. Keputusan detail ada di "Keputusan menunggu review".
+
+Baru:
+
+- `app/Enums/ModulIzin.php`, `LevelIzin.php`, `PresetIzin.php`.
+- `app/Exceptions/IzinKurangException.php`: 403 `FORBIDDEN` dengan pesan izin yang perlu diminta.
+- `app/Http/Middleware/EnsureIzin.php` (alias `izin` di `bootstrap/app.php`).
+- `app/Models/IzinGuru.php`, `app/Models/RiwayatStatusMurid.php`.
+- Migration `2026_10_18_100000_create_izin_guru_table`, `…100001_pindahkan_izin_keuangan_ke_izin_guru` (pindah data lalu hapus kolom; `down()` mengembalikan), `…100002_tambah_status_lanjutan_ke_murid_table` (dengan backfill `tahun_lulus`), `…100003_create_riwayat_status_murid_table`.
+- `app/Services/IzinGuruService.php`, `StatusMuridService.php`, `ImportMuridService.php`.
+- `app/Http/Controllers/Api/V1/Guru/IzinGuruController.php`, `Murid/StatusMuridController.php`, `Murid/ImportMuridController.php`.
+- `app/Http/Requests/Guru/SimpanIzinGuruRequest.php`, `TerapkanPresetIzinRequest.php`, `Murid/UbahStatusMuridRequest.php`, `UbahStatusMassalRequest.php`, `ImportMuridRequest.php`.
+- `app/Exports/TemplateImportMuridExport.php`, `TemplateMuridSheet.php`, `PetunjukImportMuridSheet.php`.
+- `docs/kontrak-api-fitur-baru.md`.
+- Test `tests/Feature/Izin/EnforcementIzinTest.php` (403 tanpa izin dengan pesannya, lolos dengan izin, izin lihat ditolak di aksi kelola, Kepala Sekolah selalu lolos dan wali murid selalu ditolak, bagian khusus Kepala Sekolah tetap tertutup untuk guru berizin penuh, pencabutan berlaku di request berikutnya), `KelolaIzinGuruTest.php` (daftar izin dan preset, ganti izin dan log sebelum/sesudah, tanpa log kalau sama, validasi, preset lalu disesuaikan, profil Kepala Sekolah ditolak, izin di daftar guru dan `/auth/me`), `CakupanIzinTest.php` (data murid tanpa membuka tagihan, lihat keuangan tanpa verifikasi, log keringanan, konten website per grup pengaturan, pengumuman bebas target, koreksi absensi orang lain tetapi tidak diri sendiri), `tests/Feature/Murid/StatusMuridTest.php` (pindah dan riwayat, aktif kembali, kelas penuh, validasi, status sama, luluskan kelas, massal melewati status sama, tagihan tidak dibuat untuk murid lulus dan tagihan lama tetap, kenaikan kelas mencatat tahun lulus, alumni per tahun lulus, wali tanpa anak aktif tidak menerima pengumuman umum dan akunnya tetap aktif), `ImportMuridTest.php` (template dua sheet berformat teks, pratinjau per baris tanpa menyimpan, simpan baris valid dengan akun wali dan kelas, tanggal lulus bawaan, tanggal seri Excel dan CSV titik koma, duplikat nama dan tanggal lahir, kelas penuh, rollback seluruh import, lebih dari satu kelompok dan batas waktu dikembalikan, error file).
+
+Diubah:
+
+- `routes/api.php`: route modul dikelompokkan per `izin:modul,level`; `GET/PUT /pengaturan` pindah ke grup `role:super_admin,guru` dengan pemeriksaan per grup; route baru izin, status, alumni, dan import.
+- `app/Models/User.php` (`izinEfektif()`, `punyaIzin()`, `pastikanIzin()`, `scopeWaliDenganAnakAktif()`, `scopePetugasKeuanganAktif()` dari `izin_guru`; `bisaKelolaKeuangan()` dihapus), `Guru.php` (relasi `izin`, `izinPerModul()`, kolom lama dilepas), `Murid.php` (kolom status lanjutan, `riwayatStatus`, `scopeDataMuridUntuk()`, `muatDetail()`, `passwordAwalDari()`), `Tagihan.php`, `Pembayaran.php`, `Pengumuman.php` (feed per izin dan wali tanpa anak aktif), `Absensi.php`.
+- Policy `TagihanPolicy`, `PembayaranPolicy`, `PengumumanPolicy`, `MuridPolicy`, `AbsensiPolicy`.
+- Resource `UserResource` (`izin`, `anak[].status`), `GuruResource` (`izin`), `MuridResource` (field status lanjutan), `MuridDetailResource` (`riwayat_status`), `PengumumanResource`, `RiwayatPembayaranResource`.
+- `PengaturanController` + `PengaturanService` (`pastikanBolehBaca()`, `pastikanBolehUbah()`), `AbsensiController` + `AbsensiService` (izin laporan absensi, larangan koreksi diri), `AbsensiDikoreksiNotification` (nama pengoreksi), `SimpanPengumumanRequest` + `PengumumanService` (target untuk izin kelola, penerima tanpa wali alumni), `MuridController`, `SimpanMuridRequest` (`aturanDataDiri()`), `DaftarMuridRequest` (filter dan urutan `tahun_lulus`), `MuridService` (logika status dipindah ke `StatusMuridService`; status bawaan bisa diisi import), `KenaikanKelasService` + `PenempatanMuridController` (riwayat dan tahun lulus), `WaliMuridService` (hash password awal dari import), `GuruController` + `GuruService` + `SimpanGuruRequest` (izin keuangan dilepas), `DashboardService`, `KeringananService` + `KeringananController`, `JenisTagihanService` + `JenisTagihanController`, `TagihanService` (log tagihan sekali), `DaftarLogAktivitasRequest`, `AppServiceProvider` (Gate `kelola-keuangan` dihapus), `ApiExceptionRenderer`, `ApiErrorResponseExtension`, `ResponsErrorRouteExtension`, `lang/id/validation.php`.
+- Dihapus: `app/Http/Requests/Murid/PerbaruiMuridRequest.php` (`PUT /murid/{id}` memakai `SimpanMuridRequest`).
+- Seeder dan factory: `SuperAdminSeeder`, `Demo/SekolahDemoSeeder.php` (preset), `Demo/KeuanganDemoSeeder.php`, `GuruFactory` (`izin()`, `kelolaKeuangan()`).
+- Test lama yang memakai kontrak lama disesuaikan: `AksesSilangRoleTest` (`izin:` dihitung sebagai pembatas), `LoginTest`, `LoginGoogleTest`, `ManajemenGuruTest`, `PembayaranTest`, `SeederTest`, `ManajemenMuridTest` dan `AkunWaliOtomatisTest` (`PUT /murid` tanpa status; test perubahan status pindah ke `StatusMuridTest`), `DokumentasiApiTest`, `tests/Pest.php`.
+- `storage/api-docs/api.json` diekspor ulang (diff teksnya besar karena urutan route berubah; isinya: 9 path baru, 11 operasi dan 8 skema berubah, `PerbaruiMuridRequest` dihapus).
+
+Hasil pengecekan: 1087 test lulus di SQLite dan di MariaDB 13.0.2 (database terpisah `TK_TA8_uji`, seluruh suite karena ada migration, query, dan seeder baru); Pint, PHPStan, dan `check:slop` tanpa temuan. Migration dan backfill diuji di `TK_TA8_uji` dengan skrip sekali jalan: rollback empat migration, isi data bentuk lama (Kepala Sekolah, guru berizin keuangan, guru tanpa izin, murid lulus/pindah/aktif), migrate (izin pindah hanya untuk guru berizin, kolom lama hilang, `tahun_lulus` terisi hanya untuk murid lulus, tabel riwayat kosong), rollback lagi (izin kembali ke kolom lama termasuk profil Kepala Sekolah, kolom status lanjutan hilang), dan migrate ulang; kesepuluh pemeriksaan lulus. Migration juga dijalankan di database lokal `TK_TA8` (satu guru berizin keuangan pindah ke `izin_guru`). Tidak ada uji manual lewat curl atau server; uji tampilan dilakukan pemilik repo.
 
 ### Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`)
 
