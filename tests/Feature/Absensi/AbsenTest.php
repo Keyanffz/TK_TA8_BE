@@ -157,10 +157,18 @@ it('memvalidasi isian dan foto', function (array $ubah, string $field) {
     'foto berupa PDF' => [['foto' => UploadedFile::fake()->create('swafoto.pdf', 100, 'application/pdf')], 'foto'],
 ]);
 
-it('menerima foto png dan webp', function (string $nama) {
-    $this->actingAs($this->guru)->post('/api/v1/absensi', isianAbsen(ubah: ['foto' => UploadedFile::fake()->image($nama, 320, 240)]))
-        ->assertCreated();
-})->with(['swafoto.png', 'swafoto.webp']);
+it('menyimpan foto jpg, png, dan webp sebagai WebP', function (string $nama) {
+    $id = $this->actingAs($this->guru)->post('/api/v1/absensi', isianAbsen(ubah: ['foto' => UploadedFile::fake()->image($nama, 320, 240)]))
+        ->assertCreated()
+        ->json('data.id');
+
+    $path = Absensi::query()->findOrFail($id)->foto_path;
+    expect($path)->toEndWith('.webp')
+        ->and(getimagesizefromstring((string) Storage::disk('local')->get($path)))->toMatchArray([0 => 320, 1 => 240, 'mime' => 'image/webp']);
+    $this->actingAs($this->guru)->get("/api/v1/absensi/{$id}/foto")
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/webp');
+})->with(['swafoto.jpg', 'swafoto.png', 'swafoto.webp']);
 
 it('membatasi percobaan absen 10 kali per menit per pengguna', function () {
     for ($i = 0; $i < 10; $i++) {

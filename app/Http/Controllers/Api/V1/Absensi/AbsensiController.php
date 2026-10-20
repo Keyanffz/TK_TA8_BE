@@ -146,7 +146,7 @@ class AbsensiController extends Controller
      * 404. Absensi tanpa foto
      * (tidak hadir, atau foto sudah melewati masa simpan) juga 404.
      */
-    #[Response(200, 'Foto absensi (JPEG)', mediaType: 'image/jpeg', type: 'string', format: 'binary')]
+    #[Response(200, 'Foto absensi (WebP; foto yang tersimpan sebelum format WebP dipakai tetap JPEG)', mediaType: 'image/webp', type: 'string', format: 'binary')]
     public function foto(int $id, MediaService $media): StreamedResponse
     {
         $absensi = Absensi::query()->findOrFail($id);

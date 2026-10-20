@@ -29,6 +29,9 @@ class AbsensiService
 {
     public const FOLDER_FOTO = 'absensi';
 
+    /** WebP lebih kecil dari JPEG berkualitas sama, dan foto absensi bertambah setiap hari kerja. */
+    private const FORMAT_FOTO = 'webp';
+
     private const UKURAN_CHUNK = 100;
 
     /** Batas susulan `tandaiTidakHadir()`: hari kerja yang terlewat lebih lama dari ini tidak disentuh. */
@@ -267,7 +270,7 @@ class AbsensiService
      */
     private function simpanDenganFoto(JenisAbsensi $jenis, array $isi, UploadedFile $foto): Absensi
     {
-        $path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
+        $path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO, self::FORMAT_FOTO);
 
         try {
             return Absensi::query()->create([...$isi, 'foto_path' => $path])->load('pengoreksi');

@@ -1917,9 +1917,9 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Foto absensi (JPEG)",
+                        "description": "Foto absensi (WebP; foto yang tersimpan sebelum format WebP dipakai tetap JPEG)",
                         "content": {
-                            "image/jpeg": {
+                            "image/webp": {
                                 "schema": {
                                     "type": "string",
                                     "format": "binary"

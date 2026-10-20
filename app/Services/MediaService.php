@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -35,7 +34,7 @@ class MediaService
 
     private const LEBAR_MAKSIMAL_GAMBAR = 1600;
 
-    private const KUALITAS_JPEG = 80;
+    private const KUALITAS_GAMBAR = 80;
 
     /**
      * Aturan validasi unggahan gambar (B5), dipakai semua FormRequest yang menerima gambar.
@@ -79,17 +78,18 @@ class MediaService
     }
 
     /**
-     * Gambar diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80
-     * dengan nama acak. Metadata EXIF (termasuk lokasi GPS) dibuang karena sebagian besar foto berisi anak.
+     * Gambar diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan dengan nama acak dalam format
+     * `$ekstensi` (`jpg` atau `webp`) kualitas 80, apa pun format unggahannya. Metadata EXIF (termasuk lokasi GPS)
+     * dibuang karena sebagian besar foto berisi anak.
      */
-    public function simpanGambar(UploadedFile $file, string $disk, string $folder): string
+    public function simpanGambar(UploadedFile $file, string $disk, string $folder, string $ekstensi = 'jpg'): string
     {
         $gambar = ImageManager::usingDriver(Driver::class, strip: true)
             ->decodePath((string) $file->getRealPath())
             ->scaleDown(width: self::LEBAR_MAKSIMAL_GAMBAR)
-            ->encode(new JpegEncoder(self::KUALITAS_JPEG));
+            ->encodeUsingFileExtension($ekstensi, quality: self::KUALITAS_GAMBAR);
 
-        $path = $folder.'/'.Str::uuid().'.jpg';
+        $path = $folder.'/'.Str::uuid().'.'.$ekstensi;
         Storage::disk($disk)->put($path, (string) $gambar);
 
         return $path;

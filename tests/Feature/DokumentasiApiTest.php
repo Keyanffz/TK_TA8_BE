@@ -119,7 +119,7 @@ it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru ta
         '/rapor/{id}/pdf' => 'application/pdf',
         '/laporan/keuangan/export' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         '/media/{token}' => 'application/octet-stream',
-        '/absensi/{id}/foto' => 'image/jpeg',
+        '/absensi/{id}/foto' => 'image/webp',
         '/absensi/rekap/export' => 'text/csv',
     ];
 
