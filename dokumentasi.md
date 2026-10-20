@@ -30,6 +30,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, disetujui |
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, menunggu review |
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, menunggu review |
+| Foto absensi disimpan sebagai WebP (branch `be/foto-absensi-webp`) | Selesai, menunggu review |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -170,7 +171,7 @@ Fitur dan kontraknya diminta pemilik repo dan sudah ditulis ke Bagian A dan B; y
 6. Jam dibandingkan per menit sebagai teks `HH:MM` dengan jam server: absen pukul 07:15:40 masih `hadir` untuk batas 07:15, dan jam masuk yang tutup 09:00 masih menerima absen sampai 09:00:59. Scheduler baru menandai tidak hadir mulai 09:01.
 7. Urutan pemeriksaan `POST /absensi`: lokasi sekolah sudah diatur, hari kerja, tanggal libur, jam, absen pulang butuh absen masuk, belum absen jenis itu, akurasi, jarak. Semua penolakan aturan `BUSINESS_RULE` dengan pesan yang menyebut angka (jarak, radius, akurasi, jam); bentuk isian (jenis, koordinat, foto) `VALIDATION_ERROR`. Foto baru disimpan setelah semua pemeriksaan lolos, dan dihapus lagi kalau penyimpanan baris gagal (termasuk karena unique index pada dua permintaan bersamaan). **Diubah di `be/absensi-lanjutan`:** izin dan sakit melewati pemeriksaan lokasi, akurasi, dan jarak, dan absen pulang sebelum jam pulang buka diterima kalau ada keterangan.
 8. Absen pulang ditolak kalau absen masuk hari itu berstatus `tidak_hadir`. Setelah Kepala Sekolah mengoreksinya menjadi `hadir`/`terlambat`, absen pulang bisa dilakukan selama jam pulang masih terbuka.
-9. Foto absensi tidak memakai signed URL `GET /media/{token}` seperti file private lain, karena permintaannya "endpoint yang hanya bisa diakses pemiliknya dan Kepala Sekolah": siapa pun yang memegang signed URL bisa membukanya selama 30 menit. `GET /absensi/{id}/foto` memakai `auth:sanctum` + `AbsensiPolicy`; guru lain mendapat 404 (B4), wali murid 403 dari middleware role. Resource hanya mengirim `ada_foto`. Foto diproses `MediaService::simpanGambar()` (maksimal lebar 1600 px, JPEG, EXIF dibuang).
+9. Foto absensi tidak memakai signed URL `GET /media/{token}` seperti file private lain, karena permintaannya "endpoint yang hanya bisa diakses pemiliknya dan Kepala Sekolah": siapa pun yang memegang signed URL bisa membukanya selama 30 menit. `GET /absensi/{id}/foto` memakai `auth:sanctum` + `AbsensiPolicy`; guru lain mendapat 404 (B4), wali murid 403 dari middleware role. Resource hanya mengirim `ada_foto`. Foto diproses `MediaService::simpanGambar()` (maksimal lebar 1600 px, EXIF dibuang), sejak branch `be/foto-absensi-webp` disimpan sebagai WebP (sebelumnya JPEG).
 10. Rate limit `absen` 10/menit per user (angka tidak disebut di permintaan), dihitung untuk setiap percobaan termasuk yang ditolak, di atas limiter `api`.
 11. `absensi:tandai-tidak-hadir` dijadwalkan tiap 10 menit, bukan pada jam tetap, karena jam masuk tutup bisa diubah Kepala Sekolah kapan saja. Command memeriksa sendiri hari kerja, tanggal libur, dan jam tutup, dan aman dijalankan berulang: peserta yang sudah punya baris absen masuk dilewati, `firstOrCreate` dan unique index menjaga sisanya. **Tambahan setelah review (diminta pemilik repo):** setiap kali berjalan, command juga mengisi susulan hari kerja yang terlewat sampai 7 hari ke belakang (`AbsensiService::HARI_SUSULAN`), misalnya setelah scheduler mati. Yang diputuskan saat pengerjaan:
     - Jangkauannya hari ini ditambah 7 hari kalender sebelumnya; hari ke-8 dan yang lebih lama tidak disentuh. Hari ini baru dihitung setelah jam masuk tutup; hari sebelumnya selalu dianggap sudah tutup, jadi susulan tetap berjalan walau command dipanggil pagi hari.
@@ -607,10 +608,10 @@ Middleware:
 
 `App\Services\MediaService` (B5):
 
-- Gambar (`MediaService::aturanGambar()`: jpg/jpeg/png/webp, maksimal 5 MB) diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80 dengan nama UUID, metadata EXIF dibuang.
+- Gambar (`MediaService::aturanGambar()`: jpg/jpeg/png/webp, maksimal 5 MB) diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80 dengan nama UUID, metadata EXIF dibuang. Pemanggil bisa meminta format lain lewat parameter `$ekstensi`; foto absensi memakai WebP kualitas 80.
 - File publik (avatar, foto guru) di disk `public`, URL lewat `Storage::url()`. File lama dihapus setelah transaksi berhasil.
 - File private di disk `local` disajikan lewat `GET /media/{token}`: token = path terenkripsi (`Crypt`, base64 url-safe), URL ditandatangani relatif (`URL::temporarySignedRoute(..., absolute: false)`) dan berlaku 30 menit, respons `Cache-Control: private, max-age=1800`. Token rusak atau file sudah dihapus dibalas 404.
-- Foto absensi (disk `local`, folder `absensi/`, maksimal 2 MB) tidak diberi signed URL. `GET /absensi/{id}/foto` memakai `auth:sanctum` dan `AbsensiPolicy`: hanya pemilik absensi dan Kepala Sekolah. File dihapus `absensi:hapus-foto-lama` setelah `absensi.masa_simpan_foto_bulan`.
+- Foto absensi (disk `local`, folder `absensi/`, unggahan maksimal 2 MB, disimpan sebagai `.webp`; foto lama `.jpg` tetap dilayani apa adanya) tidak diberi signed URL. `GET /absensi/{id}/foto` memakai `auth:sanctum` dan `AbsensiPolicy`: hanya pemilik absensi dan Kepala Sekolah. File dihapus `absensi:hapus-foto-lama` setelah `absensi.masa_simpan_foto_bulan`.
 
 ## Skema database
 
@@ -843,6 +844,18 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Foto absensi disimpan sebagai WebP (branch `be/foto-absensi-webp`)
+
+Diminta pemilik repo: foto absensi dari unggahan jpg, png, atau webp dikonversi otomatis ke WebP. A7 `GET /absensi/{id}/foto` dan B5 `PROMPT_BE_TK.md` diperbarui; Bagian A disalin identik ke repo FE.
+
+- `MediaService::simpanGambar()` menerima parameter `$ekstensi` (bawaan `jpg`, jadi unggahan lain tetap JPEG) dan mengodekan lewat `encodeUsingFileExtension()` Intervention Image dengan kualitas 80 yang sama. Konstanta `KUALITAS_JPEG` menjadi `KUALITAS_GAMBAR`.
+- `AbsensiService` menyimpan foto dengan `FORMAT_FOTO = 'webp'`. Ukuran, putaran EXIF, dan pembuangan metadata tidak berubah.
+- `GET /absensi/{id}/foto` didokumentasikan `image/webp`. Foto yang tersimpan sebelumnya tetap `.jpg` dan tetap dilayani dengan `image/jpeg` sampai dihapus `absensi:hapus-foto-lama`; tidak ada konversi foto lama. `GambarContoh` di data demo masih membuat JPEG.
+
+Diubah: `app/Services/MediaService.php`, `app/Services/AbsensiService.php`, `app/Http/Controllers/Api/V1/Absensi/AbsensiController.php`, `tests/Feature/Absensi/AbsenTest.php` (foto jpg, png, dan webp tersimpan `.webp` dengan isi WebP berukuran asli, lalu disajikan `image/webp`; menggantikan test "menerima foto png dan webp"), `tests/Feature/DokumentasiApiTest.php` (tipe file `/absensi/{id}/foto`), `storage/api-docs/api.json` (diekspor ulang; hanya deskripsi dan tipe respons foto absensi), `PROMPT_BE_TK.md`, `dokumentasi.md`.
+
+Hasil pengecekan: 1088 test lulus di SQLite (`--parallel`); Pint, PHPStan, dan `check:slop` tanpa temuan. Tidak diulang ke MariaDB karena tidak ada migration, query, atau seeder baru. Tidak ada uji manual lewat curl atau server; alur unggah lalu buka foto sudah dicakup test di atas lewat HTTP.
 
 ### Hak akses guru, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`)
 
