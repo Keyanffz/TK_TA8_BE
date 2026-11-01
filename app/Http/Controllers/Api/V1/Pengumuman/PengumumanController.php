@@ -64,12 +64,12 @@ class PengumumanController extends Controller
 
     /**
      * Membuat pengumuman. `publish: true` langsung terbit dan penerima diberi notifikasi lewat antrean;
-     * `publish: false` disimpan sebagai draft.
+     * `publish: false` disimpan sebagai draft. Kirim sebagai `multipart/form-data` kalau membawa `lampiran`.
      */
     public function store(SimpanPengumumanRequest $request, #[CurrentUser] User $user): JsonResponse
     {
         $pengumuman = $this->pengumumanService->buat(
-            $request->dataPengumuman(), $request->kelasIds(), $request->muridIds(), $request->boolean('publish'), $user,
+            $request->dataPengumuman(), $request->kelasIds(), $request->muridIds(), $request->boolean('publish'), $request->lampiran(), $user,
         );
 
         return ApiResponse::success(
@@ -81,7 +81,8 @@ class PengumumanController extends Controller
 
     /**
      * Mengubah pengumuman (penulis atau Kepala Sekolah). Draft yang diterbitkan memicu notifikasi; pengumuman
-     * yang sudah terbit tidak dikirimi notifikasi ulang.
+     * yang sudah terbit tidak dikirimi notifikasi ulang. `lampiran` (multipart) menggantikan lampiran lama,
+     * `hapus_lampiran: true` menghapusnya.
      */
     public function update(SimpanPengumumanRequest $request, int $id): JsonResponse
     {
@@ -90,16 +91,20 @@ class PengumumanController extends Controller
 
         $pengumuman = $this->pengumumanService->perbarui(
             $pengumuman, $request->dataPengumuman(), $request->kelasIds(), $request->muridIds(), $request->boolean('publish'),
+            $request->lampiran(), $request->hapusLampiran(),
         );
 
         return ApiResponse::success(new PengumumanResource($pengumuman->load(self::RELASI)), 'Pengumuman tersimpan.');
     }
 
+    /**
+     * Menghapus pengumuman beserta file lampirannya.
+     */
     public function destroy(int $id): JsonResponse
     {
         $pengumuman = Pengumuman::query()->findOrFail($id);
         Gate::authorize('kelola', $pengumuman);
-        $pengumuman->delete();
+        $this->pengumumanService->hapus($pengumuman);
 
         return ApiResponse::success(null, 'Pengumuman dihapus.');
     }

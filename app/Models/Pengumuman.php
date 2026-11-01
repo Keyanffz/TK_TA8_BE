@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['judul', 'slug', 'isi', 'lampiran_path', 'target', 'is_publik', 'is_pinned', 'penulis_id', 'published_at'])]
+#[Fillable(['judul', 'slug', 'isi', 'lampiran_path', 'lampiran_nama', 'lampiran_ukuran', 'target', 'is_publik', 'is_pinned', 'penulis_id', 'published_at'])]
 class Pengumuman extends Model
 {
     /** @use HasFactory<PengumumanFactory> */
@@ -29,6 +29,7 @@ class Pengumuman extends Model
     {
         return [
             'target' => TargetPengumuman::class,
+            'lampiran_ukuran' => 'integer',
             'is_publik' => 'boolean',
             'is_pinned' => 'boolean',
             'published_at' => 'datetime',
@@ -98,5 +99,16 @@ class Pengumuman extends Model
     public function murid(): BelongsToMany
     {
         return $this->belongsToMany(Murid::class, 'pengumuman_murid');
+    }
+
+    /**
+     * Lampiran gambar selalu disimpan sebagai JPEG oleh `MediaService::simpanDokumen()`, jadi cukup dibedakan
+     * dari ekstensi file yang tersimpan.
+     *
+     * @return 'pdf'|'gambar'
+     */
+    public function jenisLampiran(): string
+    {
+        return str_ends_with((string) $this->lampiran_path, '.pdf') ? 'pdf' : 'gambar';
     }
 }

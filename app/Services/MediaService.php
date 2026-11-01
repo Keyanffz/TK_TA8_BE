@@ -140,15 +140,16 @@ class MediaService
 
     /**
      * Menyajikan file private langsung, untuk endpoint yang memeriksa hak akses sendiri
-     * (misalnya `GET /pembayaran/{id}/bukti`). Null kalau file tidak ada.
+     * (misalnya `GET /pembayaran/{id}/bukti`). `$nama` menjadi nama file saat diunduh; tanpa `$nama`, nama acak
+     * di disk yang dipakai. Null kalau file tidak ada.
      */
-    public function responsPrivat(string $path): ?StreamedResponse
+    public function responsPrivat(string $path, ?string $nama = null): ?StreamedResponse
     {
         if (! Storage::disk(self::DISK_PRIVAT)->exists($path)) {
             return null;
         }
 
-        return Storage::disk(self::DISK_PRIVAT)->response($path, null, [
+        return Storage::disk(self::DISK_PRIVAT)->response($path, $nama, [
             'Cache-Control' => 'private, max-age='.(self::MENIT_BERLAKU_URL_PRIVAT * 60),
         ]);
     }
