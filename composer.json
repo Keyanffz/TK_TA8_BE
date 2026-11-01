@@ -5,7 +5,7 @@
     "description": "REST API Sistem Informasi TK Tarbiyathul Athfal 8.",
     "license": "proprietary",
     "require": {
-        "php": "^8.4",
+        "php": "^8.5",
         "barryvdh/laravel-dompdf": "^3.1",
         "dedoc/scramble": "^0.13",
         "firebase/php-jwt": "^7.2",
