@@ -32,6 +32,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
 | Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai, diuji (test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual lewat curl; lihat Changelog), disetujui, di-merge (PR #17) |
 | PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9; di-merge (PR #18) |
+| Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, `check:slop`, dan uji manual dengan `upload_max_filesize=2M` |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -82,6 +83,15 @@ Saat ini tidak ada.
 
 Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
 
+### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`)
+
+Diminta pemilik repo: pesan "Lampiran gagal diunggah." untuk file di atas 2 MB (batas bawaan `php.ini` di laptop) dibuat lebih manusiawi.
+
+1. Pesan `uploaded` di `lang/id/validation.php` menjadi "Maaf, :attribute gagal diunggah :sebab". `:sebab` diisi `MediaService::sebabGagalUnggah()` lewat replacer `uploaded` di `AppServiceProvider`, menurut kode galat unggahan PHP: melebihi batas server (`UPLOAD_ERR_INI_SIZE`, `UPLOAD_ERR_FORM_SIZE`) → "karena ukurannya lebih dari 2 MB. Pilih file yang lebih kecil."; terputus (`UPLOAD_ERR_PARTIAL`) → "karena sambungan terputus. Periksa sambungan internet, lalu coba lagi."; lainnya → "karena ada gangguan di server sekolah. Coba unggah ulang beberapa saat lagi.".
+2. Angka batas dibaca dari server yang berjalan (`UploadedFile::getMaxFilesize()`, yaitu yang lebih kecil dari `upload_max_filesize` dan `post_max_size`), tidak ditulis tetap. File itu ditolak PHP sebelum aturan `max` aplikasi berjalan, jadi batas yang benar untuk pesan ini adalah batas server: 2 MB di `php.ini` bawaan, 5 MB kalau `upload_max_filesize` tepat `5M`. Dengan `php.ini` yang disarankan (`55M`), file di atas 5 MB tetap mendapat pesan aplikasi seperti "Ukuran lampiran maksimal 5 MB.".
+3. Berlaku untuk semua unggahan, karena pesan `uploaded` dipakai semua field file. "Maaf" hanya dipakai di pesan ini: penyebabnya batas atau gangguan server, bukan isian pengguna yang salah.
+4. Nama kolom unggahan berbentuk daftar diberi urutan: `foto.*` → "foto ke-:position" dan `lainnya.*` (dokumen PPDB lain) → "dokumen lain ke-:position". Sebelumnya pesan menyebut "foto.0". Ini juga berlaku untuk pesan validasi lain di kolom itu, misalnya "Foto ke-1 harus berupa gambar.".
+
 ### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`, PR #18)
 
 Diminta pemilik repo, yang memakai PHP 8.5 di laptop.
@@ -100,7 +110,7 @@ Disetujui pemilik repo lewat sesi FE, dengan pilihan: satu file PDF atau gambar,
 5. Menghapus pengumuman (soft delete) langsung menghapus file lampirannya, karena tidak ada jalan untuk memulihkan pengumuman yang terhapus.
 6. Signed URL `GET /media/{token}` untuk pengguna yang login tetap memakai nama acak di disk; nama asli hanya tampil di FE dan di unduhan publik.
 7. Unduhan publik memakai `Cache-Control: no-cache` (Symfony menulisnya `no-cache, private`), bukan `private, max-age=1800` seperti file privat lain. Alamatnya tetap walau lampiran diganti, jadi dengan max-age browser yang pernah membuka lampiran lama bisa menampilkannya lagi sampai 30 menit. Signed URL tidak punya masalah ini karena berganti setiap kali dibuat. Diputuskan di sesi pengecekan; header ini tidak tercantum di kontrak.
-8. Kalau `upload_max_filesize` di `php.ini` tepat `5M`, file di atas 5 MB ditolak PHP sebelum validasi Laravel dan pesannya "Lampiran gagal diunggah." (pesan `uploaded` umum yang sama untuk semua field unggahan), bukan "Ukuran lampiran maksimal 5 MB.". Kode tidak diubah karena berlaku untuk semua unggahan; saran `php.ini` di "Instalasi dan menjalankan" diganti supaya pesan ukuran dari aplikasi yang muncul.
+8. Kalau `upload_max_filesize` di `php.ini` tepat `5M`, file di atas 5 MB ditolak PHP sebelum validasi Laravel dan pesannya "Lampiran gagal diunggah." (pesan `uploaded` umum yang sama untuk semua field unggahan), bukan "Ukuran lampiran maksimal 5 MB.". Kode tidak diubah karena berlaku untuk semua unggahan; saran `php.ini` di "Instalasi dan menjalankan" diganti supaya pesan ukuran dari aplikasi yang muncul. **Diubah di "Pesan unggahan yang ditolak PHP"**: pesan `uploaded` sekarang menyebut sebab dan batas server, misalnya "Maaf, lampiran gagal diunggah karena ukurannya lebih dari 5 MB. Pilih file yang lebih kecil."; saran `php.ini` tetap.
 
 ### Hak akses guru, status murid, alumni, dan import (branch `be/hak-akses-status-murid`, PR #15)
 
@@ -535,7 +545,7 @@ Di server produksi:
 - Worker queue: `php artisan queue:work` (notifikasi dan email lewat queue driver `database`).
 - `TRUSTED_PROXIES` **wajib berisi IP server FE (Next.js)**, ditambah IP reverse proxy di depan BE kalau ada (dipisah koma). FE memakai pola BFF, jadi semua request tanpa login datang dari IP server FE. Laravel hanya membaca IP asli klien dari `X-Forwarded-For` kalau request datang dari proxy yang terdaftar; tanpa itu, semua pengunjung dihitung sebagai satu IP dan berbagi satu kuota limiter `api` (120/menit), `login-staff` (10/menit per IP), dan `login-google` (10/menit per IP). Server FE harus meneruskan IP klien di `X-Forwarded-For`.
 - Scheduler: cron `* * * * * cd /path/ke/app && php artisan schedule:run >> /dev/null 2>&1`.
-- `php.ini`: `post_max_size` cukup untuk unggahan terbanyak dalam satu request (kegiatan: 10 foto, jadi minimal `55M`), dan `upload_max_filesize` disamakan dengan `post_max_size`. Batas 5 MB per file (B5) dijaga validasi aplikasi. Kalau `upload_max_filesize` tepat `5M`, file di atas 5 MB ditolak PHP lebih dulu dan pesannya hanya "Lampiran gagal diunggah." (atau nama field lain), bukan pesan ukuran seperti "Ukuran lampiran maksimal 5 MB.". Request yang melewati `post_max_size` dibalas 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file.".
+- `php.ini`: `post_max_size` cukup untuk unggahan terbanyak dalam satu request (kegiatan: 10 foto, jadi minimal `55M`), dan `upload_max_filesize` disamakan dengan `post_max_size`. Batas 5 MB per file (B5) dijaga validasi aplikasi. Kalau `upload_max_filesize` tepat `5M`, file di atas 5 MB ditolak PHP lebih dulu dengan pesan "Maaf, lampiran gagal diunggah karena ukurannya lebih dari 5 MB. Pilih file yang lebih kecil." (atau nama field lain; angkanya dari `php.ini`), bukan pesan aplikasi seperti "Ukuran lampiran maksimal 5 MB.". Dengan `php.ini` bawaan (2M) angkanya 2 MB. Request yang melewati `post_max_size` dibalas 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file.".
 
 Composer yang dijalankan sebagai root (misalnya di container) menonaktifkan plugin; set `COMPOSER_ALLOW_SUPERUSER=1` supaya plugin Pest terpasang.
 
@@ -868,6 +878,25 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`)
+
+Diminta pemilik repo: pesan "Lampiran gagal diunggah." yang muncul untuk file di atas batas `php.ini` (bawaan 2 MB) dibuat lebih manusiawi. Keputusan di "Keputusan yang sudah diterapkan".
+
+Baru:
+
+- `tests/Feature/Media/UnggahanGagalTest.php`: lampiran di atas batas unggah server menyebut batasnya; unggahan terputus meminta memeriksa sambungan; gangguan server meminta mencoba lagi nanti; foto galeri yang gagal disebut dengan urutannya ("foto ke-2"); pesan validasi lain ikut menyebut urutan foto. Keempat test pertama gagal dengan kode lama (pesannya masih "Lampiran gagal diunggah.").
+
+Diubah:
+
+- `lang/id/validation.php`: pesan `uploaded` dengan `:sebab`, nama kolom `foto.*` dan `lainnya.*`.
+- `app/Services/MediaService.php`: `sebabGagalUnggah()` dan `formatUkuran()`.
+- `app/Providers/AppServiceProvider.php`: replacer `uploaded`.
+- `PROMPT_BE_TK.md` B5, `dokumentasi.md` (status, keputusan, keputusan lampiran nomor 8, saran `php.ini`).
+
+Hasil pengecekan di PHP 8.5.9: 1106 test lulus (5408 assertion, SQLite); Pint, PHPStan, dan `check:slop` tanpa temuan. Uji manual: server `php -S` dengan `upload_max_filesize=2M` dan `post_max_size=8M` membalas PDF 3 MB di `POST /pengumuman` dengan 422 "Maaf, lampiran gagal diunggah karena ukurannya lebih dari 2 MB. Pilih file yang lebih kecil.", PDF kecil tetap 201. Pesan yang sama tampil di bawah kolom Lampiran di form pengumuman FE (build produksi yang diarahkan ke server itu). Pengumuman uji dan filenya dihapus lagi lewat API. Test ke MariaDB tidak dijalankan karena tidak ada perubahan migration, query, atau seeder.
+
+Temuan, belum diubah: `tests/Feature/Kelas/KelasTest.php` sesekali gagal dengan `UniqueConstraintViolationException`. `beforeEach` membuat kelas bernama tetap "TK A1" dan "TK B1", sedangkan `KelasFactory` memberi nama acak "TK A/B + 1–99" di tahun ajaran yang sama, jadi sesekali keduanya bentrok di unique (`tahun_ajaran_id`, `nama`). Terjadi sekali dari tiga putaran penuh di sesi ini; diulang 8 kali sendirian dan sekali lagi seluruh suite, semuanya lulus.
 
 ### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`, PR #18)
 
