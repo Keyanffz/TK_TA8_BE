@@ -14,8 +14,8 @@ use Intervention\Image\ImageManager;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Penyimpanan file dan URL-nya (B5). File private (foto anak, bukti bayar, dokumen PPDB) disajikan
- * lewat signed URL `GET /media/{token}` yang berisi path terenkripsi, bukan path mentah.
+ * Penyimpanan file dan URL-nya (B5). File private (foto anak, bukti bayar, dokumen PPDB, lampiran pengumuman)
+ * disajikan lewat signed URL `GET /media/{token}` yang berisi path terenkripsi, bukan path mentah.
  */
 class MediaService
 {
@@ -30,7 +30,7 @@ class MediaService
 
     public const EKSTENSI_GAMBAR = ['jpg', 'jpeg', 'png', 'webp'];
 
-    /** Dokumen PPDB boleh berupa gambar atau PDF (B5). */
+    /** Dokumen PPDB dan lampiran pengumuman boleh berupa gambar atau PDF (B5). */
     public const EKSTENSI_DOKUMEN = [...self::EKSTENSI_GAMBAR, 'pdf'];
 
     private const LEBAR_MAKSIMAL_GAMBAR = 1600;
