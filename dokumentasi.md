@@ -30,6 +30,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, disetujui |
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, menunggu review |
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, menunggu review |
+| Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Kode, test, dan dokumentasi ditulis; test, Pint, PHPStan, dan ekspor `api.json` belum dijalankan karena container sesi penulisannya tidak punya PHP 8.4 (lihat Changelog) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -53,10 +54,10 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
 | Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
-| Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role; izin lihat pengumuman semua), `POST /pengumuman` (SA, G; target bebas untuk izin kelola pengumuman), `PUT/DELETE /pengumuman/{id}` (penulis, SA, izin kelola pengumuman) |
+| Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role; izin lihat pengumuman semua), `POST /pengumuman` (SA, G; target bebas untuk izin kelola pengumuman), `PUT/DELETE /pengumuman/{id}` (penulis, SA, izin kelola pengumuman); lampiran opsional lewat multipart (`lampiran`, dan `hapus_lampiran` di `PUT`) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
-| Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
+| Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/pengumuman/{slug}/lampiran`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
 | Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan; izin lihat laporan absensi) |
@@ -73,6 +74,17 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+### Lampiran pengumuman (branch `be/lampiran-pengumuman`)
+
+Disetujui pemilik repo lewat sesi FE, dengan pilihan: satu file PDF atau gambar, maksimal 5 MB, dan lampiran pengumuman publik bisa diunduh pengunjung. Kontrak di `docs/kontrak-api-lampiran-pengumuman.md`. Yang diputuskan saat pengerjaan:
+
+1. Kolom baru `lampiran_nama` dan `lampiran_ukuran` di samping `lampiran_path` yang sudah ada, supaya nama asli dan ukuran tidak dibaca dari disk di setiap respons.
+2. Lampiran gambar diproses seperti dokumen PPDB (`simpanDokumen()`: lebar 1600 px, JPEG), dan ekstensi `lampiran_nama` mengikuti file yang tersimpan.
+3. `POST` dan `PUT /pengumuman` tetap menerima JSON; multipart hanya perlu kalau ada `lampiran`. `lampiran` bersama `hapus_lampiran: true` ditolak 422.
+4. Lampiran pengumuman publik dilayani `GET /public/pengumuman/{slug}/lampiran` (alamat tetap, `throttle:api` seperti endpoint publik lain), bukan signed URL, karena halaman publik FE di-cache (ISR 5 menit) sedangkan signed URL berlaku 30 menit. `MediaService::responsPrivat()` mendapat parameter nama file opsional untuk `Content-Disposition`.
+5. Menghapus pengumuman (soft delete) langsung menghapus file lampirannya, karena tidak ada jalan untuk memulihkan pengumuman yang terhapus.
+6. Signed URL `GET /media/{token}` untuk pengguna yang login tetap memakai nama acak di disk; nama asli hanya tampil di FE dan di unduhan publik.
 
 ### Hak akses guru, status murid, alumni, dan import (branch `be/hak-akses-status-murid`)
 
@@ -610,6 +622,7 @@ Middleware:
 - Gambar (`MediaService::aturanGambar()`: jpg/jpeg/png/webp, maksimal 5 MB) diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80 dengan nama UUID, metadata EXIF dibuang.
 - File publik (avatar, foto guru) di disk `public`, URL lewat `Storage::url()`. File lama dihapus setelah transaksi berhasil.
 - File private di disk `local` disajikan lewat `GET /media/{token}`: token = path terenkripsi (`Crypt`, base64 url-safe), URL ditandatangani relatif (`URL::temporarySignedRoute(..., absolute: false)`) dan berlaku 30 menit, respons `Cache-Control: private, max-age=1800`. Token rusak atau file sudah dihapus dibalas 404.
+- Lampiran pengumuman (disk `local`, folder `pengumuman/`, `MediaService::aturanDokumen()`) disimpan lewat `simpanDokumen()`: PDF apa adanya, gambar seperti di atas. Nama asli (`lampiran_nama`, ekstensinya mengikuti file tersimpan) dan ukuran file tersimpan (`lampiran_ukuran`) ikut dicatat. Pengguna yang login membukanya lewat signed URL; lampiran pengumuman publik yang sudah terbit lewat `GET /public/pengumuman/{slug}/lampiran` (alamat tetap, `responsPrivat()` dengan nama asli).
 - Foto absensi (disk `local`, folder `absensi/`, maksimal 2 MB) tidak diberi signed URL. `GET /absensi/{id}/foto` memakai `auth:sanctum` dan `AbsensiPolicy`: hanya pemilik absensi dan Kepala Sekolah. File dihapus `absensi:hapus-foto-lama` setelah `absensi.masa_simpan_foto_bulan`.
 
 ## Skema database
@@ -843,6 +856,30 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Lampiran pengumuman (branch `be/lampiran-pengumuman`)
+
+Diminta pemilik repo lewat sesi FE. Bagian A `PROMPT_BE_TK.md` disalin identik dari repo FE: A2.9, A3, A4, dan A7 untuk lampiran, serta node E3 flowchart A6 (foto pulang lebih awal dari kamera atau galeri) yang sudah diubah di FE sebelumnya. B5 dan B6.10 diperbarui. Kontrak di `docs/kontrak-api-lampiran-pengumuman.md`; keputusan di "Keputusan menunggu review".
+
+Baru:
+
+- Migration `2026_11_01_100000_tambah_nama_dan_ukuran_lampiran_ke_pengumuman_table` (`lampiran_nama`, `lampiran_ukuran`).
+- `docs/kontrak-api-lampiran-pengumuman.md`.
+- Test `tests/Feature/Pengumuman/LampiranPengumumanTest.php`: simpan lampiran PDF; gambar dikecilkan jadi JPEG dengan nama berekstensi .jpg; tolak dokumen Word dan PDF 6 MB; lampiran tetap saat diubah lewat JSON; ganti lampiran menghapus file lama dan `hapus_lampiran` mengosongkan kolom; tolak `lampiran` bersama `hapus_lampiran`; url lampiran hanya untuk sasaran pengumuman kelas; unduh lampiran publik tanpa login lewat alamat tetap; 404 untuk pengumuman bukan publik, draft, atau tanpa lampiran; file terhapus saat pengumuman dihapus.
+
+Diubah:
+
+- `app/Models/Pengumuman.php`: fillable dan cast kolom baru, `jenisLampiran()`.
+- `app/Http/Requests/Pengumuman/SimpanPengumumanRequest.php`: `lampiran` (`MediaService::aturanDokumen()`, dilarang bersama `hapus_lampiran`), `hapus_lampiran`, pesan validasi, `lampiran()`, `hapusLampiran()`.
+- `app/Services/PengumumanService.php`: simpan, ganti, dan hapus file lampiran di `buat()`, `perbarui()`, dan `hapus()` yang baru.
+- `app/Http/Controllers/Api/V1/Pengumuman/PengumumanController.php`: meneruskan lampiran; `destroy` lewat `PengumumanService::hapus()`.
+- `app/Http/Controllers/Api/V1/Publik/PublikController.php`: `lampiranPengumuman()`.
+- `app/Http/Resources/PengumumanResource.php`, `PengumumanPublikResource.php`: field `lampiran`.
+- `app/Services/MediaService.php`: `responsPrivat()` menerima nama file opsional.
+- `routes/api.php`: `GET /public/pengumuman/{slug}/lampiran` (nama route `publik.pengumuman.lampiran`).
+- `PROMPT_BE_TK.md`, `dokumentasi.md`.
+
+Hasil pengecekan: belum dijalankan. Container sesi ini hanya punya PHP 8.3, sedangkan dependensi (Symfony 8, PHPUnit 13, Pest 5, `spatie/laravel-activitylog` 5) butuh PHP 8.4, dan PPA PHP (`ppa.launchpadcontent.net`) diblokir kebijakan jaringan container. Yang sudah: `php -l` (PHP 8.3) untuk semua file PHP yang berubah. Sebelum merge wajib dijalankan: `php artisan test`, `./vendor/bin/pint --test`, `composer phpstan`, `composer check:slop`, test di MariaDB (ada migration baru), dan `php artisan scramble:export --path=storage/api-docs/api.json`; FE menunggu `api.json` ini.
 
 ### Hak akses guru, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`)
 
