@@ -124,6 +124,31 @@ it('mengganti lampiran dan menghapus file lama, lalu menghapus lampiran dengan h
         ->toBe(['lampiran_path' => null, 'lampiran_nama' => null, 'lampiran_ukuran' => null]);
 });
 
+it('menghapus lagi lampiran baru kalau pengumuman gagal disimpan, dan lampiran lama tetap', function () {
+    $this->actingAs($this->kepsek)->post('/api/v1/pengumuman', isianPengumuman(['lampiran' => lampiranPdf('Surat lama.pdf')]))->assertCreated();
+    $pengumuman = Pengumuman::query()->sole();
+    $pathLama = (string) $pengumuman->lampiran_path;
+    Pengumuman::saving(fn () => throw new RuntimeException('Koneksi database terputus.'));
+
+    $this->actingAs($this->kepsek)->post('/api/v1/pengumuman', isianPengumuman(['judul' => 'Lomba mewarnai', 'lampiran' => lampiranPdf('Brosur lomba.pdf')]))
+        ->assertServerError();
+    $this->actingAs($this->kepsek)->put("/api/v1/pengumuman/{$pengumuman->id}", isianPengumuman(['lampiran' => lampiranPdf('Surat revisi.pdf')]))
+        ->assertServerError();
+
+    expect(Storage::disk('local')->allFiles('pengumuman'))->toBe([$pathLama])
+        ->and($pengumuman->refresh()->lampiran_nama)->toBe('Surat lama.pdf');
+});
+
+it('membuang karakter kontrol dari nama lampiran dan membatasi panjangnya', function () {
+    $this->actingAs($this->kepsek)->post('/api/v1/pengumuman', isianPengumuman(['lampiran' => lampiranPdf("Surat\tEdaran\n.pdf")]))
+        ->assertCreated()
+        ->assertJsonPath('data.lampiran.nama', 'SuratEdaran.pdf');
+
+    $this->actingAs($this->kepsek)->post('/api/v1/pengumuman', isianPengumuman(['judul' => 'Jadwal PPDB', 'lampiran' => lampiranPdf(str_repeat('a', 250).'.pdf')]))
+        ->assertCreated()
+        ->assertJsonPath('data.lampiran.nama', str_repeat('a', 200).'.pdf');
+});
+
 it('menolak lampiran baru yang dikirim bersama hapus_lampiran', function () {
     $this->actingAs($this->kepsek)->post('/api/v1/pengumuman', isianPengumuman(['lampiran' => lampiranPdf()]))->assertCreated();
     $pengumuman = Pengumuman::query()->sole();
