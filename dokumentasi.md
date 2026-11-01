@@ -30,7 +30,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, disetujui |
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, disetujui, di-merge (PR #14) |
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
-| Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai dan diuji: test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, dan uji manual lewat curl (lihat Changelog) |
+| Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai, diuji (test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual lewat curl; lihat Changelog), disetujui, di-merge (PR #17) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -75,7 +75,13 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon ditinjau; yang tidak disetujui akan diubah.
 
-### Lampiran pengumuman (branch `be/lampiran-pengumuman`)
+Saat ini tidak ada.
+
+## Keputusan yang sudah diterapkan
+
+Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
+
+### Lampiran pengumuman (branch `be/lampiran-pengumuman`, PR #17)
 
 Disetujui pemilik repo lewat sesi FE, dengan pilihan: satu file PDF atau gambar, maksimal 5 MB, dan lampiran pengumuman publik bisa diunduh pengunjung. Kontrak di `docs/kontrak-api-lampiran-pengumuman.md`. Yang diputuskan saat pengerjaan:
 
@@ -87,10 +93,6 @@ Disetujui pemilik repo lewat sesi FE, dengan pilihan: satu file PDF atau gambar,
 6. Signed URL `GET /media/{token}` untuk pengguna yang login tetap memakai nama acak di disk; nama asli hanya tampil di FE dan di unduhan publik.
 7. Unduhan publik memakai `Cache-Control: no-cache` (Symfony menulisnya `no-cache, private`), bukan `private, max-age=1800` seperti file privat lain. Alamatnya tetap walau lampiran diganti, jadi dengan max-age browser yang pernah membuka lampiran lama bisa menampilkannya lagi sampai 30 menit. Signed URL tidak punya masalah ini karena berganti setiap kali dibuat. Diputuskan di sesi pengecekan; header ini tidak tercantum di kontrak.
 8. Kalau `upload_max_filesize` di `php.ini` tepat `5M`, file di atas 5 MB ditolak PHP sebelum validasi Laravel dan pesannya "Lampiran gagal diunggah." (pesan `uploaded` umum yang sama untuk semua field unggahan), bukan "Ukuran lampiran maksimal 5 MB.". Kode tidak diubah karena berlaku untuk semua unggahan; saran `php.ini` di "Instalasi dan menjalankan" diganti supaya pesan ukuran dari aplikasi yang muncul.
-
-## Keputusan yang sudah diterapkan
-
-Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
 
 ### Hak akses guru, status murid, alumni, dan import (branch `be/hak-akses-status-murid`, PR #15)
 
@@ -861,7 +863,7 @@ Diambil selama Fase 3:
 
 ### Lampiran pengumuman (branch `be/lampiran-pengumuman`)
 
-Diminta pemilik repo lewat sesi FE. Bagian A `PROMPT_BE_TK.md` disalin identik dari repo FE: A2.9, A3, A4, dan A7 untuk lampiran, serta node E3 flowchart A6 (foto pulang lebih awal dari kamera atau galeri) yang sudah diubah di FE sebelumnya. B5 dan B6.10 diperbarui. Kontrak di `docs/kontrak-api-lampiran-pengumuman.md`; keputusan di "Keputusan menunggu review".
+Diminta pemilik repo lewat sesi FE. Bagian A `PROMPT_BE_TK.md` disalin identik dari repo FE: A2.9, A3, A4, dan A7 untuk lampiran, serta node E3 flowchart A6 (foto pulang lebih awal dari kamera atau galeri) yang sudah diubah di FE sebelumnya. B5 dan B6.10 diperbarui. Kontrak di `docs/kontrak-api-lampiran-pengumuman.md`; keputusan di "Keputusan yang sudah diterapkan".
 
 Baru:
 
@@ -882,7 +884,7 @@ Diubah:
 - `routes/api.php`: `GET /public/pengumuman/{slug}/lampiran` (nama route `publik.pengumuman.lampiran`).
 - `tests/Feature/DokumentasiApiTest.php`: path unduhan publik masuk daftar endpoint publik tanpa auth dan daftar respons file (`application/octet-stream`); test baru untuk `lampiran` di `PengumumanResource` dan `PengumumanPublikResource` (objek nullable yang wajib, `jenis` enum `pdf`/`gambar`, `ukuran` integer), body `POST`/`PUT /pengumuman` (multipart, `lampiran` binary, `hapus_lampiran` boolean, keduanya tidak wajib), 404 unduhan publik, dan respons sungguhan dengan dan tanpa lampiran yang cocok dengan skema.
 - `storage/api-docs/api.json`: diekspor ulang setelah migration dijalankan di database dev. Perubahan: `lampiran` di `PengumumanResource` dan `PengumumanPublikResource` (wajib, `object | null`), `lampiran` dan `hapus_lampiran` di `SimpanPengumumanRequest`, body `POST /pengumuman` dan `PUT /pengumuman/{id}` dari `application/json` menjadi `multipart/form-data`, path baru `/public/pengumuman/{slug}/lampiran`, dan ringkasan operasi `POST`/`PUT`/`DELETE /pengumuman` serta `GET /media/{token}`.
-- `PROMPT_BE_TK.md`, `dokumentasi.md`, `docs/kontrak-api-lampiran-pengumuman.md`. "Unggah lampiran pengumuman" dihapus dari "Saran dari Claude" karena sudah dibuat; keputusan Fase 6–7 nomor 13 diberi tanda "diubah di"; saran `php.ini` untuk `upload_max_filesize` diganti (keputusan nomor 8).
+- `PROMPT_BE_TK.md`, `dokumentasi.md`, `docs/kontrak-api-lampiran-pengumuman.md`. "Unggah lampiran pengumuman" dihapus dari "Saran dari Claude" karena sudah dibuat; keputusan Fase 6–7 nomor 13 diberi tanda "diubah di"; saran `php.ini` untuk `upload_max_filesize` diganti (keputusan nomor 8). Setelah PR #17 dibuat, blok keputusan dipindah dari "Keputusan menunggu review" ke "Keputusan yang sudah diterapkan" dengan nomor PR di judulnya, sebagai commit terakhir di PR itu.
 
 Sesi penulisan hanya menjalankan `php -l` (PHP 8.3), karena container-nya tidak punya PHP 8.4 dan PPA PHP diblokir. Semua pengecekan di bawah dijalankan di sesi lanjutan, di container cloud Ubuntu 24.04 dengan PHP 8.5.9 dan MariaDB 10.11.14 (cara memasangnya di "Yang khusus container dan tidak berlaku di laptop"), bukan di laptop.
 
