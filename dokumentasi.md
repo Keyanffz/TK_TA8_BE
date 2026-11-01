@@ -30,7 +30,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, disetujui |
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, disetujui, di-merge (PR #14) |
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
-| Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Kode, test, dan dokumentasi ditulis; test, Pint, PHPStan, dan ekspor `api.json` belum dijalankan karena container sesi penulisannya tidak punya PHP 8.4 (lihat Changelog) |
+| Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai dan diuji: test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, dan uji manual lewat curl (lihat Changelog) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -85,6 +85,8 @@ Disetujui pemilik repo lewat sesi FE, dengan pilihan: satu file PDF atau gambar,
 4. Lampiran pengumuman publik dilayani `GET /public/pengumuman/{slug}/lampiran` (alamat tetap, `throttle:api` seperti endpoint publik lain), bukan signed URL, karena halaman publik FE di-cache (ISR 5 menit) sedangkan signed URL berlaku 30 menit. `MediaService::responsPrivat()` mendapat parameter nama file opsional untuk `Content-Disposition`.
 5. Menghapus pengumuman (soft delete) langsung menghapus file lampirannya, karena tidak ada jalan untuk memulihkan pengumuman yang terhapus.
 6. Signed URL `GET /media/{token}` untuk pengguna yang login tetap memakai nama acak di disk; nama asli hanya tampil di FE dan di unduhan publik.
+7. Unduhan publik memakai `Cache-Control: no-cache` (Symfony menulisnya `no-cache, private`), bukan `private, max-age=1800` seperti file privat lain. Alamatnya tetap walau lampiran diganti, jadi dengan max-age browser yang pernah membuka lampiran lama bisa menampilkannya lagi sampai 30 menit. Signed URL tidak punya masalah ini karena berganti setiap kali dibuat. Diputuskan di sesi pengecekan; header ini tidak tercantum di kontrak.
+8. Kalau `upload_max_filesize` di `php.ini` tepat `5M`, file di atas 5 MB ditolak PHP sebelum validasi Laravel dan pesannya "Lampiran gagal diunggah." (pesan `uploaded` umum yang sama untuk semua field unggahan), bukan "Ukuran lampiran maksimal 5 MB.". Kode tidak diubah karena berlaku untuk semua unggahan; saran `php.ini` di "Instalasi dan menjalankan" diganti supaya pesan ukuran dari aplikasi yang muncul.
 
 ## Keputusan yang sudah diterapkan
 
@@ -319,7 +321,7 @@ Fase 6:
 10. Notifikasi rapor: `rapor_diajukan` ke Kepala Sekolah aktif, `rapor_revisi` ke guru pembuat, `rapor_terbit` ke semua wali murid anak itu; url `/rapor/{id}` di area penerima (`/mudarris` untuk Kepala Sekolah dan guru, `/dashboard` untuk wali).
 11. Pengumuman, penerima notifikasi `pengumuman_baru` (akun aktif, selain penulis): `semua` = semua guru dan wali murid; `guru`; `wali_murid`; `kelas` = wali murid yang anaknya berpenempatan aktif di kelas itu ditambah wali kelas dan guru pendampingnya; `murid` = wali murid anak itu ditambah guru pengampu kelasnya di tahun ajaran aktif. Kepala Sekolah tidak dikirimi karena melihat semua pengumuman. Judul notifikasi = judul pengumuman, pesan = 140 karakter pertama isi tanpa HTML, url `/pengumuman/{id}` di area penerima (`/mudarris` untuk guru, `/dashboard` untuk wali).
 12. Pengumuman, terbit: notifikasi dikirim saat pengumuman berubah dari draft menjadi terbit (`published_at` kosong → terisi). Mengubah pengumuman yang sudah terbit tidak mengirim ulang dan `published_at` tetap. `publish: false` pada pengumuman terbit menariknya kembali jadi draft (`published_at` dikosongkan); kalau diterbitkan lagi, notifikasi terkirim lagi.
-13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran. `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1` (juga `true|false`), `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
+13. Pengumuman, data: slug dari judul dengan akhiran `-2`, `-3` kalau sudah dipakai (termasuk pengumuman terhapus) dan tidak berubah saat judul diganti. `lampiran_path` (kolom A4) belum dipakai karena body A7 tidak punya field lampiran (**diubah di `be/lampiran-pengumuman`:** lampiran PDF atau gambar lewat `lampiran` dan `hapus_lampiran`, ditambah kolom `lampiran_nama` dan `lampiran_ukuran`). `kelas` dan `murid` (daftar sasaran) hanya dikirim ke Kepala Sekolah dan penulis, supaya wali tidak melihat nama anak lain. Urutan feed: disematkan dulu, lalu `published_at` (draft: `created_at`) terbaru. Parameter: `filter[target]`, `filter[terbit]=0|1` (juga `true|false`), `search` (judul). Hapus = soft delete. Guru lain yang melihat pengumuman di feed mendapat 403 saat mengubah.
 14. Di OpenAPI, `GET /kegiatan/{id}`, `GET /rapor/{id}`, `GET /pengumuman/{id}`, dan `GET /rapor/{id}/pdf` masih mencantumkan 403 `FORBIDDEN`. **Selesai di Fase 8** (lihat keputusan Fase 8 nomor 2).
 
 Fase 7:
@@ -382,7 +384,7 @@ Fase 5:
 
 | Komponen | Versi |
 |---|---|
-| PHP | 8.4 (minimum; dibutuhkan activitylog 5 dan Pest 5) |
+| PHP | 8.4 (minimum; dibutuhkan activitylog 5 dan Pest 5). Pengecekan `be/lampiran-pengumuman` dijalankan di 8.5.9 |
 | laravel/framework | 13.33.0 |
 | laravel/sanctum | 4.3.3 |
 | dedoc/scramble | 0.13.45 |
@@ -397,9 +399,9 @@ Fase 5:
 | larastan/larastan | 3.12.2 (level 6) |
 | laravel/pint | 1.32.1 |
 
-Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46, MariaDB 10.11.14, dan MariaDB 12.3.3 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14 (sampai Fase 3) dan ke MariaDB 12.3.3 (mulai Fase 4).
+Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46, MariaDB 10.11.14, dan MariaDB 12.3.3 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14 (sampai Fase 3) dan ke MariaDB 12.3.3 (mulai Fase 4). Untuk `be/lampiran-pengumuman` seluruh test dijalankan ke MariaDB 10.11.14 di container cloud.
 
-PHP: dikembangkan di 8.4.19 (Fase 0–3, container) dan 8.5.10 (mulai Fase 4, laptop). Test dijalankan dengan `--display-deprecations` di PHP 8.5.10 tanpa deprecation.
+PHP: dikembangkan di 8.4.19 (Fase 0–3, container) dan 8.5.10 (mulai Fase 4, laptop). Test dijalankan dengan `--display-deprecations` di PHP 8.5.10 tanpa deprecation. Semua pengecekan `be/lampiran-pengumuman` (test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual) dijalankan di container cloud Ubuntu 24.04 dengan PHP 8.5.9; seluruh suite yang dijalankan dengan `--display-deprecations` (ke MariaDB) tidak menampilkan deprecation. Minimum tetap PHP 8.4: `composer.json` berisi `"php": "^8.4"`, yang sudah menerima 8.5 (`composer prohibits php 8.5.0` tidak menemukan paket yang menolak).
 
 ## Serah terima ke lingkungan lokal
 
@@ -483,8 +485,9 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 - Jaringan container lewat proxy dengan CA bundle sendiri, dan unduhan zip dari api.github.com diblokir. Karena itu `phpstan/phpstan` dipasang dari clone git dan `lang/id/validation.php` dibuat dengan `laravel-lang` di proyek terpisah. Di laptop `composer install` biasa sudah cukup: `composer.json` tidak berisi repository atau path khusus, dan `lang/id/validation.php` sudah di-commit.
 - PHP container sudah memuat hampir semua ekstensi (termasuk `exif`, `pcntl`, `pdo_sqlite`). Di Arch cek satu per satu dengan `php -m`.
 - `.env`, `vendor/`, symlink `public/storage`, gambar demo di `storage/app/...`, dan log tidak ikut repo. Semuanya dibuat ulang lewat urutan perintah di atas; gambar demo ditulis ulang oleh `DemoSeeder`.
-- Batas unggahan PHP bawaan (`upload_max_filesize=2M`, `post_max_size=8M`) sama di container dan di Arch, dan juga berlaku untuk `php artisan serve`. Untuk mencoba unggahan sampai 5 MB lewat server lokal, naikkan ke `5M` dan `55M` di `php.ini`. Test tidak terpengaruh karena memakai file palsu.
+- Batas unggahan PHP bawaan (`upload_max_filesize=2M`, `post_max_size=8M`) sama di container dan di Arch, dan juga berlaku untuk `php artisan serve`. Untuk mencoba unggahan sampai 5 MB lewat server lokal, naikkan keduanya ke `55M` di `php.ini` (lihat "Instalasi dan menjalankan" untuk alasan `upload_max_filesize` tidak dibuat tepat `5M`). Test tidak terpengaruh karena memakai file palsu.
 - Pekerjaan di container memakai branch `claude/project-spec-setup-1vjwxm` yang di-merge ke `main` lewat PR per fase. Di laptop mulai dari `main` terbaru setelah PR Fase 3 di-merge.
+- Pengecekan `be/lampiran-pengumuman` dijalankan di container cloud Ubuntu 24.04 yang hanya membawa PHP 8.3 dan tanpa database. PPA PHP diblokir, jadi PHP 8.5.9 dibangun dari sumber paket Ubuntu (`php8.5_8.5.9.orig.tar.xz` di `archive.ubuntu.com/ubuntu/pool/main/p/php8.5/`) dengan ekstensi di "Ekstensi PHP" ditambah `bcmath`, `intl`, `mysqli`, dan `sodium`; MariaDB 10.11.14 dari repo Ubuntu. Unduhan zip dari api.github.com terputus di proxy, jadi `composer install --prefer-source` dipakai, dan `phpstan/phpstan` (di `composer.lock` hanya punya zip) dipasang dari zip yang dibuat dari clone tag 2.2.16 lalu ditaruh di cache Composer.
 
 ## Instalasi dan menjalankan
 
@@ -522,7 +525,7 @@ Di server produksi:
 - Worker queue: `php artisan queue:work` (notifikasi dan email lewat queue driver `database`).
 - `TRUSTED_PROXIES` **wajib berisi IP server FE (Next.js)**, ditambah IP reverse proxy di depan BE kalau ada (dipisah koma). FE memakai pola BFF, jadi semua request tanpa login datang dari IP server FE. Laravel hanya membaca IP asli klien dari `X-Forwarded-For` kalau request datang dari proxy yang terdaftar; tanpa itu, semua pengunjung dihitung sebagai satu IP dan berbagi satu kuota limiter `api` (120/menit), `login-staff` (10/menit per IP), dan `login-google` (10/menit per IP). Server FE harus meneruskan IP klien di `X-Forwarded-For`.
 - Scheduler: cron `* * * * * cd /path/ke/app && php artisan schedule:run >> /dev/null 2>&1`.
-- `php.ini`: `upload_max_filesize` minimal `5M` (batas per file di B5) dan `post_max_size` cukup untuk unggahan terbanyak dalam satu request (kegiatan: 10 foto, jadi minimal `55M`). Request yang melewati `post_max_size` dibalas 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file.".
+- `php.ini`: `post_max_size` cukup untuk unggahan terbanyak dalam satu request (kegiatan: 10 foto, jadi minimal `55M`), dan `upload_max_filesize` disamakan dengan `post_max_size`. Batas 5 MB per file (B5) dijaga validasi aplikasi. Kalau `upload_max_filesize` tepat `5M`, file di atas 5 MB ditolak PHP lebih dulu dan pesannya hanya "Lampiran gagal diunggah." (atau nama field lain), bukan pesan ukuran seperti "Ukuran lampiran maksimal 5 MB.". Request yang melewati `post_max_size` dibalas 422 `VALIDATION_ERROR` dengan pesan "Ukuran file terlalu besar. Maksimal 5 MB per file.".
 
 Composer yang dijalankan sebagai root (misalnya di container) menonaktifkan plugin; set `COMPOSER_ALLOW_SUPERUSER=1` supaya plugin Pest terpasang.
 
@@ -622,7 +625,7 @@ Middleware:
 - Gambar (`MediaService::aturanGambar()`: jpg/jpeg/png/webp, maksimal 5 MB) diperkecil ke lebar maksimal 1600 px, diputar sesuai EXIF, disimpan sebagai JPEG kualitas 80 dengan nama UUID, metadata EXIF dibuang.
 - File publik (avatar, foto guru) di disk `public`, URL lewat `Storage::url()`. File lama dihapus setelah transaksi berhasil.
 - File private di disk `local` disajikan lewat `GET /media/{token}`: token = path terenkripsi (`Crypt`, base64 url-safe), URL ditandatangani relatif (`URL::temporarySignedRoute(..., absolute: false)`) dan berlaku 30 menit, respons `Cache-Control: private, max-age=1800`. Token rusak atau file sudah dihapus dibalas 404.
-- Lampiran pengumuman (disk `local`, folder `pengumuman/`, `MediaService::aturanDokumen()`) disimpan lewat `simpanDokumen()`: PDF apa adanya, gambar seperti di atas. Nama asli (`lampiran_nama`, ekstensinya mengikuti file tersimpan) dan ukuran file tersimpan (`lampiran_ukuran`) ikut dicatat. Pengguna yang login membukanya lewat signed URL; lampiran pengumuman publik yang sudah terbit lewat `GET /public/pengumuman/{slug}/lampiran` (alamat tetap, `responsPrivat()` dengan nama asli).
+- Lampiran pengumuman (disk `local`, folder `pengumuman/`, `MediaService::aturanDokumen()`) disimpan lewat `simpanDokumen()`: PDF apa adanya, gambar seperti di atas. Nama asli (`lampiran_nama`, ekstensinya mengikuti file tersimpan) dan ukuran file tersimpan (`lampiran_ukuran`) ikut dicatat. Pengguna yang login membukanya lewat signed URL; lampiran pengumuman publik yang sudah terbit lewat `GET /public/pengumuman/{slug}/lampiran` (alamat tetap, `responsPrivat()` dengan nama asli, `Cache-Control: no-cache` karena isi alamat itu berubah saat lampiran diganti).
 - Foto absensi (disk `local`, folder `absensi/`, maksimal 2 MB) tidak diberi signed URL. `GET /absensi/{id}/foto` memakai `auth:sanctum` dan `AbsensiPolicy`: hanya pemilik absensi dan Kepala Sekolah. File dihapus `absensi:hapus-foto-lama` setelah `absensi.masa_simpan_foto_bulan`.
 
 ## Skema database
@@ -824,7 +827,6 @@ Diambil selama Fase 3:
 
 - Payment gateway (Midtrans), supaya wali bisa membayar tagihan tanpa mengunggah bukti transfer dan menunggu verifikasi manual; belum dibuat karena A2.5 menetapkannya sebagai pengembangan nanti, di luar desain saat ini.
 - Push notification lewat FCM, supaya notifikasi sampai ke HP tanpa membuka website; belum dibuat karena A2.11 menundanya sampai aplikasi Flutter dibuat.
-- Unggah lampiran pengumuman (kolom `lampiran_path` sudah ada di A4), supaya surat edaran bisa dibagikan sebagai file; belum dibuat karena kontrak A7 tidak punya isian lampiran dan pemilik repo menundanya.
 
 ## Akun seed
 
@@ -865,7 +867,7 @@ Baru:
 
 - Migration `2026_11_01_100000_tambah_nama_dan_ukuran_lampiran_ke_pengumuman_table` (`lampiran_nama`, `lampiran_ukuran`).
 - `docs/kontrak-api-lampiran-pengumuman.md`.
-- Test `tests/Feature/Pengumuman/LampiranPengumumanTest.php`: simpan lampiran PDF; gambar dikecilkan jadi JPEG dengan nama berekstensi .jpg; tolak dokumen Word dan PDF 6 MB; lampiran tetap saat diubah lewat JSON; ganti lampiran menghapus file lama dan `hapus_lampiran` mengosongkan kolom; tolak `lampiran` bersama `hapus_lampiran`; url lampiran hanya untuk sasaran pengumuman kelas; unduh lampiran publik tanpa login lewat alamat tetap; 404 untuk pengumuman bukan publik, draft, atau tanpa lampiran; file terhapus saat pengumuman dihapus.
+- Test `tests/Feature/Pengumuman/LampiranPengumumanTest.php`: simpan lampiran PDF; gambar dikecilkan jadi JPEG dengan nama berekstensi .jpg; tolak dokumen Word dan PDF 6 MB; lampiran tetap saat diubah lewat JSON; ganti lampiran menghapus file lama dan `hapus_lampiran` mengosongkan kolom; tolak `lampiran` bersama `hapus_lampiran`; url lampiran hanya untuk sasaran pengumuman kelas; unduh lampiran publik tanpa login lewat alamat tetap; 404 untuk pengumuman bukan publik, draft, atau tanpa lampiran; file terhapus saat pengumuman dihapus. Ditambah di sesi pengecekan: file baru dihapus lagi kalau penyimpanan gagal dan lampiran lama tetap (dicoba gagal dulu tanpa pembersihan di service); nama dibersihkan dari karakter kontrol dan dibatasi 200 karakter; header unduhan publik (`Content-Type`, `Content-Disposition` `inline`, `Cache-Control`).
 
 Diubah:
 
@@ -873,13 +875,31 @@ Diubah:
 - `app/Http/Requests/Pengumuman/SimpanPengumumanRequest.php`: `lampiran` (`MediaService::aturanDokumen()`, dilarang bersama `hapus_lampiran`), `hapus_lampiran`, pesan validasi, `lampiran()`, `hapusLampiran()`.
 - `app/Services/PengumumanService.php`: simpan, ganti, dan hapus file lampiran di `buat()`, `perbarui()`, dan `hapus()` yang baru.
 - `app/Http/Controllers/Api/V1/Pengumuman/PengumumanController.php`: meneruskan lampiran; `destroy` lewat `PengumumanService::hapus()`.
-- `app/Http/Controllers/Api/V1/Publik/PublikController.php`: `lampiranPengumuman()`.
+- `app/Http/Controllers/Api/V1/Publik/PublikController.php`: `lampiranPengumuman()`, dengan `Cache-Control: no-cache` (keputusan nomor 7).
 - `app/Http/Resources/PengumumanResource.php`, `PengumumanPublikResource.php`: field `lampiran`.
-- `app/Services/MediaService.php`: `responsPrivat()` menerima nama file opsional.
+- `app/Services/MediaService.php`: `responsPrivat()` menerima nama file opsional; docblock kelas dan `EKSTENSI_DOKUMEN` menyebut lampiran pengumuman.
+- `app/Http/Controllers/Api/V1/MediaController.php`: deskripsi isi `GET /media/{token}` menyebut lampiran pengumuman.
 - `routes/api.php`: `GET /public/pengumuman/{slug}/lampiran` (nama route `publik.pengumuman.lampiran`).
-- `PROMPT_BE_TK.md`, `dokumentasi.md`.
+- `tests/Feature/DokumentasiApiTest.php`: path unduhan publik masuk daftar endpoint publik tanpa auth dan daftar respons file (`application/octet-stream`); test baru untuk `lampiran` di `PengumumanResource` dan `PengumumanPublikResource` (objek nullable yang wajib, `jenis` enum `pdf`/`gambar`, `ukuran` integer), body `POST`/`PUT /pengumuman` (multipart, `lampiran` binary, `hapus_lampiran` boolean, keduanya tidak wajib), 404 unduhan publik, dan respons sungguhan dengan dan tanpa lampiran yang cocok dengan skema.
+- `storage/api-docs/api.json`: diekspor ulang setelah migration dijalankan di database dev. Perubahan: `lampiran` di `PengumumanResource` dan `PengumumanPublikResource` (wajib, `object | null`), `lampiran` dan `hapus_lampiran` di `SimpanPengumumanRequest`, body `POST /pengumuman` dan `PUT /pengumuman/{id}` dari `application/json` menjadi `multipart/form-data`, path baru `/public/pengumuman/{slug}/lampiran`, dan ringkasan operasi `POST`/`PUT`/`DELETE /pengumuman` serta `GET /media/{token}`.
+- `PROMPT_BE_TK.md`, `dokumentasi.md`, `docs/kontrak-api-lampiran-pengumuman.md`. "Unggah lampiran pengumuman" dihapus dari "Saran dari Claude" karena sudah dibuat; keputusan Fase 6–7 nomor 13 diberi tanda "diubah di"; saran `php.ini` untuk `upload_max_filesize` diganti (keputusan nomor 8).
 
-Hasil pengecekan: belum dijalankan. Container sesi ini hanya punya PHP 8.3, sedangkan dependensi (Symfony 8, PHPUnit 13, Pest 5, `spatie/laravel-activitylog` 5) butuh PHP 8.4, dan PPA PHP (`ppa.launchpadcontent.net`) diblokir kebijakan jaringan container. Yang sudah: `php -l` (PHP 8.3) untuk semua file PHP yang berubah. Sebelum merge wajib dijalankan: `php artisan test`, `./vendor/bin/pint --test`, `composer phpstan`, `composer check:slop`, test di MariaDB (ada migration baru), dan `php artisan scramble:export --path=storage/api-docs/api.json`; FE menunggu `api.json` ini.
+Sesi penulisan hanya menjalankan `php -l` (PHP 8.3), karena container-nya tidak punya PHP 8.4 dan PPA PHP diblokir. Semua pengecekan di bawah dijalankan di sesi lanjutan, di container cloud Ubuntu 24.04 dengan PHP 8.5.9 dan MariaDB 10.11.14 (cara memasangnya di "Yang khusus container dan tidak berlaku di laptop"), bukan di laptop.
+
+Hasil pengecekan: 1101 test lulus (5396 assertion) di SQLite dan di MariaDB 10.11.14 (database terpisah `TK_TA8_uji`, seluruh suite karena ada migration baru, dengan `--display-deprecations` tanpa deprecation). Test lampiran dan dokumentasi yang ditulis di sesi penulisan langsung lulus, jadi tidak ada kode yang perlu diperbaiki; perubahan sesi lanjutan ada di daftar di atas. Pint, PHPStan (402 file), dan `check:slop` tanpa temuan. Migration dicoba di database dev `TK_TA8` berisi data demo: rollback satu langkah menghapus kedua kolom, lalu `php artisan migrate` menambahkannya lagi tanpa mengubah 7 baris pengumuman. Dua kali ekspor `api.json` menghasilkan file yang sama; 10 peringatan Scramble saat ekspor berasal dari file yang tidak disentuh branch ini.
+
+Uji manual lewat curl ke `php artisan serve` (`upload_max_filesize=10M`, `post_max_size=55M`) dengan akun Kepala Sekolah dari `.env`:
+
+- Pengumuman publik dengan PDF: 201, `lampiran` `{ nama: "Surat Edaran Libur Semester.pdf", jenis: "pdf", ukuran: 1346, url }`, file `pengumuman/<uuid>.pdf` di disk privat. Signed URL dan `GET /public/pengumuman/{slug}/lampiran` tanpa token sama-sama 200 dengan isi yang identik dengan file asli; unduhan publik membawa `Content-Disposition: inline; filename="Surat Edaran Libur Semester.pdf"` dan `Cache-Control: no-cache, private`.
+- PNG 2400×1800 px: tersimpan sebagai JPEG 1600×1200 px, `nama` "Jadwal Lomba Mewarnai.jpg", `jenis` `gambar`, unduhan publik `image/jpeg`.
+- `PUT` multipart mengganti PDF: file lama hilang dari `pengumuman/` dan unduhan publik memakai nama baru. `lampiran` bersama `hapus_lampiran=1` 422 "Pilih salah satu: ganti lampiran atau hapus lampiran.". `hapus_lampiran=1` mengosongkan ketiga kolom dan menghapus file.
+- Unduhan publik 404 `NOT_FOUND` untuk pengumuman tanpa lampiran, bukan publik, draft, dan slug yang tidak ada.
+- `.docx` 422 "Lampiran harus berupa PDF atau gambar (JPG, PNG, WebP)." dan PDF 6 MB 422 "Ukuran lampiran maksimal 5 MB.", tanpa file tertinggal di disk. Server kedua dengan `upload_max_filesize=5M` membalas PDF yang sama dengan "Lampiran gagal diunggah." (keputusan nomor 8).
+- Body JSON tanpa lampiran tetap 201 dengan `lampiran: null`.
+- Wali murid demo melihat `lampiran` di `GET /pengumuman/{id}` dan di `pengumuman_terbaru` `GET /dashboard`, dan signed URL-nya bisa dibuka.
+- `DELETE /pengumuman/{id}` untuk tiga pengumuman berlampiran (gambar, bukan publik, draft): file ikut terhapus dan folder `pengumuman/` kosong.
+
+Pengumuman, antrean notifikasi, dan token uji dihapus lagi dari database dev. Database dev di laptop belum di-migrate oleh sesi ini: jalankan `php artisan migrate` di laptop supaya kolom `lampiran_nama` dan `lampiran_ukuran` ada.
 
 ### Hak akses guru, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`)
 

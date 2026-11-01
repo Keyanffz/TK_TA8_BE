@@ -1,6 +1,6 @@
 # Kontrak API: lampiran pengumuman
 
-Kontrak untuk lampiran di pengumuman, disetujui pemilik repo. Kode backend ada di branch `be/lampiran-pengumuman`, tetapi tesnya belum dijalankan dan `api.json` belum diekspor karena container sesi penulisannya tidak punya PHP 8.4. FE baru mulai setelah `api.json` backend memuat isi dokumen ini, karena FE tidak memakai field di luar kontrak. Semua endpoint memakai prefix `/api/v1`, header `Authorization: Bearer` (kecuali endpoint publik), dan format respons A7.
+Kontrak untuk lampiran di pengumuman, disetujui pemilik repo. Kode backend ada di branch `be/lampiran-pengumuman`, dan `storage/api-docs/api.json` backend sudah memuat isi dokumen ini, jadi FE bisa mulai (FE tidak memakai field di luar kontrak). Semua endpoint memakai prefix `/api/v1`, header `Authorization: Bearer` (kecuali endpoint publik), dan format respons A7.
 
 Ringkasannya ada di Bagian A (A2.9, A3, A4 tabel `pengumuman`, A7), yang identik di `PROMPT_BE_TK.md` dan `PROMPT_FE_TK.md`, serta di B5 dan B6.10 `PROMPT_BE_TK.md`. Salinan dokumen ini juga ada di `docs/` repo FE.
 
