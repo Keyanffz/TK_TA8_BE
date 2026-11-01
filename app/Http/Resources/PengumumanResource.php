@@ -7,6 +7,7 @@ use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pengumuman;
 use App\Models\User;
+use App\Services\MediaService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,14 @@ class PengumumanResource extends JsonResource
             'slug' => $this->slug,
             /** HTML yang sudah disanitasi. */
             'isi' => $this->isi,
+            /** Null kalau pengumuman tidak punya lampiran. `url` adalah signed URL yang berlaku 30 menit. */
+            'lampiran' => $this->lampiran_path === null ? null : [
+                'nama' => (string) $this->lampiran_nama,
+                'jenis' => $this->jenisLampiran(),
+                /** Ukuran file dalam byte. */
+                'ukuran' => (int) $this->lampiran_ukuran,
+                'url' => (string) app(MediaService::class)->urlPrivat($this->lampiran_path),
+            ],
             'target' => $this->target,
             /** Hanya untuk Kepala Sekolah, pemegang izin lihat pengumuman, dan penulis. */
             'kelas' => $this->when($bolehLihatSasaran && $this->relationLoaded('kelas'), fn () => $this->kelas

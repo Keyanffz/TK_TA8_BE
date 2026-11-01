@@ -14,8 +14,8 @@ use Intervention\Image\ImageManager;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Penyimpanan file dan URL-nya (B5). File private (foto anak, bukti bayar, dokumen PPDB) disajikan
- * lewat signed URL `GET /media/{token}` yang berisi path terenkripsi, bukan path mentah.
+ * Penyimpanan file dan URL-nya (B5). File private (foto anak, bukti bayar, dokumen PPDB, lampiran pengumuman)
+ * disajikan lewat signed URL `GET /media/{token}` yang berisi path terenkripsi, bukan path mentah.
  */
 class MediaService
 {
@@ -30,7 +30,7 @@ class MediaService
 
     public const EKSTENSI_GAMBAR = ['jpg', 'jpeg', 'png', 'webp'];
 
-    /** Dokumen PPDB boleh berupa gambar atau PDF (B5). */
+    /** Dokumen PPDB dan lampiran pengumuman boleh berupa gambar atau PDF (B5). */
     public const EKSTENSI_DOKUMEN = [...self::EKSTENSI_GAMBAR, 'pdf'];
 
     private const LEBAR_MAKSIMAL_GAMBAR = 1600;
@@ -140,15 +140,16 @@ class MediaService
 
     /**
      * Menyajikan file private langsung, untuk endpoint yang memeriksa hak akses sendiri
-     * (misalnya `GET /pembayaran/{id}/bukti`). Null kalau file tidak ada.
+     * (misalnya `GET /pembayaran/{id}/bukti`). `$nama` menjadi nama file saat diunduh; tanpa `$nama`, nama acak
+     * di disk yang dipakai. Null kalau file tidak ada.
      */
-    public function responsPrivat(string $path): ?StreamedResponse
+    public function responsPrivat(string $path, ?string $nama = null): ?StreamedResponse
     {
         if (! Storage::disk(self::DISK_PRIVAT)->exists($path)) {
             return null;
         }
 
-        return Storage::disk(self::DISK_PRIVAT)->response($path, null, [
+        return Storage::disk(self::DISK_PRIVAT)->response($path, $nama, [
             'Cache-Control' => 'private, max-age='.(self::MENIT_BERLAKU_URL_PRIVAT * 60),
         ]);
     }

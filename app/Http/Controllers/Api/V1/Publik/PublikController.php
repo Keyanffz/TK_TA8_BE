@@ -16,11 +16,14 @@ use App\Models\Agenda;
 use App\Models\GaleriAlbum;
 use App\Models\Guru;
 use App\Models\Pengumuman;
+use App\Services\MediaService;
 use App\Services\PendaftaranService;
 use App\Services\PengaturanService;
 use App\Support\ApiResponse;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Data landing page tanpa login. Semua isinya berasal dari CMS dan data yang ditandai publik.
@@ -79,6 +82,23 @@ class PublikController extends Controller
         $pengumuman = Pengumuman::query()->where('is_publik', true)->terbit()->where('slug', $slug)->firstOrFail();
 
         return ApiResponse::success(new PengumumanPublikResource($pengumuman));
+    }
+
+    /**
+     * File lampiran pengumuman publik yang sudah terbit, dengan nama file aslinya. Alamatnya tetap supaya tautan di
+     * halaman publik yang di-cache tidak kedaluwarsa. Pengumuman lain atau tanpa lampiran dibalas 404.
+     */
+    #[Response(200, 'File lampiran (PDF, atau gambar JPEG)', mediaType: 'application/octet-stream', type: 'string', format: 'binary')]
+    public function lampiranPengumuman(string $slug, MediaService $media): StreamedResponse
+    {
+        $pengumuman = Pengumuman::query()->where('is_publik', true)->terbit()->where('slug', $slug)
+            ->whereNotNull('lampiran_path')->firstOrFail();
+        $respons = $media->responsPrivat((string) $pengumuman->lampiran_path, $pengumuman->lampiran_nama) ?? abort(404);
+
+        // Alamat ini tetap walau lampirannya diganti, jadi browser tidak boleh memakai salinan lama tanpa bertanya.
+        $respons->headers->set('Cache-Control', 'no-cache');
+
+        return $respons;
     }
 
     /**

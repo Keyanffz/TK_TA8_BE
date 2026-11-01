@@ -13,35 +13,58 @@ use App\Models\Pengumuman;
 use App\Models\User;
 use App\Support\SlugUnik;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Stevebauman\Purify\Facades\Purify;
+use Throwable;
 
 /**
  * Pengumuman (B6.10). Isi HTML disanitasi sebelum disimpan. Notifikasi `pengumuman_baru` dikirim sekali, saat
- * pengumuman pertama kali terbit (bukan saat draft disimpan atau pengumuman terbit diubah).
+ * pengumuman pertama kali terbit (bukan saat draft disimpan atau pengumuman terbit diubah). File lampiran disimpan
+ * sebelum transaksi dan dihapus lagi kalau penyimpanan gagal; file lama baru dihapus setelah perubahan tersimpan.
  */
 class PengumumanService
 {
+    private const FOLDER_LAMPIRAN = 'pengumuman';
+
+    // Kolom lampiran_nama berukuran 255 karakter; sisanya untuk ekstensi.
+    private const PANJANG_MAKSIMAL_NAMA = 200;
+
+    private const TANPA_LAMPIRAN = ['lampiran_path' => null, 'lampiran_nama' => null, 'lampiran_ukuran' => null];
+
+    public function __construct(private readonly MediaService $media) {}
+
     /**
      * @param  array<string, mixed>  $data
      * @param  list<int>  $kelasIds
      * @param  list<int>  $muridIds
      */
-    public function buat(array $data, array $kelasIds, array $muridIds, bool $terbitkan, User $penulis): Pengumuman
+    public function buat(array $data, array $kelasIds, array $muridIds, bool $terbitkan, ?UploadedFile $lampiran, User $penulis): Pengumuman
     {
-        $pengumuman = DB::transaction(function () use ($data, $kelasIds, $muridIds, $terbitkan, $penulis): Pengumuman {
-            $pengumuman = Pengumuman::query()->create([
-                ...$data,
-                'isi' => Purify::clean((string) $data['isi']),
-                'slug' => SlugUnik::dari(Pengumuman::withTrashed(), (string) $data['judul'], 'pengumuman'),
-                'penulis_id' => $penulis->id,
-                'published_at' => $terbitkan ? now() : null,
-            ]);
-            $pengumuman->kelas()->sync($kelasIds);
-            $pengumuman->murid()->sync($muridIds);
+        $kolomLampiran = $lampiran === null ? [] : $this->simpanLampiran($lampiran);
 
-            return $pengumuman;
-        });
+        try {
+            $pengumuman = DB::transaction(function () use ($data, $kolomLampiran, $kelasIds, $muridIds, $terbitkan, $penulis): Pengumuman {
+                $pengumuman = Pengumuman::query()->create([
+                    ...$data,
+                    ...$kolomLampiran,
+                    'isi' => Purify::clean((string) $data['isi']),
+                    'slug' => SlugUnik::dari(Pengumuman::withTrashed(), (string) $data['judul'], 'pengumuman'),
+                    'penulis_id' => $penulis->id,
+                    'published_at' => $terbitkan ? now() : null,
+                ]);
+                $pengumuman->kelas()->sync($kelasIds);
+                $pengumuman->murid()->sync($muridIds);
+
+                return $pengumuman;
+            });
+        } catch (Throwable $e) {
+            $this->media->hapus($kolomLampiran['lampiran_path'] ?? null, MediaService::DISK_PRIVAT);
+
+            throw $e;
+        }
 
         if ($terbitkan) {
             KirimNotifikasiPengumuman::dispatch($pengumuman->id);
@@ -52,31 +75,86 @@ class PengumumanService
 
     /**
      * Slug tidak berubah walau judul diganti, supaya tautan pengumuman publik yang sudah dibagikan tetap jalan.
-     * `publish: false` pada pengumuman yang sudah terbit menariknya kembali menjadi draft.
+     * `publish: false` pada pengumuman yang sudah terbit menariknya kembali menjadi draft. Lampiran baru
+     * menggantikan yang lama; `$hapusLampiran` mengosongkannya.
      *
      * @param  array<string, mixed>  $data
      * @param  list<int>  $kelasIds
      * @param  list<int>  $muridIds
      */
-    public function perbarui(Pengumuman $pengumuman, array $data, array $kelasIds, array $muridIds, bool $terbitkan): Pengumuman
-    {
+    public function perbarui(
+        Pengumuman $pengumuman,
+        array $data,
+        array $kelasIds,
+        array $muridIds,
+        bool $terbitkan,
+        ?UploadedFile $lampiran,
+        bool $hapusLampiran,
+    ): Pengumuman {
         $baruTerbit = $terbitkan && $pengumuman->published_at === null;
+        $lampiranLama = $pengumuman->lampiran_path;
+        $kolomLampiran = match (true) {
+            $lampiran !== null => $this->simpanLampiran($lampiran),
+            $hapusLampiran => self::TANPA_LAMPIRAN,
+            default => [],
+        };
 
-        DB::transaction(function () use ($pengumuman, $data, $kelasIds, $muridIds, $terbitkan): void {
-            $pengumuman->update([
-                ...$data,
-                'isi' => Purify::clean((string) $data['isi']),
-                'published_at' => $terbitkan ? ($pengumuman->published_at ?? now()) : null,
-            ]);
-            $pengumuman->kelas()->sync($kelasIds);
-            $pengumuman->murid()->sync($muridIds);
-        });
+        try {
+            DB::transaction(function () use ($pengumuman, $data, $kolomLampiran, $kelasIds, $muridIds, $terbitkan): void {
+                $pengumuman->update([
+                    ...$data,
+                    ...$kolomLampiran,
+                    'isi' => Purify::clean((string) $data['isi']),
+                    'published_at' => $terbitkan ? ($pengumuman->published_at ?? now()) : null,
+                ]);
+                $pengumuman->kelas()->sync($kelasIds);
+                $pengumuman->murid()->sync($muridIds);
+            });
+        } catch (Throwable $e) {
+            $this->media->hapus($kolomLampiran['lampiran_path'] ?? null, MediaService::DISK_PRIVAT);
+
+            throw $e;
+        }
+
+        if ($kolomLampiran !== []) {
+            $this->media->hapus($lampiranLama, MediaService::DISK_PRIVAT);
+        }
 
         if ($baruTerbit) {
             KirimNotifikasiPengumuman::dispatch($pengumuman->id);
         }
 
         return $pengumuman;
+    }
+
+    /**
+     * Pengumuman dihapus lunak, tetapi file lampirannya langsung dihapus (B5) karena tidak ada jalan untuk
+     * memulihkan pengumuman yang terhapus.
+     */
+    public function hapus(Pengumuman $pengumuman): void
+    {
+        $pengumuman->delete();
+        $this->media->hapus($pengumuman->lampiran_path, MediaService::DISK_PRIVAT);
+    }
+
+    /**
+     * Gambar dikecilkan seperti foto lain (B5) dan selalu menjadi JPEG, PDF disimpan apa adanya. Ekstensi nama
+     * tampilan mengikuti file yang tersimpan supaya cocok dengan isinya saat diunduh. Garis miring dan karakter
+     * kontrol dibuang karena nama ini dipakai di header `Content-Disposition`.
+     *
+     * @return array{lampiran_path: string, lampiran_nama: string, lampiran_ukuran: int}
+     */
+    private function simpanLampiran(UploadedFile $file): array
+    {
+        $path = $this->media->simpanDokumen($file, MediaService::DISK_PRIVAT, self::FOLDER_LAMPIRAN);
+        $namaAsli = (string) preg_replace('#[\x00-\x1F\x7F/\\\\]#u', '', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+        $nama = Str::limit(trim($namaAsli), self::PANJANG_MAKSIMAL_NAMA, '');
+
+        return [
+            'lampiran_path' => $path,
+            'lampiran_nama' => ($nama === '' ? 'lampiran' : $nama).'.'.pathinfo($path, PATHINFO_EXTENSION),
+            'lampiran_ukuran' => Storage::disk(MediaService::DISK_PRIVAT)->size($path),
+        ];
     }
 
     /**

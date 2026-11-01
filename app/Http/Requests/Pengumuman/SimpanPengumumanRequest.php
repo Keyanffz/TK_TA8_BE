@@ -8,15 +8,18 @@ use App\Enums\TargetPengumuman;
 use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\User;
+use App\Services\MediaService;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use LogicException;
 
 /**
  * `POST /pengumuman` dan `PUT /pengumuman/{id}` (B6.10). Kepala Sekolah dan pemegang izin kelola pengumuman bebas
  * memilih target; guru lain hanya `kelas` (kelas yang dia ampu) atau `murid` (murid di kelasnya). `is_publik` hanya
- * untuk target `semua`. `publish: false` menyimpan sebagai draft.
+ * untuk target `semua`. `publish: false` menyimpan sebagai draft. Body boleh JSON, atau multipart kalau membawa
+ * `lampiran`; `hapus_lampiran` hanya berpengaruh di `PUT`.
  */
 class SimpanPengumumanRequest extends FormRequest
 {
@@ -40,6 +43,10 @@ class SimpanPengumumanRequest extends FormRequest
             'is_publik' => ['sometimes', 'boolean', $this->publikHanyaUntukSemua(...)],
             'is_pinned' => ['sometimes', 'boolean'],
             'publish' => ['required', 'boolean'],
+            /** Satu file PDF atau gambar, maksimal 5 MB. Di `PUT`, menggantikan lampiran lama. */
+            'lampiran' => ['nullable', ...MediaService::aturanDokumen(), Rule::prohibitedIf(fn (): bool => $this->boolean('hapus_lampiran'))],
+            /** `true` menghapus lampiran yang ada. Tidak boleh bersama `lampiran`. */
+            'hapus_lampiran' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -56,7 +63,22 @@ class SimpanPengumumanRequest extends FormRequest
             'murid_ids.required_if' => 'Pilih minimal satu murid.',
             'kelas_ids.prohibited_unless' => 'Daftar kelas hanya diisi untuk target kelas.',
             'murid_ids.prohibited_unless' => 'Daftar murid hanya diisi untuk target murid.',
+            'lampiran.mimes' => 'Lampiran harus berupa PDF atau gambar (JPG, PNG, WebP).',
+            'lampiran.max' => 'Ukuran lampiran maksimal 5 MB.',
+            'lampiran.prohibited' => 'Pilih salah satu: ganti lampiran atau hapus lampiran.',
         ];
+    }
+
+    public function lampiran(): ?UploadedFile
+    {
+        $file = $this->file('lampiran');
+
+        return $file instanceof UploadedFile ? $file : null;
+    }
+
+    public function hapusLampiran(): bool
+    {
+        return $this->boolean('hapus_lampiran');
     }
 
     /**

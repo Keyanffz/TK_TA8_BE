@@ -16277,7 +16277,7 @@
         "/media/{token}": {
             "get": {
                 "operationId": "media",
-                "summary": "Menyajikan file private dari signed URL (`*_url`). Tidak memakai token Bearer; hak akses\nsudah dicek saat URL dibuat, dan URL berlaku 30 menit. Isinya gambar JPEG atau dokumen PDF (PPDB)",
+                "summary": "Menyajikan file private dari signed URL (`*_url`). Tidak memakai token Bearer; hak akses\nsudah dicek saat URL dibuat, dan URL berlaku 30 menit. Isinya gambar JPEG atau PDF (dokumen PPDB, lampiran\npengumuman)",
                 "tags": [
                     "Media"
                 ],
@@ -23563,14 +23563,14 @@
         "/pengumuman": {
             "post": {
                 "operationId": "pengumuman.store",
-                "summary": "Membuat pengumuman. `publish: true` langsung terbit dan penerima diberi notifikasi lewat antrean;\n`publish: false` disimpan sebagai draft",
+                "summary": "Membuat pengumuman. `publish: true` langsung terbit dan penerima diberi notifikasi lewat antrean;\n`publish: false` disimpan sebagai draft. Kirim sebagai `multipart/form-data` kalau membawa `lampiran`",
                 "tags": [
                     "Pengumuman"
                 ],
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/SimpanPengumumanRequest"
                             }
@@ -24023,7 +24023,7 @@
         "/pengumuman/{id}": {
             "put": {
                 "operationId": "pengumuman.update",
-                "summary": "Mengubah pengumuman (penulis atau Kepala Sekolah). Draft yang diterbitkan memicu notifikasi; pengumuman\nyang sudah terbit tidak dikirimi notifikasi ulang",
+                "summary": "Mengubah pengumuman (penulis atau Kepala Sekolah). Draft yang diterbitkan memicu notifikasi; pengumuman\nyang sudah terbit tidak dikirimi notifikasi ulang. `lampiran` (multipart) menggantikan lampiran lama,\n`hapus_lampiran: true` menghapusnya",
                 "tags": [
                     "Pengumuman"
                 ],
@@ -24040,7 +24040,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/SimpanPengumumanRequest"
                             }
@@ -24265,6 +24265,7 @@
             },
             "delete": {
                 "operationId": "pengumuman.destroy",
+                "summary": "Menghapus pengumuman beserta file lampirannya",
                 "tags": [
                     "Pengumuman"
                 ],
@@ -25756,6 +25757,114 @@
                                         "data",
                                         "meta"
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/public/pengumuman/{slug}/lampiran": {
+            "get": {
+                "operationId": "publik.pengumuman.lampiran",
+                "summary": "File lampiran pengumuman publik yang sudah terbit, dengan nama file aslinya. Alamatnya tetap supaya tautan di\nhalaman publik yang di-cache tidak kedaluwarsa. Pengumuman lain atau tanpa lampiran dibalas 404",
+                "tags": [
+                    "Publik"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File lampiran (PDF, atau gambar JPEG)",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
                                 }
                             }
                         }
@@ -36678,6 +36787,38 @@
                         "type": "string",
                         "description": "HTML yang sudah disanitasi."
                     },
+                    "lampiran": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Null kalau pengumuman tidak punya lampiran. `url` menuju `GET /public/pengumuman/{slug}/lampiran` dan tidak\nkedaluwarsa, karena halaman publik di-cache lebih lama dari masa berlaku signed URL.",
+                        "properties": {
+                            "nama": {
+                                "type": "string"
+                            },
+                            "jenis": {
+                                "type": "string",
+                                "enum": [
+                                    "pdf",
+                                    "gambar"
+                                ]
+                            },
+                            "ukuran": {
+                                "type": "integer",
+                                "description": "Ukuran file dalam byte."
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "nama",
+                            "jenis",
+                            "ukuran",
+                            "url"
+                        ]
+                    },
                     "is_pinned": {
                         "type": "boolean"
                     },
@@ -36694,6 +36835,7 @@
                     "judul",
                     "slug",
                     "isi",
+                    "lampiran",
                     "is_pinned",
                     "published_at"
                 ],
@@ -36714,6 +36856,38 @@
                     "isi": {
                         "type": "string",
                         "description": "HTML yang sudah disanitasi."
+                    },
+                    "lampiran": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Null kalau pengumuman tidak punya lampiran. `url` adalah signed URL yang berlaku 30 menit.",
+                        "properties": {
+                            "nama": {
+                                "type": "string"
+                            },
+                            "jenis": {
+                                "type": "string",
+                                "enum": [
+                                    "pdf",
+                                    "gambar"
+                                ]
+                            },
+                            "ukuran": {
+                                "type": "integer",
+                                "description": "Ukuran file dalam byte."
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "nama",
+                            "jenis",
+                            "ukuran",
+                            "url"
+                        ]
                     },
                     "target": {
                         "$ref": "#/components/schemas/TargetPengumuman"
@@ -36805,6 +36979,7 @@
                     "judul",
                     "slug",
                     "isi",
+                    "lampiran",
                     "target",
                     "is_publik",
                     "is_pinned",
@@ -38042,7 +38217,7 @@
             },
             "SimpanPengumumanRequest": {
                 "type": "object",
-                "description": "`POST /pengumuman` dan `PUT /pengumuman/{id}` (B6.10). Kepala Sekolah dan pemegang izin kelola pengumuman bebas\nmemilih target; guru lain hanya `kelas` (kelas yang dia ampu) atau `murid` (murid di kelasnya). `is_publik` hanya\nuntuk target `semua`. `publish: false` menyimpan sebagai draft.",
+                "description": "`POST /pengumuman` dan `PUT /pengumuman/{id}` (B6.10). Kepala Sekolah dan pemegang izin kelola pengumuman bebas\nmemilih target; guru lain hanya `kelas` (kelas yang dia ampu) atau `murid` (murid di kelasnya). `is_publik` hanya\nuntuk target `semua`. `publish: false` menyimpan sebagai draft. Body boleh JSON, atau multipart kalau membawa\n`lampiran`; `hapus_lampiran` hanya berpengaruh di `PUT`.",
                 "properties": {
                     "judul": {
                         "type": "string",
@@ -38077,6 +38252,19 @@
                     },
                     "publish": {
                         "type": "boolean"
+                    },
+                    "lampiran": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Satu file PDF atau gambar, maksimal 5 MB. Di `PUT`, menggantikan lampiran lama."
+                    },
+                    "hapus_lampiran": {
+                        "type": "boolean",
+                        "description": "`true` menghapus lampiran yang ada. Tidak boleh bersama `lampiran`."
                     }
                 },
                 "required": [

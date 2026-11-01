@@ -269,6 +269,7 @@ Route::prefix('public')->middleware('throttle:api')->group(function () {
     Route::get('/profil', [PublikController::class, 'profil']);
     Route::get('/pengumuman', [PublikController::class, 'pengumuman']);
     Route::get('/pengumuman/{slug}', [PublikController::class, 'detailPengumuman']);
+    Route::get('/pengumuman/{slug}/lampiran', [PublikController::class, 'lampiranPengumuman'])->name('publik.pengumuman.lampiran');
     Route::get('/agenda', [PublikController::class, 'agenda']);
     Route::get('/galeri', [PublikController::class, 'galeri']);
     Route::get('/galeri/{slug}', [PublikController::class, 'detailGaleri']);

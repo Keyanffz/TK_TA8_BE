@@ -2,6 +2,7 @@
 
 use App\Enums\Hubungan;
 use App\Enums\StatusMurid;
+use App\Enums\TargetPengumuman;
 use App\Models\Agenda;
 use App\Models\Kelas;
 use App\Models\Murid;
@@ -9,6 +10,7 @@ use App\Models\Pengumuman;
 use App\Models\TahunAjaran;
 use App\Models\WaliMurid;
 use Database\Seeders\PengaturanSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 it('membuka /docs/api di environment selain production', function () {
@@ -121,6 +123,7 @@ it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru ta
         '/media/{token}' => 'application/octet-stream',
         '/absensi/{id}/foto' => 'image/jpeg',
         '/absensi/rekap/export' => 'text/csv',
+        '/public/pengumuman/{slug}/lampiran' => 'application/octet-stream',
     ];
 
     foreach ($tipeFile as $path => $tipe) {
@@ -244,7 +247,7 @@ it('mendokumentasikan endpoint publik tanpa auth dan dashboard sebagai gabungan 
     $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
     $dashboard = $dokumen['paths']['/dashboard']['get']['responses'][200]['content']['application/json']['schema']['properties']['data'];
 
-    foreach (['/public/profil', '/public/pengumuman', '/public/agenda', '/public/galeri', '/public/guru', '/public/ppdb'] as $path) {
+    foreach (['/public/profil', '/public/pengumuman', '/public/pengumuman/{slug}/lampiran', '/public/agenda', '/public/galeri', '/public/guru', '/public/ppdb'] as $path) {
         expect($dokumen['paths'][$path]['get']['security'])->toBe([]);
     }
 
@@ -380,4 +383,46 @@ it('mendokumentasikan status murid sebagai enum wajib hanya di PATCH /murid/{id}
         ->and($simpan['properties'])->not->toHaveKeys(['status', 'tanggal_keluar'])
         ->and($perbarui['required'])->toContain('nama_lengkap')
         ->and($simpan['required'])->toContain('nama_lengkap');
+});
+
+it('mendokumentasikan lampiran pengumuman sebagai objek nullable yang selalu ada, sesuai respons', function () {
+    Storage::fake('local');
+    $kepsek = buatKepalaSekolah();
+    $this->actingAs($kepsek)->post('/api/v1/pengumuman', [
+        'judul' => 'Jadwal PPDB 2027/2028',
+        'isi' => '<p>Pendaftaran dibuka mulai 1 Desember.</p>',
+        'target' => TargetPengumuman::Semua->value,
+        'is_publik' => '1',
+        'publish' => '1',
+        'lampiran' => UploadedFile::fake()->create('Jadwal PPDB.pdf', 200, 'application/pdf'),
+    ])->assertCreated();
+    Pengumuman::factory()->create(['is_publik' => true]);
+    $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
+    $skema = $dokumen['components']['schemas'];
+
+    foreach (['PengumumanResource', 'PengumumanPublikResource'] as $nama) {
+        $lampiran = $skema[$nama]['properties']['lampiran'];
+        expect($skema[$nama]['required'])->toContain('lampiran')
+            ->and($lampiran['type'])->toBe(['object', 'null'])
+            ->and($lampiran['required'])->toBe(['nama', 'jenis', 'ukuran', 'url'])
+            ->and($lampiran['properties']['jenis'])->toBe(['type' => 'string', 'enum' => ['pdf', 'gambar']])
+            ->and($lampiran['properties']['ukuran']['type'])->toBe('integer');
+    }
+    foreach ([['/pengumuman', 'post'], ['/pengumuman/{id}', 'put']] as [$path, $metode]) {
+        $body = skemaBodyRequest($dokumen, $path, $metode);
+        expect($body['tipe'])->toBe('multipart/form-data')
+            ->and($body['skema']['properties']['lampiran']['format'])->toBe('binary')
+            ->and($body['skema']['properties']['hapus_lampiran']['type'])->toBe('boolean')
+            ->and($body['skema']['required'])->toBe(['judul', 'isi', 'target', 'publish']);
+    }
+    expect(kodeErrorTerdokumentasi($dokumen['paths']['/public/pengumuman/{slug}/lampiran']['get'], 404))->toBe(['NOT_FOUND']);
+
+    $privat = $this->actingAs($kepsek)->getJson('/api/v1/pengumuman')->assertOk()->json();
+    app('auth')->forgetGuards();
+    $publik = $this->getJson('/api/v1/public/pengumuman')->assertOk()->json();
+
+    expect(collect($privat['data'])->pluck('lampiran.jenis')->all())->toEqualCanonicalizing(['pdf', null])
+        ->and(collect($publik['data'])->pluck('lampiran.jenis')->all())->toEqualCanonicalizing(['pdf', null])
+        ->and(selisihDenganSkema($privat, skemaSukses($dokumen, '/pengumuman'), $dokumen, 'respons'))->toBe([])
+        ->and(selisihDenganSkema($publik, skemaSukses($dokumen, '/public/pengumuman'), $dokumen, 'respons'))->toBe([]);
 });
