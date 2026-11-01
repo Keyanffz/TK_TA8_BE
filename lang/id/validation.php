@@ -154,7 +154,8 @@ return [
     'timezone' => ':Attribute harus berisi zona waktu yang valid.',
     'ulid' => ':Attribute harus merupakan ULID yang valid.',
     'unique' => ':Attribute sudah digunakan.',
-    'uploaded' => ':Attribute gagal diunggah.',
+    // :sebab diisi MediaService::sebabGagalUnggah() lewat replacer di AppServiceProvider.
+    'uploaded' => 'Maaf, :attribute gagal diunggah :sebab',
     'uppercase' => ':Attribute harus berupa huruf kapital.',
     'url' => 'Format :attribute tidak valid.',
     'uuid' => ':Attribute harus merupakan UUID yang valid.',
@@ -166,6 +167,8 @@ return [
         'current_password' => 'password lama',
         'avatar' => 'foto profil',
         'foto' => 'foto',
+        'foto.*' => 'foto ke-:position',
+        'lainnya.*' => 'dokumen lain ke-:position',
         'nik' => 'NIK',
         'nip' => 'NIP',
         'nuptk' => 'NUPTK',

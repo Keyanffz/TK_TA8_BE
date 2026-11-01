@@ -4,17 +4,22 @@ namespace App\Providers;
 
 use App\Http\Requests\Auth\LoginWaliRequest;
 use App\Models\User;
+use App\Services\MediaService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Validator as ValidatorLaravel;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -58,6 +63,20 @@ class AppServiceProvider extends ServiceProvider
 
         $this->daftarkanGate();
         $this->daftarkanRateLimiter();
+        $this->daftarkanPesanUnggahanGagal();
+    }
+
+    /**
+     * Pesan `uploaded` bawaan tidak menyebut sebab. File yang ditolak PHP (melebihi `upload_max_filesize`, terputus,
+     * atau gagal ditulis) tidak pernah sampai ke aturan `max` aplikasi, jadi sebabnya dibaca dari kode galat file.
+     */
+    private function daftarkanPesanUnggahanGagal(): void
+    {
+        Validator::replacer('uploaded', function (string $pesan, string $atribut, string $aturan, array $parameter, ValidatorLaravel $validator): string {
+            $file = Arr::get($validator->getData(), $atribut);
+
+            return str_replace(':sebab', MediaService::sebabGagalUnggah($file instanceof UploadedFile ? $file : null), $pesan);
+        });
     }
 
     private function daftarkanGate(): void
