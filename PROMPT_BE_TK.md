@@ -717,7 +717,7 @@ Pakai **versi stabil terbaru** saat pengerjaan dan cek kompatibilitas tiap paket
 
 | Kebutuhan | Paket / pilihan |
 |---|---|
-| Framework | Laravel (terbaru), PHP 8.4+ (dibutuhkan `spatie/laravel-activitylog` v5 dan Pest v5) |
+| Framework | Laravel (terbaru), PHP 8.5+ (versi di laptop pengembangan dan semua pengecekan; `spatie/laravel-activitylog` v5 dan Pest v5 sendiri butuh minimal 8.4) |
 | Database | MySQL 8 (utf8mb4). Test pakai SQLite in-memory atau MySQL test DB, pilih yang tidak bentrok dengan fitur yang dipakai |
 | Auth token | `laravel/sanctum` (Bearer token, bukan cookie SPA, karena dipakai web + Flutter) |
 | Verifikasi ID token Google | `firebase/php-jwt` (tanda tangan RS256 dengan kunci publik Google, di-cache sesuai `max-age`) |

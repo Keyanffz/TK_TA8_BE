@@ -6,7 +6,7 @@ REST API Laravel 13 untuk sistem informasi TK Tarbiyathul Athfal 8: akun Kepala 
 - Instalasi lengkap, variabel `.env`, status fase, keputusan teknis, dan akun demo: `dokumentasi.md`
 - Spec OpenAPI untuk generate tipe di FE: `storage/api-docs/api.json`
 
-Menjalankan di lokal (PHP 8.4+, MySQL 8 atau MariaDB):
+Menjalankan di lokal (PHP 8.5+, MySQL 8 atau MariaDB):
 
 ```bash
 composer install
