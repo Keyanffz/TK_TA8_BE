@@ -28,8 +28,8 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Izin dan sakit, pulang lebih awal, notifikasi absensi, rekap 1–3 bulan (branch `be/absensi-lanjutan`) | Selesai, disetujui |
 | Perapian Bagian C untuk revisi absensi (branch `be/rapikan-slop`) | Selesai, disetujui |
 | Judul blok keputusan, flowchart A6 absensi, dan pesan absen pulang saat tidak hadir (branch `be/rapikan-dokumentasi`) | Selesai, disetujui |
-| Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, menunggu review |
-| Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, menunggu review |
+| Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, disetujui, di-merge (PR #14) |
+| Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
 | Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Kode, test, dan dokumentasi ditulis; test, Pint, PHPStan, dan ekspor `api.json` belum dijalankan karena container sesi penulisannya tidak punya PHP 8.4 (lihat Changelog) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
@@ -86,7 +86,11 @@ Disetujui pemilik repo lewat sesi FE, dengan pilihan: satu file PDF atau gambar,
 5. Menghapus pengumuman (soft delete) langsung menghapus file lampirannya, karena tidak ada jalan untuk memulihkan pengumuman yang terhapus.
 6. Signed URL `GET /media/{token}` untuk pengguna yang login tetap memakai nama acak di disk; nama asli hanya tampil di FE dan di unduhan publik.
 
-### Hak akses guru, status murid, alumni, dan import (branch `be/hak-akses-status-murid`)
+## Keputusan yang sudah diterapkan
+
+Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
+
+### Hak akses guru, status murid, alumni, dan import (branch `be/hak-akses-status-murid`, PR #15)
 
 Disetujui pemilik repo setelah analisis (usulan 1–13, dengan perubahan di nomor 9 dan 10). Yang diputuskan:
 
@@ -106,7 +110,7 @@ Disetujui pemilik repo setelah analisis (usulan 1–13, dengan perubahan di nomo
 14. Preset ditulis di kode (`PresetIzin`), tanpa kelola preset: Bendahara, Admin Website (konten website dan pengumuman), Admin Absensi, Tata Usaha (data murid). `DemoSeeder`: Siti Rahmawati Bendahara, Rina Kusumawati Admin Website.
 15. Log aktivitas baru: `izin`, `murid`, `keringanan`, `jenis_tagihan`, dan event `tagihan`/`dibuat_sekali`. Aksi keuangan lain sudah tercatat sebelumnya. `filter[jenis]` juga menerima `absensi` (log `absensi` sudah ditulis sejak `be/absensi` tetapi belum bisa disaring).
 
-### Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`)
+### Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`, PR #14)
 
 Diminta pemilik repo (rencana F7-3 di dokumentasi FE). Yang diputuskan saat pengerjaan:
 
@@ -115,10 +119,6 @@ Diminta pemilik repo (rencana F7-3 di dokumentasi FE). Yang diputuskan saat peng
 3. Umur diukur dari waktu ubah file (`lastModified`), batasnya 24 jam (`PengaturanService::UMUR_GAMBAR_TAK_TERPAKAI_JAM`). File yang tepat 24 jam belum dihapus.
 4. Jumlah dan path file yang dihapus ditulis ke log aplikasi (`storage/logs/laravel.log`, level info) setiap kali command berjalan tanpa `--dry-run`, termasuk kalau jumlahnya 0, supaya terlihat bahwa jadwalnya berjalan. Tidak ditulis ke log aktivitas karena bukan tindakan pengguna.
 5. Jadwal harian 02:00 WIB, sejam setelah `absensi:hapus-foto-lama`.
-
-## Keputusan yang sudah diterapkan
-
-Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
 
 ### Izin dan sakit, pulang lebih awal, notifikasi absensi, dan rekap 1–3 bulan (branch `be/absensi-lanjutan`, PR #11)
 
