@@ -31,6 +31,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, disetujui, di-merge (PR #14) |
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
 | Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai, diuji (test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual lewat curl; lihat Changelog), disetujui, di-merge (PR #17) |
+| PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9 |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -80,6 +81,13 @@ Saat ini tidak ada.
 ## Keputusan yang sudah diterapkan
 
 Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
+
+### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`)
+
+Diminta pemilik repo, yang memakai PHP 8.5 di laptop.
+
+1. `composer.json` berisi `"php": "^8.5"` (sebelumnya `^8.4`). Sejak Fase 4 semua test, Pint, PHPStan, dan pengecekan lain hanya dijalankan di 8.5 (8.5.10 di laptop, 8.5.9 di container), jadi kecocokan dengan 8.4 tidak teruji lagi. Server produksi harus memakai PHP 8.5.
+2. `composer.lock` hanya berubah di `content-hash` dan `platform.php`; versi paket tidak berubah. `composer update --lock` di container (Composer 2.8.12, karena getcomposer.org diblokir proxy) juga menulis `plugin-api-version` 2.6.0 dan URL baru `vlucas/phpdotenv` (repo pindah ke organisasi `phpdotenv` di Packagist, commit sama). Keduanya dikembalikan supaya perubahan lock hanya soal PHP; `composer validate` tidak memperingatkan lock yang usang.
 
 ### Lampiran pengumuman (branch `be/lampiran-pengumuman`, PR #17)
 
@@ -386,7 +394,7 @@ Fase 5:
 
 | Komponen | Versi |
 |---|---|
-| PHP | 8.4 (minimum; dibutuhkan activitylog 5 dan Pest 5). Pengecekan `be/lampiran-pengumuman` dijalankan di 8.5.9 |
+| PHP | 8.5 (minimum sejak branch `ccr-321f1c6b-kacabx`, diminta pemilik repo; activitylog 5 dan Pest 5 sendiri butuh 8.4). Laptop 8.5.10, pengecekan di container 8.5.9 |
 | laravel/framework | 13.33.0 |
 | laravel/sanctum | 4.3.3 |
 | dedoc/scramble | 0.13.45 |
@@ -403,7 +411,7 @@ Fase 5:
 
 Database: MySQL 8 (utf8mb4) di produksi. Migration, rollback, dan seeder sudah dijalankan di MySQL 8.0.46, MariaDB 10.11.14, dan MariaDB 12.3.3 (driver `mariadb`). Test memakai SQLite in-memory (`phpunit.xml`); seluruh test juga lulus saat dijalankan ke MySQL 8.0.46 dan MariaDB 10.11.14 (sampai Fase 3) dan ke MariaDB 12.3.3 (mulai Fase 4). Untuk `be/lampiran-pengumuman` seluruh test dijalankan ke MariaDB 10.11.14 di container cloud.
 
-PHP: dikembangkan di 8.4.19 (Fase 0–3, container) dan 8.5.10 (mulai Fase 4, laptop). Test dijalankan dengan `--display-deprecations` di PHP 8.5.10 tanpa deprecation. Semua pengecekan `be/lampiran-pengumuman` (test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual) dijalankan di container cloud Ubuntu 24.04 dengan PHP 8.5.9; seluruh suite yang dijalankan dengan `--display-deprecations` (ke MariaDB) tidak menampilkan deprecation. Minimum tetap PHP 8.4: `composer.json` berisi `"php": "^8.4"`, yang sudah menerima 8.5 (`composer prohibits php 8.5.0` tidak menemukan paket yang menolak).
+PHP: dikembangkan di 8.4.19 (Fase 0–3, container) dan 8.5.10 (mulai Fase 4, laptop). Test dijalankan dengan `--display-deprecations` di PHP 8.5.10 tanpa deprecation. Semua pengecekan `be/lampiran-pengumuman` (test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual) dijalankan di container cloud Ubuntu 24.04 dengan PHP 8.5.9; seluruh suite yang dijalankan dengan `--display-deprecations` (ke MariaDB) tidak menampilkan deprecation. Minimum PHP 8.5 sejak branch `ccr-321f1c6b-kacabx` (diminta pemilik repo): `composer.json` berisi `"php": "^8.5"`, sama dengan versi di laptop dan di semua pengecekan sejak Fase 4. Sebelumnya `^8.4`. Tidak ada paket yang menolak 8.5; `composer why-not php 8.4.19` hanya menunjuk syarat proyek itu sendiri.
 
 ## Serah terima ke lingkungan lokal
 
@@ -421,7 +429,7 @@ Laptop: Arch Linux, PHP 8.5.10, Composer 2.9.2, MariaDB 12.3.3 (server `utf8mb4_
 
 ### Ekstensi PHP
 
-PHP 8.4 atau lebih baru. `composer check-platform-reqs` menampilkan ekstensi yang diminta paket di `composer.lock`: `dom`, `fileinfo`, `gd`, `iconv`, `libxml`, `openssl`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, ditambah `mbstring` dan `ctype` (ada polyfill, tetapi versi native lebih cepat). Ekstensi berikut dipakai saat aplikasi berjalan tetapi tidak dicek Composer:
+PHP 8.5 atau lebih baru. `composer check-platform-reqs` menampilkan ekstensi yang diminta paket di `composer.lock`: `dom`, `fileinfo`, `gd`, `iconv`, `libxml`, `openssl`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, ditambah `mbstring` dan `ctype` (ada polyfill, tetapi versi native lebih cepat). Ekstensi berikut dipakai saat aplikasi berjalan tetapi tidak dicek Composer:
 
 | Ekstensi | Dipakai untuk |
 |---|---|
@@ -493,7 +501,7 @@ Hasil saat serah terima: 190 test lulus; Pint, PHPStan, dan `check:slop` tanpa t
 
 ## Instalasi dan menjalankan
 
-Prasyarat: PHP 8.4 dengan ekstensi di "Serah terima ke lingkungan lokal", Composer 2, MySQL 8 atau MariaDB.
+Prasyarat: PHP 8.5 dengan ekstensi di "Serah terima ke lingkungan lokal", Composer 2, MySQL 8 atau MariaDB.
 
 ```bash
 composer install
@@ -657,7 +665,7 @@ Middleware:
 
 Semua sudah ditulis ke `PROMPT_BE_TK.md` (Bagian A dan B) dan Bagian A `PROMPT_FE_TK.md`, sehingga Bagian A kedua file tetap identik. Nomor 1–11 disetujui setelah Fase 0 (commit `18b77e5` di BE, `d02aa0e` di FE); nomor 12–14 disetujui setelah Fase 1.
 
-1. PHP minimum 8.4 (sebelumnya 8.3+), karena `spatie/laravel-activitylog` 5 dan Pest 5 membutuhkannya.
+1. PHP minimum 8.4 (sebelumnya 8.3+), karena `spatie/laravel-activitylog` 5 dan Pest 5 membutuhkannya. **Diubah di `ccr-321f1c6b-kacabx`**: minimum 8.5 atas permintaan pemilik repo (lihat "Keputusan yang sudah diterapkan").
 2. `intervention/image` v4 (sebelumnya v3), versi stabil terbaru.
 3. Kepala Sekolah punya profil `guru` (jabatan "Kepala Sekolah") yang dibuat `SuperAdminSeeder`, supaya bisa mencatat kegiatan kelas (`kegiatan_kelas.guru_id` mengarah ke `guru`). Profil ini tidak muncul di `GET /guru`, tidak bisa dinonaktifkan, dan tidak dihitung di statistik `guru_aktif`.
 4. Kunci pengaturan baru `ppdb.tahun_ajaran_id` sebagai tahun ajaran tujuan PPDB. `ppdb.dibuka = true` ditolak kalau kunci ini kosong atau tahun ajarannya tidak ada. Kuota dihitung per tahun ajaran tersebut.
@@ -860,6 +868,22 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`)
+
+Diminta pemilik repo: PHP 8.5 menjadi versi minimum, sama dengan laptop pengembangan. Sebelumnya `^8.4`, yang sudah menerima 8.5 tetapi tidak lagi diuji di 8.4 sejak Fase 4. Keputusan di "Keputusan yang sudah diterapkan".
+
+Diubah:
+
+- `composer.json`: `"php": "^8.5"`.
+- `composer.lock`: `content-hash` dan `platform.php` lewat `composer update --lock`; versi paket tetap.
+- `PROMPT_BE_TK.md` B1, `README.md`, `dokumentasi.md` (status, keputusan, Stack terpasang, Ekstensi PHP, Instalasi, Perubahan dari spesifikasi awal nomor 1). Bagian A tidak berubah, jadi tetap identik dengan `PROMPT_FE_TK.md`.
+
+Hasil pengecekan di container cloud dengan PHP 8.5.9 (dipasang seperti di "Yang khusus container dan tidak berlaku di laptop"): 1101 test lulus (5396 assertion, SQLite); Pint, PHPStan, dan `check:slop` tanpa temuan; `composer validate` tanpa peringatan lock usang; `composer check-platform-reqs` lulus untuk PHP 8.5.9, dan `composer why-not php 8.4.19` menunjuk syarat proyek. Test ke MariaDB dan ekspor `api.json` tidak dijalankan karena tidak ada perubahan migration, query, seeder, atau API.
+
+Di laptop, jalankan `composer install` setelah menarik `main`, supaya `vendor/composer/platform_check.php` ikut memeriksa PHP 8.5.
+
+Temuan saat pengecekan, belum diubah: `composer audit` melaporkan CVE-2026-45070 (tingkat medium) di `symfony/mime` v8.1.7, yaitu injeksi header email lewat nama parameter MIME; perbaikannya ada di 8.1.10. Paket ini dipakai `laravel/framework` dan `symfony/mailer` untuk email (reset password Kepala Sekolah). Perlu `composer update symfony/mime` di branch terpisah.
 
 ### Lampiran pengumuman (branch `be/lampiran-pengumuman`)
 
