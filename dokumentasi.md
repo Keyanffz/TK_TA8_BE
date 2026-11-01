@@ -31,7 +31,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Pembersihan gambar pengaturan yang tidak dipakai (branch `be/bersihkan-gambar`) | Selesai, disetujui, di-merge (PR #14) |
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
 | Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai, diuji (test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual lewat curl; lihat Changelog), disetujui, di-merge (PR #17) |
-| PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9 |
+| PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9; di-merge (PR #18) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -82,7 +82,7 @@ Saat ini tidak ada.
 
 Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
 
-### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`)
+### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`, PR #18)
 
 Diminta pemilik repo, yang memakai PHP 8.5 di laptop.
 
@@ -869,7 +869,7 @@ Diambil selama Fase 3:
 
 ## Changelog
 
-### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`)
+### PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`, PR #18)
 
 Diminta pemilik repo: PHP 8.5 menjadi versi minimum, sama dengan laptop pengembangan. Sebelumnya `^8.4`, yang sudah menerima 8.5 tetapi tidak lagi diuji di 8.4 sejak Fase 4. Keputusan di "Keputusan yang sudah diterapkan".
 
