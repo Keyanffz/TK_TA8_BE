@@ -32,7 +32,7 @@ REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend N
 | Hak akses guru per modul, status murid, alumni, dan import murid (branch `be/hak-akses-status-murid`) | Selesai, disetujui, di-merge (PR #15) |
 | Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai, diuji (test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual lewat curl; lihat Changelog), disetujui, di-merge (PR #17) |
 | PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9; di-merge (PR #18) |
-| Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, `check:slop`, dan uji manual dengan `upload_max_filesize=2M` |
+| Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, `check:slop`, dan uji manual dengan `upload_max_filesize=2M`; di-merge (PR #19) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -83,7 +83,7 @@ Saat ini tidak ada.
 
 Detail yang diputuskan saat pengerjaan fitur dan fase yang sudah di-merge ke `main`. Semuanya dianggap disetujui pemilik repo karena sudah dipakai; kontrak yang menyertainya ada di Bagian A dan B. Keputusan yang kemudian diubah oleh branch berikutnya diberi tanda "Diubah di …"; penomoran di setiap blok tetap, karena dirujuk dari blok lain.
 
-### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`)
+### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`, PR #19)
 
 Diminta pemilik repo: pesan "Lampiran gagal diunggah." untuk file di atas 2 MB (batas bawaan `php.ini` di laptop) dibuat lebih manusiawi.
 
@@ -879,7 +879,7 @@ Diambil selama Fase 3:
 
 ## Changelog
 
-### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`)
+### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`, PR #19)
 
 Diminta pemilik repo: pesan "Lampiran gagal diunggah." yang muncul untuk file di atas batas `php.ini` (bawaan 2 MB) dibuat lebih manusiawi. Keputusan di "Keputusan yang sudah diterapkan".
 
