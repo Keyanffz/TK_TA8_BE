@@ -93,8 +93,12 @@ class PublikController extends Controller
     {
         $pengumuman = Pengumuman::query()->where('is_publik', true)->terbit()->where('slug', $slug)
             ->whereNotNull('lampiran_path')->firstOrFail();
+        $respons = $media->responsPrivat((string) $pengumuman->lampiran_path, $pengumuman->lampiran_nama) ?? abort(404);
 
-        return $media->responsPrivat((string) $pengumuman->lampiran_path, $pengumuman->lampiran_nama) ?? abort(404);
+        // Alamat ini tetap walau lampirannya diganti, jadi browser tidak boleh memakai salinan lama tanpa bertanya.
+        $respons->headers->set('Cache-Control', 'no-cache');
+
+        return $respons;
     }
 
     /**

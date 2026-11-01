@@ -157,8 +157,11 @@ it('membuka lampiran pengumuman publik tanpa login lewat alamat tetap', function
     $url = $this->getJson("/api/v1/public/pengumuman/{$publik->slug}")->assertOk()->json('data.lampiran.url');
     expect($url)->toEndWith("/api/v1/public/pengumuman/{$publik->slug}/lampiran");
 
-    $berkas = $this->get("/api/v1/public/pengumuman/{$publik->slug}/lampiran")->assertOk();
-    expect($berkas->headers->get('content-disposition'))->toContain('Brosur PPDB.pdf');
+    $this->get("/api/v1/public/pengumuman/{$publik->slug}/lampiran")
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->assertHeader('content-disposition', 'inline; filename="Brosur PPDB.pdf"')
+        ->assertHeader('cache-control', 'no-cache, private');
 });
 
 it('menolak lampiran pengumuman yang bukan publik, masih draft, atau tidak punya lampiran', function () {
