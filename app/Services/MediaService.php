@@ -37,6 +37,22 @@ class MediaService
 
     private const KUALITAS_JPEG = 80;
 
+    private const BYTE_PER_MB = 1024 * 1024;
+
+    /**
+     * Pengisi `:sebab` di pesan `uploaded` menurut kode galat unggahan PHP. File itu ditolak PHP sebelum validasi
+     * aplikasi berjalan, jadi batas yang disebut adalah batas server (`upload_max_filesize` dan `post_max_size`
+     * di `php.ini`), bukan batas 5 MB di B5.
+     */
+    public static function sebabGagalUnggah(?UploadedFile $file): string
+    {
+        return match ($file?->getError()) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'karena ukurannya lebih dari '.self::formatUkuran(UploadedFile::getMaxFilesize()).'. Pilih file yang lebih kecil.',
+            UPLOAD_ERR_PARTIAL => 'karena sambungan terputus. Periksa sambungan internet, lalu coba lagi.',
+            default => 'karena ada gangguan di server sekolah. Coba unggah ulang beberapa saat lagi.',
+        };
+    }
+
     /**
      * Aturan validasi unggahan gambar (B5), dipakai semua FormRequest yang menerima gambar.
      *
@@ -152,5 +168,17 @@ class MediaService
         return Storage::disk(self::DISK_PRIVAT)->response($path, $nama, [
             'Cache-Control' => 'private, max-age='.(self::MENIT_BERLAKU_URL_PRIVAT * 60),
         ]);
+    }
+
+    /** 2097152 → "2 MB", 1572864 → "1,5 MB". */
+    private static function formatUkuran(int|float $byte): string
+    {
+        if ($byte < self::BYTE_PER_MB) {
+            return max(1, (int) round($byte / 1024)).' KB';
+        }
+
+        $megabyte = round($byte / self::BYTE_PER_MB, 1);
+
+        return number_format($megabyte, floor($megabyte) === $megabyte ? 0 : 1, ',', '.').' MB';
     }
 }
