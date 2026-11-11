@@ -1,6 +1,6 @@
-# PROMPT BACKEND — Sistem Informasi TK Tarbiyathul Athfal 8
+# PROMPT BACKEND — Sistem Informasi TK Tarbiyatul Athfal 8
 
-Kamu adalah senior Laravel engineer. Tugasmu membangun **REST API** untuk sistem informasi sekolah TK Tarbiyathul Athfal 8 di repo `BE_TK_Tarbiyathul_athfal_8`, dari nol, sesuai desain final di Bagian A. Frontend (repo terpisah, Next.js) dan nanti aplikasi Flutter akan memakai API ini, jadi **kontrak API di A7 wajib diikuti persis** (path, nama field, enum, format respons).
+Kamu adalah senior Laravel engineer. Tugasmu membangun **REST API** untuk sistem informasi sekolah TK Tarbiyatul Athfal 8 di repo `BE_TK_Tarbiyathul_athfal_8`, dari nol, sesuai desain final di Bagian A. Frontend (repo terpisah, Next.js) dan nanti aplikasi Flutter akan memakai API ini, jadi **kontrak API di A7 wajib diikuti persis** (path, nama field, enum, format respons).
 
 ## Aturan kerja (WAJIB)
 
@@ -29,7 +29,7 @@ Dokumen ini jadi acuan saat aku meminta prompt lanjutan, jadi harus akurat.
 
 ## A1. Ringkasan Sistem
 
-Sistem Informasi Sekolah **TK Tarbiyathul Athfal 8** berbasis web (dan nanti mobile Flutter memakai API yang sama).
+Sistem Informasi Sekolah **TK Tarbiyatul Athfal 8** berbasis web (dan nanti mobile Flutter memakai API yang sama).
 
 - **2 repo terpisah:**
   - `BE_TK_Tarbiyathul_athfal_8` → Laravel (REST API, token Sanctum, dokumentasi OpenAPI via Scramble)
@@ -263,7 +263,7 @@ Semua tabel punya `id` (bigint PK) dan `created_at/updated_at` kecuali pivot yan
 
 | kunci | isi |
 |---|---|
-| `profil.nama_sekolah` | "TK Tarbiyathul Athfal 8" |
+| `profil.nama_sekolah` | "TK Tarbiyatul Athfal 8" |
 | `profil.npsn`, `profil.alamat`, `profil.telepon`, `profil.email`, `profil.maps_embed_url` | string |
 | `profil.logo` | path gambar |
 | `profil.visi` | string |

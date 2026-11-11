@@ -58,7 +58,7 @@ return [
     ],
 
     'ui' => [
-        'title' => 'API TK Tarbiyathul Athfal 8',
+        'title' => 'API TK Tarbiyatul Athfal 8',
     ],
 
     /*

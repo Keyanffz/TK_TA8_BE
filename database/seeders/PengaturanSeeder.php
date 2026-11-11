@@ -29,7 +29,7 @@ class PengaturanSeeder extends Seeder
     private function nilaiAwal(): array
     {
         return [
-            'profil.nama_sekolah' => 'TK Tarbiyathul Athfal 8',
+            'profil.nama_sekolah' => 'TK Tarbiyatul Athfal 8',
             'profil.npsn' => '',
             'profil.alamat' => '',
             'profil.telepon' => '',
@@ -45,7 +45,7 @@ class PengaturanSeeder extends Seeder
             'profil.sejarah' => '',
             'profil.sambutan_kepsek' => '',
             'landing.hero' => [
-                'judul' => 'TK Tarbiyathul Athfal 8',
+                'judul' => 'TK Tarbiyatul Athfal 8',
                 'subjudul' => 'Taman kanak-kanak untuk anak usia 4–6 tahun.',
                 'gambar' => null,
                 'cta_teks' => 'Lihat Info PPDB',
