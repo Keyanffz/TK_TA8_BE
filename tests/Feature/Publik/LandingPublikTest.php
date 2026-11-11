@@ -23,7 +23,7 @@ it('menampilkan pengaturan profil dan landing tanpa login, tanpa grup keuangan d
 
     $data = $this->getJson('/api/v1/public/profil')->assertOk()->json('data');
 
-    expect($data['profil.nama_sekolah'])->toBe('TK Tarbiyathul Athfal 8')
+    expect($data['profil.nama_sekolah'])->toBe('TK Tarbiyatul Athfal 8')
         ->and($data)->toHaveKey('profil.logo_url')
         ->and($data['landing.hero'])->toHaveKey('gambar_url')
         ->and(collect($data)->keys()->filter(fn (string $kunci) => str_starts_with($kunci, 'keuangan.') || str_starts_with($kunci, 'ppdb.'))->all())->toBe([]);

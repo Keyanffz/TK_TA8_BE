@@ -1,6 +1,6 @@
-# Backend TK Tarbiyathul Athfal 8
+# Backend TK Tarbiyatul Athfal 8
 
-REST API Laravel 13 untuk sistem informasi TK Tarbiyathul Athfal 8: akun Kepala Sekolah, guru, dan wali murid (token Sanctum), data murid dan kelas, tagihan dan pembayaran, kegiatan kelas, rapor, pengumuman, agenda, PPDB, dan konten landing page. Dokumentasi OpenAPI dibuat Scramble.
+REST API Laravel 13 untuk sistem informasi TK Tarbiyatul Athfal 8: akun Kepala Sekolah, guru, dan wali murid (token Sanctum), data murid dan kelas, tagihan dan pembayaran, kegiatan kelas, rapor, pengumuman, agenda, PPDB, dan konten landing page. Dokumentasi OpenAPI dibuat Scramble.
 
 - Spesifikasi dan kontrak API: `PROMPT_BE_TK.md`
 - Instalasi lengkap, variabel `.env`, status fase, keputusan teknis, dan akun demo: `dokumentasi.md`

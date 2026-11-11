@@ -73,7 +73,7 @@ it('menampilkan detail rapor terbit ke wali tanpa catatan revisi, dan ke guru de
 });
 
 it('mengunduh rapor PDF yang sudah terbit untuk wali, dengan nama file rapi', function () {
-    Pengaturan::query()->create(['kunci' => 'profil.nama_sekolah', 'nilai' => 'TK Tarbiyathul Athfal 8', 'grup' => 'profil']);
+    Pengaturan::query()->create(['kunci' => 'profil.nama_sekolah', 'nilai' => 'TK Tarbiyatul Athfal 8', 'grup' => 'profil']);
     Storage::disk('local')->put('rapor/karya.jpg', UploadedFile::fake()->image('karya.jpg', 400, 300)->getContent());
     RaporDetail::factory()->for($this->terbit)->create(['deskripsi' => 'Aisyah hafal doa sebelum makan.', 'foto_path' => 'rapor/karya.jpg']);
 

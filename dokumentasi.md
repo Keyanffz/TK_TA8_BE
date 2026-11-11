@@ -1,6 +1,6 @@
-# Dokumentasi Backend TK Tarbiyathul Athfal 8
+# Dokumentasi Backend TK Tarbiyatul Athfal 8
 
-REST API untuk sistem informasi TK Tarbiyathul Athfal 8. Dipakai oleh frontend Next.js dan nanti aplikasi Flutter. Acuan desain dan kontrak API: `PROMPT_BE_TK.md` (Bagian A sama persis dengan `PROMPT_FE_TK.md` di repo FE).
+REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Next.js dan nanti aplikasi Flutter. Acuan desain dan kontrak API: `PROMPT_BE_TK.md` (Bagian A sama persis dengan `PROMPT_FE_TK.md` di repo FE).
 
 ## Status
 
@@ -878,6 +878,18 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Ejaan nama sekolah "Tarbiyatul" (branch `be/ejaan-nama-sekolah`)
+
+Diminta pemilik repo: nama sekolah yang benar "TK Tarbiyatul Athfal 8", tanpa h setelah t. Semua teks yang tampil ke pengguna diganti. Nama repo lama (`BE_TK_Tarbiyathul_athfal_8`, `FE_TK_Tarbiyathul_athfal_8`) di PROMPT dan contoh `DB_DATABASE` di `.env.example` tidak diubah karena berupa pengenal. Bagian A tetap identik dengan PROMPT FE.
+
+Diubah:
+
+- `.env.example`: `APP_NAME` (juga nama pengirim email).
+- `config/scramble.php`: judul dokumentasi API.
+- `database/seeders/PengaturanSeeder.php`: `profil.nama_sekolah` dan judul hero landing. Database yang sudah di-seed tidak ikut berubah; nilainya diubah lewat pengaturan website.
+- Seeder demo `KeuanganDemoSeeder` dan `WebsiteDemoSeeder`, serta test yang memeriksa nama sekolah.
+- `composer.json` (description), README, PROMPT, dokumentasi.
 
 ### Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`, PR #19)
 

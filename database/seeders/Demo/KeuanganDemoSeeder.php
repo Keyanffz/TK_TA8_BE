@@ -90,7 +90,7 @@ class KeuanganDemoSeeder extends Seeder
         $daftar = [
             [$murid[4], TipeKeringanan::Persen, 50, 'Anak yatim.'],
             [$murid[11], TipeKeringanan::Nominal, 50000, 'Orang tua terdampak PHK, sesuai surat keterangan kelurahan.'],
-            [$murid[25], TipeKeringanan::Persen, 100, 'Anak guru TK Tarbiyathul Athfal 8.'],
+            [$murid[25], TipeKeringanan::Persen, 100, 'Anak guru TK Tarbiyatul Athfal 8.'],
         ];
         $keringanan = [];
 

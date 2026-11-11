@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "keyanffz/tk-ta8-be",
     "type": "project",
-    "description": "REST API Sistem Informasi TK Tarbiyathul Athfal 8.",
+    "description": "REST API Sistem Informasi TK Tarbiyatul Athfal 8.",
     "license": "proprietary",
     "require": {
         "php": "^8.5",

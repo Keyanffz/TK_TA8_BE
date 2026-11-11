@@ -80,7 +80,7 @@ it('membalas 404 saat wali murid membuka tagihan anak orang lain', function () {
 it('menampilkan detail tagihan dengan riwayat pembayaran dan rekening sekolah ke wali', function () {
     Pengaturan::query()->create([
         'kunci' => 'keuangan.rekening',
-        'nilai' => [['bank' => 'Bank Jateng', 'nomor' => '2012345678', 'atas_nama' => 'TK Tarbiyathul Athfal 8']],
+        'nilai' => [['bank' => 'Bank Jateng', 'nomor' => '2012345678', 'atas_nama' => 'TK Tarbiyatul Athfal 8']],
         'grup' => 'keuangan',
     ]);
     Pembayaran::factory()->for($this->tagihanAisyah)->create(['metode' => MetodeBayar::Transfer, 'bukti_path' => 'bukti-bayar/aisyah.jpg']);

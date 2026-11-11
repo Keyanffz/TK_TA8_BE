@@ -30,7 +30,7 @@ it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan 
     $data = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan')->assertOk()->json('data');
 
     expect($data)->toHaveCount(35)
-        ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyathul Athfal 8')
+        ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyatul Athfal 8')
         ->and($data)->toHaveKey('profil.logo', null)
         ->and($data)->toHaveKey('profil.logo_url', null)
         ->and($data['landing.hero'])->toHaveKey('gambar_url', null)
@@ -66,7 +66,7 @@ it('menyimpan sebagian kunci, menyanitasi HTML, dan mencatat log aktivitas', fun
         ->and($data['profil.sejarah'])->toBe('<p>Berdiri tahun 1985.</p>')
         ->and($data['keuangan.tanggal_jatuh_tempo'])->toBe(15)
         ->and($data['landing.program'])->toHaveCount(1)
-        ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyathul Athfal 8');
+        ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyatul Athfal 8');
 
     expect(app(PengaturanService::class)->nilai('keuangan.tanggal_jatuh_tempo'))->toBe(15);
     $log = Activity::query()->where('log_name', 'pengaturan')->sole();
@@ -281,7 +281,7 @@ it('mengunggah gambar lalu memakainya sebagai logo dan gambar hero, mengabaikan 
     $data = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
         'profil.logo' => $logo,
         'profil.logo_url' => 'https://contoh.test/palsu.png',
-        'landing.hero' => ['judul' => 'TK Tarbiyathul Athfal 8', 'subjudul' => null, 'gambar' => $hero, 'gambar_url' => 'x', 'cta_teks' => 'Lihat Info PPDB'],
+        'landing.hero' => ['judul' => 'TK Tarbiyatul Athfal 8', 'subjudul' => null, 'gambar' => $hero, 'gambar_url' => 'x', 'cta_teks' => 'Lihat Info PPDB'],
     ]])
         ->assertOk()
         ->json('data');
