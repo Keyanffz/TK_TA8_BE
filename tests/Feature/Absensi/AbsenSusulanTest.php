@@ -238,3 +238,12 @@ it('menampilkan akses susulan peserta di absensi harian, termasuk yang sudah dip
         ->and($peserta[$this->rina->id]['masuk']['susulan'])->toBeTrue()
         ->and($peserta[$this->dwi->id]['akses_susulan'])->toBe([]);
 });
+
+it('menandai tanggal yang bisa diberi akses susulan di absensi harian', function (string $tanggal, bool $bisa) {
+    $this->actingAs($this->kepsek)->getJson("/api/v1/absensi/harian?tanggal={$tanggal}")->assertJsonPath('data.bisa_beri_susulan', $bisa);
+})->with([
+    'hari ini' => ['2026-10-05', true],
+    'Sabtu, hari kerja terakhir' => ['2026-10-03', true],
+    'Minggu' => ['2026-10-04', false],
+    'Jumat' => ['2026-10-02', false],
+]);

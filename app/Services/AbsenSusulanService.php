@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\AbsensiSusulanDiberikanNotification;
 use App\Notifications\AbsensiTercatatNotification;
 use App\Support\AturanAbsensi;
+use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -155,6 +156,20 @@ class AbsenSusulanService
         if ($akses->berlaku_sampai->isPast()) {
             throw new BusinessRuleException("Akses absen susulan ini sudah kedaluwarsa sejak {$akses->berlaku_sampai->translatedFormat('j F Y')} pukul {$akses->berlaku_sampai->format('H:i')}. Minta akses baru ke Kepala Sekolah.");
         }
+    }
+
+    /**
+     * Apakah akses susulan bisa diberikan untuk tanggal ini (tanpa melihat absensi peserta): hari absensi yang sah,
+     * dan hari ini atau hari kerja terakhir sebelumnya. Dipakai FE untuk menampilkan tombol di absensi harian.
+     */
+    public function tanggalBisaDiberikan(CarbonInterface $tanggal): bool
+    {
+        $aturan = $this->absensi->aturan();
+
+        $terakhir = $this->hariKerjaTerakhir($aturan);
+
+        return ! $tanggal->isFuture() && $aturan->sudahMulai($tanggal) && $aturan->hariKerja($tanggal) && ! $aturan->tanggalLibur($tanggal)
+            && ($tanggal->isToday() || ($terakhir !== null && $tanggal->isSameDay($terakhir)));
     }
 
     /**

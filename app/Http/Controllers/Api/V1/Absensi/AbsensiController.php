@@ -20,6 +20,7 @@ use App\Models\Absensi;
 use App\Models\AksesAbsenSusulan;
 use App\Models\User;
 use App\Services\AbsensiService;
+use App\Services\AbsenSusulanService;
 use App\Services\MediaService;
 use App\Services\RekapAbsensiService;
 use App\Support\ApiResponse;
@@ -204,6 +205,8 @@ class AbsensiController extends Controller
      * rekap: guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di tanggal itu.
      * `hari_kerja`, `tanggal_libur`, dan `tanggal_mulai` sama artinya dengan di `GET /absensi/hari-ini`.
      * `akses_susulan` berisi akses absen susulan peserta untuk tanggal itu, termasuk yang sudah dipakai atau kedaluwarsa.
+     * `bisa_beri_susulan` true kalau tanggal itu hari ini atau hari kerja terakhir sebelumnya dan bukan hari libur, yaitu
+     * tanggal yang bisa diberi akses absen susulan.
      *
      * @response array{
      *     success: true,
@@ -213,6 +216,7 @@ class AbsensiController extends Controller
      *         hari_kerja: bool,
      *         tanggal_libur: bool,
      *         tanggal_mulai: string|null,
+     *         bisa_beri_susulan: bool,
      *         peserta: list<array{
      *             user: array{id: int, nama: string, jabatan: string|null},
      *             masuk: AbsensiResource|null,
@@ -223,7 +227,7 @@ class AbsensiController extends Controller
      *     meta: null
      * }
      */
-    public function harian(HarianAbsensiRequest $request, RekapAbsensiService $rekap): JsonResponse
+    public function harian(HarianAbsensiRequest $request, RekapAbsensiService $rekap, AbsenSusulanService $susulan): JsonResponse
     {
         $tanggal = $request->tanggal();
         $aturan = $this->absensiService->aturan();
@@ -235,6 +239,7 @@ class AbsensiController extends Controller
             'hari_kerja' => $aturan->hariKerja($tanggal) && ! $libur,
             'tanggal_libur' => $libur,
             'tanggal_mulai' => $aturan->tanggalMulai,
+            'bisa_beri_susulan' => $susulan->tanggalBisaDiberikan($tanggal),
             'peserta' => array_map(fn (array $baris): array => [
                 'user' => $baris['user'],
                 'masuk' => $resource($baris['masuk']),
