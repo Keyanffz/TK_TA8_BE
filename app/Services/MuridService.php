@@ -45,8 +45,8 @@ class MuridService
     }
 
     /**
-     * Sama dengan `buat()` tanpa akun wali, untuk foto yang sudah ada di disk private (misalnya salinan pas foto
-     * PPDB). Status bawaan aktif; import murid mengirim status lain untuk data alumni.
+     * Sama dengan `buat()` tanpa akun wali dan tanpa unggahan foto, dipakai juga oleh import murid dan penerimaan
+     * PPDB. Status bawaan aktif; import murid mengirim status lain untuk data alumni.
      *
      * @param  array<string, mixed>  $data
      *

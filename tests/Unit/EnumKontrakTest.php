@@ -3,7 +3,6 @@
 use App\Enums\Hubungan;
 use App\Enums\JenisAbsensi;
 use App\Enums\JenisAgenda;
-use App\Enums\JenisDokumen;
 use App\Enums\JenisKelamin;
 use App\Enums\JenisNotifikasi;
 use App\Enums\KodeError;
@@ -41,7 +40,6 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'JenisAgenda' => [JenisAgenda::class, ['kegiatan', 'libur', 'rapat', 'lainnya']],
     'StatusRapor' => [StatusRapor::class, ['draft', 'diajukan', 'revisi', 'terbit']],
     'StatusPendaftaran' => [StatusPendaftaran::class, ['diajukan', 'diverifikasi', 'diterima', 'ditolak']],
-    'JenisDokumen' => [JenisDokumen::class, ['akta_kelahiran', 'kartu_keluarga', 'pas_foto', 'lainnya']],
     'NadaInfo' => [NadaInfo::class, ['info', 'penting', 'peringatan']],
     'JenisAbsensi' => [JenisAbsensi::class, ['masuk', 'pulang']],
     'StatusAbsensi' => [StatusAbsensi::class, ['hadir', 'terlambat', 'tidak_hadir', 'izin', 'sakit']],
@@ -66,6 +64,6 @@ it('memberi label bahasa Indonesia untuk setiap nilai enum', function (string $e
     Role::class, StatusAkun::class, StatusMurid::class, Hubungan::class, Tingkat::class,
     StatusKelasMurid::class, PeriodeTagihan::class, TipeKeringanan::class, StatusTagihan::class,
     MetodeBayar::class, StatusPembayaran::class, TargetPengumuman::class, JenisAgenda::class,
-    StatusRapor::class, StatusPendaftaran::class, JenisDokumen::class, JenisKelamin::class, JenisNotifikasi::class,
+    StatusRapor::class, StatusPendaftaran::class, JenisKelamin::class, JenisNotifikasi::class,
     NadaInfo::class, JenisAbsensi::class, StatusAbsensi::class,
 ]);

@@ -14,8 +14,8 @@ use Intervention\Image\ImageManager;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Penyimpanan file dan URL-nya (B5). File private (foto anak, bukti bayar, dokumen PPDB, lampiran pengumuman)
- * disajikan lewat signed URL `GET /media/{token}` yang berisi path terenkripsi, bukan path mentah.
+ * Penyimpanan file dan URL-nya (B5). File private (foto anak, bukti bayar, lampiran pengumuman) disajikan lewat
+ * signed URL `GET /media/{token}` yang berisi path terenkripsi, bukan path mentah.
  */
 class MediaService
 {
@@ -30,7 +30,7 @@ class MediaService
 
     public const EKSTENSI_GAMBAR = ['jpg', 'jpeg', 'png', 'webp'];
 
-    /** Dokumen PPDB dan lampiran pengumuman boleh berupa gambar atau PDF (B5). */
+    /** Lampiran pengumuman boleh berupa gambar atau PDF (B5). */
     public const EKSTENSI_DOKUMEN = [...self::EKSTENSI_GAMBAR, 'pdf'];
 
     private const LEBAR_MAKSIMAL_GAMBAR = 1600;
@@ -81,17 +81,6 @@ class MediaService
         }
 
         return (string) Storage::disk($disk)->putFileAs($folder, $file, Str::uuid().'.pdf');
-    }
-
-    /**
-     * Menyalin file private ke folder lain dengan nama acak baru, misalnya pas foto PPDB menjadi foto murid.
-     */
-    public function salinPrivat(string $path, string $folder): string
-    {
-        $tujuan = $folder.'/'.Str::uuid().'.'.pathinfo($path, PATHINFO_EXTENSION);
-        Storage::disk(self::DISK_PRIVAT)->copy($path, $tujuan);
-
-        return $tujuan;
     }
 
     /**

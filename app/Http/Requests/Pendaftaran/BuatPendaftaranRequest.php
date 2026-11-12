@@ -3,23 +3,17 @@
 namespace App\Http\Requests\Pendaftaran;
 
 use App\Enums\Hubungan;
-use App\Enums\JenisDokumen;
 use App\Enums\JenisKelamin;
 use App\Enums\Tingkat;
 use App\Rules\NomorHp;
-use App\Services\MediaService;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 
 /**
- * `POST /pendaftaran` (multipart). Dokumen dikirim per jenis: `akta_kelahiran`, `kartu_keluarga`, dan
- * `pas_foto` wajib (gambar atau PDF; pas foto harus gambar), `lainnya[]` opsional maksimal 3 file.
+ * `POST /pendaftaran` dan `POST /public/pendaftaran`. Tanpa unggahan; berkas dibawa pendaftar ke sekolah.
  */
 class BuatPendaftaranRequest extends FormRequest
 {
-    private const MAKSIMAL_DOKUMEN_LAINNYA = 3;
-
     /**
      * @return array<string, mixed>
      */
@@ -41,11 +35,6 @@ class BuatPendaftaranRequest extends FormRequest
             'nama_ibu' => ['nullable', 'string', 'max:255'],
             'pekerjaan_ibu' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['required', 'string', new NomorHp],
-            JenisDokumen::AktaKelahiran->value => ['required', ...MediaService::aturanDokumen()],
-            JenisDokumen::KartuKeluarga->value => ['required', ...MediaService::aturanDokumen()],
-            JenisDokumen::PasFoto->value => ['required', ...MediaService::aturanGambar()],
-            JenisDokumen::Lainnya->value => ['sometimes', 'array', 'max:'.self::MAKSIMAL_DOKUMEN_LAINNYA],
-            JenisDokumen::Lainnya->value.'.*' => ['required', ...MediaService::aturanDokumen()],
         ];
     }
 
@@ -55,39 +44,7 @@ class BuatPendaftaranRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'akta_kelahiran' => 'akta kelahiran',
-            'kartu_keluarga' => 'kartu keluarga',
-            'pas_foto' => 'pas foto',
-            'lainnya.*' => 'dokumen lainnya',
             'tingkat_tujuan' => 'kelompok tujuan',
         ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function dataPendaftaran(): array
-    {
-        return collect($this->validated())->except(array_column(JenisDokumen::cases(), 'value'))->all();
-    }
-
-    /**
-     * @return array<string, UploadedFile|list<UploadedFile>>
-     */
-    public function dokumen(): array
-    {
-        $dokumen = [];
-
-        foreach (JenisDokumen::cases() as $jenis) {
-            $file = $this->file($jenis->value);
-
-            if ($file instanceof UploadedFile) {
-                $dokumen[$jenis->value] = $file;
-            } elseif (is_array($file)) {
-                $dokumen[$jenis->value] = array_values($file);
-            }
-        }
-
-        return $dokumen;
     }
 }

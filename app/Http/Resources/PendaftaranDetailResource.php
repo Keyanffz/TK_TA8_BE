@@ -3,14 +3,10 @@
 namespace App\Http\Resources;
 
 use App\Models\Pendaftaran;
-use App\Models\PendaftaranDokumen;
-use App\Services\MediaService;
 use Illuminate\Http\Request;
 
 /**
- * Detail pendaftaran: bentuk daftar ditambah wali pendaftar (butuh relasi `waliMurid.user`) dan dokumen.
- * Pendaftaran hanya dikirim ke Kepala Sekolah dan wali pendaftarnya, jadi URL dokumen (signed URL file
- * private) aman dibuat di sini.
+ * Detail pendaftaran: bentuk daftar ditambah wali pendaftar (butuh relasi `waliMurid.user`).
  *
  * @mixin Pendaftaran
  */
@@ -21,8 +17,6 @@ class PendaftaranDetailResource extends PendaftaranResource
      */
     public function toArray(Request $request): array
     {
-        $media = app(MediaService::class);
-
         return [
             ...parent::toArray($request),
             /**
@@ -36,11 +30,6 @@ class PendaftaranDetailResource extends PendaftaranResource
                 'username' => $this->waliMurid->user->username,
                 'no_hp' => $this->waliMurid->user->no_hp,
             ],
-            'dokumen' => $this->dokumen->map(fn (PendaftaranDokumen $dokumen): array => [
-                'id' => $dokumen->id,
-                'jenis' => $dokumen->jenis,
-                'url' => $media->urlPrivat($dokumen->path),
-            ])->values()->all(),
         ];
     }
 }

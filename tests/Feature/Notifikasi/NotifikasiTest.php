@@ -19,7 +19,7 @@ it('menampilkan notifikasi pengguna dalam bentuk A7, terbaru lebih dulu', functi
         ->assertJsonPath('meta.total', 2)
         ->assertJsonPath('data.0.jenis', 'pendaftaran_baru')
         ->assertJsonPath('data.0.judul', 'Pendaftar PPDB baru')
-        ->assertJsonPath('data.0.pesan', 'Ahmad Fauzi didaftarkan ke Kelompok A (PPDB-2027-0008). Periksa dokumennya.')
+        ->assertJsonPath('data.0.pesan', 'Ahmad Fauzi didaftarkan ke Kelompok A (PPDB-2027-0008). Berkasnya dibawa pendaftar ke sekolah.')
         ->assertJsonPath('data.0.url', '/mudarris/ppdb/8')
         ->assertJsonPath('data.0.dibaca_at', null)
         ->assertJsonPath('data.0.created_at', '2026-10-02T09:30:00+07:00')

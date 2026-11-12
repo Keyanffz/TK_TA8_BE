@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'kode', 'wali_murid_id', 'hubungan', 'tahun_ajaran_id', 'tingkat_tujuan', 'nama_lengkap', 'nama_panggilan',
@@ -86,13 +85,5 @@ class Pendaftaran extends Model
     public function murid(): BelongsTo
     {
         return $this->belongsTo(Murid::class);
-    }
-
-    /**
-     * @return HasMany<PendaftaranDokumen, $this>
-     */
-    public function dokumen(): HasMany
-    {
-        return $this->hasMany(PendaftaranDokumen::class);
     }
 }

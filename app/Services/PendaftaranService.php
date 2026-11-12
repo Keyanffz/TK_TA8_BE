@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\JenisDokumen;
 use App\Enums\StatusPendaftaran;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Kelas;
@@ -14,27 +13,23 @@ use App\Models\WaliMurid;
 use App\Notifications\PendaftaranBaruNotification;
 use App\Notifications\PendaftaranDiprosesNotification;
 use App\Support\NomorUrut;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
-use Throwable;
 
 /**
  * PPDB (A6, B6.11). Pendaftaran selalu untuk tahun ajaran `ppdb.tahun_ajaran_id`. Kuota dihitung dari
  * pendaftaran selain yang ditolak di tahun ajaran itu. Alur: diajukan → diverifikasi → diterima, dan
- * diajukan/diverifikasi → ditolak. Menerima pendaftar membuat data murid dalam satu transaksi. Pendaftaran
- * tanpa login belum punya wali; akun walinya dibuat saat diterima.
+ * diajukan/diverifikasi → ditolak. Formulir tidak mengunggah berkas; berkas dibawa ke sekolah dan `diverifikasi`
+ * berarti sudah dicek di sana. Menerima pendaftar membuat data murid dalam satu transaksi. Pendaftaran tanpa
+ * login belum punya wali; akun walinya dibuat saat diterima.
  */
 class PendaftaranService
 {
-    private const FOLDER_DOKUMEN = 'ppdb';
-
     private const DIGIT_KODE = 4;
 
     public function __construct(
         private readonly PengaturanService $pengaturan,
-        private readonly MediaService $media,
         private readonly MuridService $muridService,
         private readonly KelasService $kelasService,
         private readonly WaliMuridService $waliMuridService,
@@ -74,43 +69,29 @@ class PendaftaranService
     /**
      * @param  WaliMurid|null  $wali  null untuk pendaftaran tanpa login
      * @param  array<string, mixed>  $data
-     * @param  array<string, UploadedFile|list<UploadedFile>>  $dokumen  per jenis dokumen; `lainnya` berupa daftar
      *
      * @throws BusinessRuleException
      */
-    public function daftar(?WaliMurid $wali, array $data, array $dokumen): Pendaftaran
+    public function daftar(?WaliMurid $wali, array $data): Pendaftaran
     {
         $tahunAjaran = $this->pastikanBisaMendaftar($data['nik']);
-        $path = $this->simpanDokumen($dokumen);
 
-        try {
-            $pendaftaran = DB::transaction(function () use ($wali, $data, $path, $tahunAjaran): Pendaftaran {
-                TahunAjaran::query()->lockForUpdate()->findOrFail($tahunAjaran->id);
-                if ($this->terpakai($tahunAjaran) >= (int) $this->pengaturan->nilai('ppdb.kuota', 0)) {
-                    throw new BusinessRuleException("Kuota PPDB tahun ajaran {$tahunAjaran->nama} sudah penuh.");
-                }
-
-                $awalan = 'PPDB-'.$tahunAjaran->tanggal_mulai->year.'-';
-                $pendaftaran = Pendaftaran::query()->create([
-                    ...$data,
-                    'kode' => NomorUrut::format($awalan, NomorUrut::berikutnya(Pendaftaran::query(), 'kode', $awalan, self::DIGIT_KODE), self::DIGIT_KODE),
-                    'wali_murid_id' => $wali?->id,
-                    'tahun_ajaran_id' => $tahunAjaran->id,
-                    'status' => StatusPendaftaran::Diajukan,
-                ]);
-                foreach ($path as [$jenis, $satu]) {
-                    $pendaftaran->dokumen()->create(['jenis' => $jenis, 'path' => $satu]);
-                }
-
-                return $pendaftaran;
-            });
-        } catch (Throwable $e) {
-            foreach ($path as [, $satu]) {
-                $this->media->hapus($satu, MediaService::DISK_PRIVAT);
+        $pendaftaran = DB::transaction(function () use ($wali, $data, $tahunAjaran): Pendaftaran {
+            TahunAjaran::query()->lockForUpdate()->findOrFail($tahunAjaran->id);
+            if ($this->terpakai($tahunAjaran) >= (int) $this->pengaturan->nilai('ppdb.kuota', 0)) {
+                throw new BusinessRuleException("Kuota PPDB tahun ajaran {$tahunAjaran->nama} sudah penuh.");
             }
 
-            throw $e;
-        }
+            $awalan = 'PPDB-'.$tahunAjaran->tanggal_mulai->year.'-';
+
+            return Pendaftaran::query()->create([
+                ...$data,
+                'kode' => NomorUrut::format($awalan, NomorUrut::berikutnya(Pendaftaran::query(), 'kode', $awalan, self::DIGIT_KODE), self::DIGIT_KODE),
+                'wali_murid_id' => $wali?->id,
+                'tahun_ajaran_id' => $tahunAjaran->id,
+                'status' => StatusPendaftaran::Diajukan,
+            ]);
+        });
 
         Notification::send(User::query()->kepalaSekolahAktif()->get(), new PendaftaranBaruNotification($pendaftaran));
 
@@ -134,9 +115,9 @@ class PendaftaranService
 
     /**
      * Membuat murid (NIS dari tanggal mulai tahun ajaran tujuan), menautkan wali pendaftar sebagai kontak utama
-     * dengan hubungan dari pendaftaran, menyalin pas foto menjadi foto murid, dan menempatkan murid di kelas
-     * kalau dipilih (kelas harus di tahun ajaran tujuan, dengan cek kapasitas). Pendaftaran tanpa login
-     * dibuatkan akun wali otomatis (nomor HP dari formulir), lalu akun itu dicatat sebagai wali pendaftar.
+     * dengan hubungan dari pendaftaran, dan menempatkan murid di kelas kalau dipilih (kelas harus di tahun ajaran
+     * tujuan, dengan cek kapasitas). Murid dibuat tanpa foto. Pendaftaran tanpa login dibuatkan akun wali otomatis
+     * (nomor HP dari formulir), lalu akun itu dicatat sebagai wali pendaftar.
      *
      * @throws BusinessRuleException
      */
@@ -146,45 +127,36 @@ class PendaftaranService
             throw new BusinessRuleException("Kelas {$kelas->nama} bukan kelas tahun ajaran tujuan pendaftaran ini.");
         }
 
-        $pasFoto = $pendaftaran->dokumen()->where('jenis', JenisDokumen::PasFoto)->value('path');
-        $foto = is_string($pasFoto) && ! str_ends_with($pasFoto, '.pdf') ? $this->media->salinPrivat($pasFoto, MuridService::FOLDER_FOTO) : null;
+        $pendaftaran = DB::transaction(function () use ($pendaftaran, $kelas, $kepalaSekolah): Pendaftaran {
+            $pendaftaran = $this->kunci($pendaftaran, [StatusPendaftaran::Diverifikasi], 'diterima');
+            $pendaftaran->loadMissing('tahunAjaran');
 
-        try {
-            $pendaftaran = DB::transaction(function () use ($pendaftaran, $kelas, $kepalaSekolah, $foto): Pendaftaran {
-                $pendaftaran = $this->kunci($pendaftaran, [StatusPendaftaran::Diverifikasi], 'diterima');
-                $pendaftaran->loadMissing('tahunAjaran');
+            $murid = $this->muridService->buatDenganFotoTersimpan([
+                'nik' => $pendaftaran->nik,
+                'nama_lengkap' => $pendaftaran->nama_lengkap,
+                'nama_panggilan' => $pendaftaran->nama_panggilan,
+                'jenis_kelamin' => $pendaftaran->jenis_kelamin,
+                'tempat_lahir' => $pendaftaran->tempat_lahir,
+                'tanggal_lahir' => $pendaftaran->tanggal_lahir->toDateString(),
+                'agama' => $pendaftaran->agama,
+                'alamat' => $pendaftaran->alamat,
+                'tanggal_masuk' => $pendaftaran->tahunAjaran->tanggal_mulai->toDateString(),
+            ], null);
+            if ($pendaftaran->wali_murid_id === null) {
+                $wali = $this->waliMuridService->buatAkunOtomatis($murid, $pendaftaran->hubungan, $pendaftaran->no_hp, $kepalaSekolah);
+                $pendaftaran->wali_murid_id = $wali->id;
+            } else {
+                $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
+            }
 
-                $murid = $this->muridService->buatDenganFotoTersimpan([
-                    'nik' => $pendaftaran->nik,
-                    'nama_lengkap' => $pendaftaran->nama_lengkap,
-                    'nama_panggilan' => $pendaftaran->nama_panggilan,
-                    'jenis_kelamin' => $pendaftaran->jenis_kelamin,
-                    'tempat_lahir' => $pendaftaran->tempat_lahir,
-                    'tanggal_lahir' => $pendaftaran->tanggal_lahir->toDateString(),
-                    'agama' => $pendaftaran->agama,
-                    'alamat' => $pendaftaran->alamat,
-                    'tanggal_masuk' => $pendaftaran->tahunAjaran->tanggal_mulai->toDateString(),
-                ], $foto);
-                if ($pendaftaran->wali_murid_id === null) {
-                    $wali = $this->waliMuridService->buatAkunOtomatis($murid, $pendaftaran->hubungan, $pendaftaran->no_hp, $kepalaSekolah);
-                    $pendaftaran->wali_murid_id = $wali->id;
-                } else {
-                    $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
-                }
+            if ($kelas !== null) {
+                $this->kelasService->tempatkanMurid($kelas, [$murid->id]);
+            }
 
-                if ($kelas !== null) {
-                    $this->kelasService->tempatkanMurid($kelas, [$murid->id]);
-                }
+            $pendaftaran->update(['status' => StatusPendaftaran::Diterima, 'murid_id' => $murid->id, ...$this->jejakProses($kepalaSekolah)]);
 
-                $pendaftaran->update(['status' => StatusPendaftaran::Diterima, 'murid_id' => $murid->id, ...$this->jejakProses($kepalaSekolah)]);
-
-                return $pendaftaran;
-            });
-        } catch (Throwable $e) {
-            $this->media->hapus($foto, MediaService::DISK_PRIVAT);
-
-            throw $e;
-        }
+            return $pendaftaran;
+        });
 
         return $this->selesaikan($pendaftaran, $kepalaSekolah, 'diterima', "Menerima pendaftaran {$pendaftaran->kode}", ['kelas_id' => $kelas?->id]);
     }
@@ -229,31 +201,6 @@ class PendaftaranService
         }
 
         return $tahunAjaran;
-    }
-
-    /**
-     * @param  array<string, UploadedFile|list<UploadedFile>>  $dokumen
-     * @return list<array{0: JenisDokumen, 1: string}>
-     */
-    private function simpanDokumen(array $dokumen): array
-    {
-        $path = [];
-
-        try {
-            foreach ($dokumen as $jenis => $file) {
-                foreach (is_array($file) ? $file : [$file] as $satu) {
-                    $path[] = [JenisDokumen::from($jenis), $this->media->simpanDokumen($satu, MediaService::DISK_PRIVAT, self::FOLDER_DOKUMEN)];
-                }
-            }
-        } catch (Throwable $e) {
-            foreach ($path as [, $satu]) {
-                $this->media->hapus($satu, MediaService::DISK_PRIVAT);
-            }
-
-            throw $e;
-        }
-
-        return $path;
     }
 
     /**
