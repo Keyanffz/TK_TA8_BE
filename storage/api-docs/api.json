@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "API TK Tarbiyathul Athfal 8",
+        "title": "API TK Tarbiyatul Athfal 8",
         "version": "1.0.0"
     },
     "servers": [
@@ -4431,16 +4431,6 @@
                                                                 "$ref": "#/components/schemas/AgendaResource"
                                                             }
                                                         },
-                                                        "rapor_terbaru": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "$ref": "#/components/schemas/RaporResource"
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        },
                                                         "info_sekolah": {
                                                             "type": [
                                                                 "object",
@@ -4478,7 +4468,6 @@
                                                         "kegiatan_terbaru",
                                                         "pengumuman_terbaru",
                                                         "agenda_mendatang",
-                                                        "rapor_terbaru",
                                                         "info_sekolah"
                                                     ]
                                                 }
@@ -16277,7 +16266,7 @@
         "/media/{token}": {
             "get": {
                 "operationId": "media",
-                "summary": "Menyajikan file private dari signed URL (`*_url`). Tidak memakai token Bearer; hak akses\nsudah dicek saat URL dibuat, dan URL berlaku 30 menit. Isinya gambar JPEG atau PDF (dokumen PPDB, lampiran\npengumuman)",
+                "summary": "Menyajikan file private dari signed URL (`*_url`). Tidak memakai token Bearer; hak akses\nsudah dicek saat URL dibuat, dan URL berlaku 30 menit. Isinya gambar JPEG atau PDF (lampiran pengumuman)",
                 "tags": [
                     "Media"
                 ],
@@ -20511,7 +20500,7 @@
         "/pendaftaran/{id}/verifikasi": {
             "post": {
                 "operationId": "pendaftaran.verifikasi",
-                "summary": "Menandai dokumen pendaftaran sudah diperiksa dan lengkap",
+                "summary": "Menandai berkas pendaftar (akta kelahiran, kartu keluarga, pas foto) sudah diterima dan dicek di sekolah",
                 "tags": [
                     "Pendaftaran"
                 ],
@@ -21501,14 +21490,14 @@
             },
             "post": {
                 "operationId": "pendaftaran.store",
-                "summary": "Wali yang sudah login mendaftarkan kakak/adik (`multipart/form-data`) untuk tahun ajaran PPDB di pengaturan.\nDitolak kalau PPDB ditutup, kuota penuh, atau NIK anak sudah punya pendaftaran selain ditolak atau sudah\nmenjadi murid. Anak yang diterima ditautkan ke akun ini",
+                "summary": "Wali yang sudah login mendaftarkan kakak/adik untuk tahun ajaran PPDB di pengaturan. Tanpa unggahan; akta\nkelahiran, kartu keluarga, dan pas foto dibawa ke sekolah. Ditolak kalau PPDB ditutup, kuota penuh, atau NIK\nanak sudah punya pendaftaran selain ditolak atau sudah menjadi murid. Anak yang diterima ditautkan ke akun ini",
                 "tags": [
                     "Pendaftaran"
                 ],
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/BuatPendaftaranRequest"
                             }
@@ -21702,7 +21691,7 @@
         "/pendaftaran/{id}": {
             "get": {
                 "operationId": "pendaftaran.show",
-                "summary": "Detail pendaftaran beserta dokumen dan data wali pendaftar",
+                "summary": "Detail pendaftaran beserta data wali pendaftar",
                 "tags": [
                     "Pendaftaran"
                 ],
@@ -21897,14 +21886,14 @@
         "/public/pendaftaran": {
             "post": {
                 "operationId": "pendaftaran.storePublik",
-                "summary": "Pendaftaran PPDB tanpa login (`multipart/form-data`), dengan isian dan aturan yang sama seperti\n`POST /pendaftaran`. Dibatasi 3 pendaftaran per jam per IP. Simpan `kode` untuk mengecek status lewat\n`GET /public/pendaftaran/status`. Kalau diterima, sekolah membuatkan akun wali dengan username NIS anak",
+                "summary": "Pendaftaran PPDB tanpa login, dengan isian dan aturan yang sama seperti `POST /pendaftaran`. Dibatasi 3 pendaftaran per jam per IP. Simpan `kode` untuk mengecek status lewat\n`GET /public/pendaftaran/status`. Kalau diterima, sekolah membuatkan akun wali dengan username NIS anak",
                 "tags": [
                     "Pendaftaran"
                 ],
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/BuatPendaftaranRequest"
                             }
@@ -26606,7 +26595,7 @@
         "/rapor/{id}/terbitkan": {
             "post": {
                 "operationId": "rapor.terbitkan",
-                "summary": "Menerbitkan rapor yang sudah diajukan; wali murid diberi tahu dan bisa mengunduh PDF-nya",
+                "summary": "Menerbitkan rapor yang sudah diajukan. Rapor terbit adalah rapor final yang dicetak dan dibagikan sekolah",
                 "tags": [
                     "Rapor"
                 ],
@@ -27078,7 +27067,7 @@
         "/rapor/{id}/tarik": {
             "post": {
                 "operationId": "rapor.tarik",
-                "summary": "Menarik rapor yang sudah terbit kembali ke revisi, dengan catatan untuk guru pembuat. Wali murid tidak\nbisa melihat rapor itu lagi sampai diterbitkan ulang",
+                "summary": "Menarik rapor yang sudah terbit kembali ke revisi, dengan catatan untuk guru pembuat",
                 "tags": [
                     "Rapor"
                 ],
@@ -27320,6 +27309,303 @@
             }
         },
         "/rapor": {
+            "get": {
+                "operationId": "rapor.index",
+                "description": "Filter `filter[kelas_id]`, `filter[semester]`, `filter[status]`, `filter[tahun_ajaran_id]`, `filter[murid_id]`.\n`search` mencari nama dan NIS murid. Urutan `sort` = `updated_at` | `diajukan_at` | `created_at`\n(bawaan `-updated_at`).",
+                "summary": "Daftar rapor. Kepala Sekolah melihat semua, guru rapor kelas yang dia ampu di tahun ajaran aktif. Wali murid\ntidak membuka rapor di aplikasi; rapor terbit dicetak dan dibagikan sekolah",
+                "tags": [
+                    "Rapor"
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "updated_at",
+                                "diajukan_at",
+                                "created_at",
+                                "-updated_at",
+                                "-diajukan_at",
+                                "-created_at"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "filter[kelas_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "filter[semester]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "enum": [
+                                "1",
+                                "2"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "filter[status]",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/StatusRapor"
+                        }
+                    },
+                    {
+                        "name": "filter[tahun_ajaran_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "filter[murid_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Berhasil"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/RaporResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "per_page",
+                                                "total",
+                                                "last_page"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "operationId": "rapor.store",
                 "summary": "Membuat draft rapor untuk murid di kelas yang diampu, dengan baris kosong untuk setiap elemen penilaian\naktif. Satu murid satu rapor per semester per tahun ajaran",
@@ -27518,93 +27804,20 @@
                         }
                     }
                 }
-            },
+            }
+        },
+        "/rapor/{id}": {
             "get": {
-                "operationId": "rapor.index",
-                "description": "Filter `filter[kelas_id]`, `filter[semester]`, `filter[status]`, `filter[tahun_ajaran_id]`, `filter[murid_id]`.\n`search` mencari nama dan NIS murid. Urutan `sort` = `updated_at` | `diajukan_at` | `created_at`\n(bawaan `-updated_at`).",
-                "summary": "Daftar rapor. Kepala Sekolah melihat semua, guru rapor kelas yang dia ampu di tahun ajaran aktif, wali murid\nrapor anaknya yang sudah terbit",
+                "operationId": "rapor.show",
+                "summary": "Detail rapor beserta deskripsi dan foto tiap elemen",
                 "tags": [
                     "Rapor"
                 ],
                 "parameters": [
                     {
-                        "name": "page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1
-                        }
-                    },
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 100
-                        }
-                    },
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "maxLength": 100
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "updated_at",
-                                "diajukan_at",
-                                "created_at",
-                                "-updated_at",
-                                "-diajukan_at",
-                                "-created_at"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "filter[kelas_id]",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "filter[semester]",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "enum": [
-                                "1",
-                                "2"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "filter[status]",
-                        "in": "query",
-                        "schema": {
-                            "$ref": "#/components/schemas/StatusRapor"
-                        }
-                    },
-                    {
-                        "name": "filter[tahun_ajaran_id]",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "filter[murid_id]",
-                        "in": "query",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
                         "schema": {
                             "type": "integer"
                         }
@@ -27626,33 +27839,10 @@
                                             "const": "Berhasil"
                                         },
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/RaporResource"
-                                            }
+                                            "$ref": "#/components/schemas/RaporDetailResource"
                                         },
                                         "meta": {
-                                            "type": "object",
-                                            "properties": {
-                                                "current_page": {
-                                                    "type": "integer"
-                                                },
-                                                "per_page": {
-                                                    "type": "integer"
-                                                },
-                                                "total": {
-                                                    "type": "integer"
-                                                },
-                                                "last_page": {
-                                                    "type": "integer"
-                                                }
-                                            },
-                                            "required": [
-                                                "current_page",
-                                                "per_page",
-                                                "total",
-                                                "last_page"
-                                            ]
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
@@ -27699,7 +27889,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27714,6 +27904,7 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
+                                                "FORBIDDEN",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -27732,8 +27923,8 @@
                             }
                         }
                     },
-                    "422": {
-                        "description": "VALIDATION_ERROR",
+                    "404": {
+                        "description": "NOT_FOUND",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -27748,17 +27939,11 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "VALIDATION_ERROR"
+                                                "NOT_FOUND"
                                             ]
                                         },
                                         "errors": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "string"
-                                                }
-                                            }
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
@@ -27814,9 +27999,7 @@
                         }
                     }
                 }
-            }
-        },
-        "/rapor/{id}": {
+            },
             "put": {
                 "operationId": "rapor.update",
                 "summary": "Mengisi rapor: guru pembuat saat status draft atau revisi, atau Kepala Sekolah saat status diajukan\n(memperbaiki isi sebelum terbit; statusnya tetap diajukan). Elemen yang tidak dikirim di `detail` tidak\nberubah",
@@ -28058,10 +28241,12 @@
                         }
                     }
                 }
-            },
+            }
+        },
+        "/rapor/{id}/pdf": {
             "get": {
-                "operationId": "rapor.show",
-                "summary": "Detail rapor beserta deskripsi dan foto tiap elemen",
+                "operationId": "rapor.pdf",
+                "summary": "Rapor PDF. Rapor yang belum terbit diberi tanda pratinjau",
                 "tags": [
                     "Rapor"
                 ],
@@ -28077,32 +28262,12 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Rapor PDF",
                         "content": {
-                            "application/json": {
+                            "application/pdf": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Berhasil"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/RaporDetailResource"
-                                        },
-                                        "meta": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data",
-                                        "meta"
-                                    ]
+                                    "type": "string",
+                                    "format": "binary"
                                 }
                             }
                         }
@@ -28141,7 +28306,7 @@
                         }
                     },
                     "403": {
-                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -28156,6 +28321,7 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
+                                                "FORBIDDEN",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -28672,180 +28838,6 @@
                                             "type": "string",
                                             "enum": [
                                                 "BUSINESS_RULE"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "TOO_MANY_REQUESTS",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "TOO_MANY_REQUESTS"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Retry-After": {
-                                "description": "Jumlah detik sampai boleh mencoba lagi.",
-                                "required": true,
-                                "schema": {
-                                    "type": "integer"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/rapor/{id}/pdf": {
-            "get": {
-                "operationId": "rapor.pdf",
-                "summary": "Rapor PDF. Wali murid hanya bisa mengunduh rapor yang sudah terbit; rapor yang belum terbit diberi tanda\npratinjau",
-                "tags": [
-                    "Rapor"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Rapor PDF",
-                        "content": {
-                            "application/pdf": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "binary"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHENTICATED",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "UNAUTHENTICATED"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "ACCOUNT_INACTIVE",
-                                                "PASSWORD_WAJIB_DIGANTI"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "NOT_FOUND"
                                             ]
                                         },
                                         "errors": {
@@ -30508,7 +30500,7 @@
         "/tagihan": {
             "post": {
                 "operationId": "tagihan.store",
-                "summary": "Membuat tagihan sekali bayar (uang pangkal, seragam) untuk murid tertentu (`murid_ids`) atau semua murid\naktif satu kelas (`kelas_id`). Murid yang sudah punya tagihan jenis itu (selain dibatalkan), tidak aktif,\natau tingkat kelasnya tidak sesuai dilewati",
+                "summary": "Membuat tagihan sekali bayar (uang pendidikan, seragam) untuk murid tertentu (`murid_ids`) atau semua murid\naktif satu kelas (`kelas_id`). Murid yang sudah punya tagihan jenis itu (selain dibatalkan), tidak aktif,\natau tingkat kelasnya tidak sesuai dilewati",
                 "tags": [
                     "Tagihan"
                 ],
@@ -34181,7 +34173,7 @@
             },
             "BuatPendaftaranRequest": {
                 "type": "object",
-                "description": "`POST /pendaftaran` (multipart). Dokumen dikirim per jenis: `akta_kelahiran`, `kartu_keluarga`, dan\n`pas_foto` wajib (gambar atau PDF; pas foto harus gambar), `lainnya[]` opsional maksimal 3 file.",
+                "description": "`POST /pendaftaran` dan `POST /public/pendaftaran`. Tanpa unggahan; berkas dibawa pendaftar ke sekolah.",
                 "properties": {
                     "hubungan": {
                         "$ref": "#/components/schemas/Hubungan"
@@ -34249,34 +34241,6 @@
                     },
                     "no_hp": {
                         "type": "string"
-                    },
-                    "akta_kelahiran": {
-                        "type": "string",
-                        "format": "binary",
-                        "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
-                    },
-                    "kartu_keluarga": {
-                        "type": "string",
-                        "format": "binary",
-                        "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
-                    },
-                    "pas_foto": {
-                        "type": "string",
-                        "format": "binary",
-                        "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
-                    },
-                    "lainnya": {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "format": "binary",
-                            "contentMediaType": "application/octet-stream",
-                            "description": "Maximum file size: 5120 kilobytes."
-                        },
-                        "maxItems": 3
                     }
                 },
                 "required": [
@@ -34290,10 +34254,7 @@
                     "nik",
                     "agama",
                     "alamat",
-                    "no_hp",
-                    "akta_kelahiran",
-                    "kartu_keluarga",
-                    "pas_foto"
+                    "no_hp"
                 ],
                 "title": "BuatPendaftaranRequest"
             },
@@ -34859,16 +34820,6 @@
                 ],
                 "title": "JenisAgenda"
             },
-            "JenisDokumen": {
-                "type": "string",
-                "enum": [
-                    "akta_kelahiran",
-                    "kartu_keluarga",
-                    "pas_foto",
-                    "lainnya"
-                ],
-                "title": "JenisDokumen"
-            },
             "JenisKelamin": {
                 "type": "string",
                 "enum": [
@@ -34879,7 +34830,7 @@
             },
             "JenisNotifikasi": {
                 "type": "string",
-                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n",
+                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |",
                 "enum": [
                     "tagihan_baru",
                     "tagihan_tertunda",
@@ -36502,28 +36453,6 @@
                             "username",
                             "no_hp"
                         ]
-                    },
-                    "dokumen": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "jenis": {
-                                    "$ref": "#/components/schemas/JenisDokumen"
-                                },
-                                "url": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "jenis",
-                                "url"
-                            ]
-                        }
                     }
                 },
                 "required": [
@@ -36550,8 +36479,7 @@
                     "murid",
                     "diproses_at",
                     "created_at",
-                    "wali",
-                    "dokumen"
+                    "wali"
                 ],
                 "title": "PendaftaranDetailResource"
             },
@@ -37253,8 +37181,7 @@
                         "type": [
                             "string",
                             "null"
-                        ],
-                        "description": "Tidak dikirim ke wali murid."
+                        ]
                     },
                     "pembuat": {
                         "type": "object",
@@ -37358,6 +37285,7 @@
                     "berat_badan",
                     "catatan_guru",
                     "status",
+                    "catatan_revisi",
                     "pembuat",
                     "diajukan_at",
                     "terbit_at",
@@ -37454,8 +37382,7 @@
                         "type": [
                             "string",
                             "null"
-                        ],
-                        "description": "Tidak dikirim ke wali murid."
+                        ]
                     },
                     "pembuat": {
                         "type": "object",
@@ -37511,6 +37438,7 @@
                     "berat_badan",
                     "catatan_guru",
                     "status",
+                    "catatan_revisi",
                     "pembuat",
                     "diajukan_at",
                     "terbit_at",

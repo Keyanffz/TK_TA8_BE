@@ -90,7 +90,7 @@ class TagihanService
     }
 
     /**
-     * Tagihan sekali bayar (uang pangkal, seragam) untuk murid tertentu. Murid yang sudah punya tagihan jenis
+     * Tagihan sekali bayar (uang pendidikan, seragam) untuk murid tertentu. Murid yang sudah punya tagihan jenis
      * itu (selain yang dibatalkan), tidak aktif, atau tingkat kelasnya tidak sesuai dilewati. Potongan
      * memakai keringanan yang berlaku pada tanggal pembuatan.
      *

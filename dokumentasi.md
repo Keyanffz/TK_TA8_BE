@@ -34,6 +34,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9; di-merge (PR #18) |
 | Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, `check:slop`, dan uji manual dengan `upload_max_filesize=2M`; di-merge (PR #19) |
 | Revisi sekolah R1: NISN murid yang dihapus bisa dipakai lagi (branch `be/perbaikan-tambah-murid`) | Selesai, menunggu review; test SQLite, test murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop` |
+| Revisi sekolah R2: PPDB tanpa unggah berkas, rapor tertutup untuk wali murid, contoh "uang pendidikan" (branch `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -56,13 +57,13 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Laporan (izin lihat keuangan) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
-| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu, W rapor terbit anaknya), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
+| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu; wali murid 403), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
 | Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role; izin lihat pengumuman semua), `POST /pengumuman` (SA, G; target bebas untuk izin kelola pengumuman), `PUT/DELETE /pengumuman/{id}` (penulis, SA, izin kelola pengumuman); lampiran opsional lewat multipart (`lampiran`, dan `hapus_lampiran` di `PUT`) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/pengumuman/{slug}/lampiran`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
-| PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
+| PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik, JSON tanpa unggahan), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
 | Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan; izin lihat laporan absensi) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; grup `profil`/`landing`/`beranda` izin lihat konten website, grup `keuangan` izin lihat keuangan), `PUT /pengaturan` (SA; izin kelola konten website hanya grup `profil`/`landing`/`beranda`), `POST /pengaturan/upload` (izin kelola konten website). Grup `absensi` berisi aturan absensi |
 | Galeri (izin konten website: lihat untuk GET, kelola untuk lainnya) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
@@ -83,6 +84,15 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 1. `DELETE /murid/{id}` mengosongkan `nisn` baris yang dihapus. Baris itu hanya di-soft-delete dan `nisn` berindeks unik, jadi tanpa dikosongkan murid yang dimasukkan ulang dengan NISN yang sama ditolak, baik lewat formulir (422 "NISN sudah digunakan.") maupun import ("NISN ... sudah dipakai ..."). Murid yang boleh dihapus hanya yang belum punya tagihan, rapor, atau data PPDB, dan tidak ada fitur memulihkan murid, jadi NISN di baris terhapus tidak dipakai lagi.
 2. Migration `2026_11_12_100000_kosongkan_nisn_murid_terhapus` mengosongkan `nisn` murid yang sudah terhapus sebelum perbaikan ini. Migration ini mengubah data dan tidak punya `down()`; yang berubah hanya baris dengan `deleted_at` terisi. Kalau tidak disetujui, hapus file migration itu sebelum merge.
 3. Penyebab murid tidak tersimpan di production belum terbukti. Cacat NISN ini satu-satunya yang bisa dibuktikan di lokal; daftar yang perlu dicek dari log VPS ada di laporan fase R1.
+
+### Revisi sekolah R2: PPDB tanpa berkas dan rapor tertutup untuk wali murid (branch `be/revisi-kecil`)
+
+1. Formulir PPDB tidak menerima unggahan. `POST /pendaftaran` dan `POST /public/pendaftaran` menerima JSON; field berkas yang masih dikirim klien lama diabaikan. Status `diverifikasi` berarti berkas (akta kelahiran, kartu keluarga, pas foto) sudah diterima dan dicek di sekolah. Detail pendaftaran tidak lagi punya `dokumen`.
+2. Migration `2026_11_12_110000_hapus_pendaftaran_dokumen_table` menghapus tabel `pendaftaran_dokumen` beserta isinya. Pemilik repo menyatakan production belum punya pendaftaran sungguhan. `down()` hanya mengembalikan struktur tabel. File berkas lama di `storage/app/private/ppdb` tidak dihapus migration; hapus manual setelah migration jalan (perintahnya di laporan fase R2).
+3. Murid yang diterima dari PPDB dibuat tanpa foto. Foto diunggah lewat ubah murid kalau diperlukan.
+4. Wali murid tidak membuka rapor. `GET /rapor`, `GET /rapor/{id}`, dan `GET /rapor/{id}/pdf` masuk grup `role:super_admin,guru` (wali 403 `FORBIDDEN`), dan `Rapor::scopeVisibleTo` tidak mengembalikan apa pun untuk wali supaya pemanggil lain tidak membocorkannya. Dashboard wali tanpa `rapor_terbaru`. `catatan_revisi` sekarang selalu dikirim karena pembacanya tinggal guru dan Kepala Sekolah.
+5. Menerbitkan rapor tidak mengirim notifikasi ke wali; `RaporTerbitNotification` dihapus. Jenis `rapor_terbit` tetap ada di enum `JenisNotifikasi`, berbeda dari usulan R0 yang menghapusnya: notifikasi lama berjenis itu masih tersimpan di tabel `notifications`, dan `GET /notifikasi` akan gagal (500) kalau jenisnya tidak dikenali. Notifikasi lama tidak dihapus; FE mengarahkannya ke beranda wali.
+6. Contoh nama tagihan sekali bayar di dokumentasi API dan Bagian A memakai "uang pendidikan". Tidak ada data yang diubah; nama jenis tagihan tetap diisi sekolah.
 
 ## Keputusan yang sudah diterapkan
 
@@ -655,9 +665,9 @@ Middleware:
 
 ## Skema database
 
-- 38 tabel: 29 tabel domain A4 (termasuk `users`, `izin_guru`, dan `riwayat_status_murid`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
-- Foreign key: tabel anak dan pivot `cascade` (`murid_wali`, `kelas_murid`, `pengumuman_kelas`, `pengumuman_murid`, `kegiatan_foto`, `rapor_detail`, `pendaftaran_dokumen`, `galeri_foto`, profil `guru`/`wali_murid` ke `users`); kolom pelaku (`dibuat_oleh`, `diverifikasi_oleh`, `disetujui_oleh`, `diproses_oleh`, `dibayar_oleh`) `null on delete`; `kelas.wali_kelas_id`, `kelas.guru_pendamping_id`, `pendaftaran.murid_id` `null on delete`; sisanya (data keuangan, rapor, kegiatan, tahun ajaran) `restrict`. `users`, `murid`, dan `pengumuman` memakai soft delete, jadi hapus fisik jarang terjadi.
-- Cascade di database tidak menjalankan observer Eloquent. Penghapusan data yang punya file (kegiatan, rapor, PPDB, galeri) harus lewat Eloquent di service supaya file fisiknya ikut terhapus (B5).
+- 37 tabel: 28 tabel domain A4 (termasuk `users`, `izin_guru`, dan `riwayat_status_murid`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
+- Foreign key: tabel anak dan pivot `cascade` (`murid_wali`, `kelas_murid`, `pengumuman_kelas`, `pengumuman_murid`, `kegiatan_foto`, `rapor_detail`, `galeri_foto`, profil `guru`/`wali_murid` ke `users`); kolom pelaku (`dibuat_oleh`, `diverifikasi_oleh`, `disetujui_oleh`, `diproses_oleh`, `dibayar_oleh`) `null on delete`; `kelas.wali_kelas_id`, `kelas.guru_pendamping_id`, `pendaftaran.murid_id` `null on delete`; sisanya (data keuangan, rapor, kegiatan, tahun ajaran) `restrict`. `users`, `murid`, dan `pengumuman` memakai soft delete, jadi hapus fisik jarang terjadi.
+- Cascade di database tidak menjalankan observer Eloquent. Penghapusan data yang punya file (kegiatan, rapor, galeri) harus lewat Eloquent di service supaya file fisiknya ikut terhapus (B5).
 - Scope visibilitas (B4), dipakai semua endpoint terkait mulai Fase 3:
 
 | Scope | Kepala Sekolah | Guru | Wali murid |
@@ -883,6 +893,32 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R2: PPDB tanpa unggah berkas, rapor tertutup untuk wali murid (branch `be/revisi-kecil`)
+
+Revisi 1, 4, dan 6 dari sekolah. Bagian A diubah di kedua PROMPT (A2.3, A2.8, A2.9, A2.14, A3, A4, A5, A6, A7) dan tetap identik. Keputusan di "Keputusan menunggu review".
+
+Baru:
+
+- `database/migrations/2026_11_12_110000_hapus_pendaftaran_dokumen_table.php`.
+
+Dihapus:
+
+- `app/Enums/JenisDokumen.php`, `app/Models/PendaftaranDokumen.php`, `database/factories/PendaftaranDokumenFactory.php`, `app/Notifications/RaporTerbitNotification.php`.
+- `MediaService::salinPrivat()` (pemakainya hanya penyalinan pas foto PPDB).
+
+Diubah:
+
+- `PendaftaranService`, `BuatPendaftaranRequest`, `PendaftaranController`, `PendaftaranDetailResource`, `Pendaftaran`: pendaftaran tanpa berkas; `terima()` membuat murid tanpa foto.
+- `PendaftaranBaruNotification`, `PendaftaranDiprosesNotification`: pesan menyebut berkas dibawa ke sekolah dan sudah dicek sekolah.
+- `routes/api.php`: tiga route `GET /rapor*` pindah ke grup `role:super_admin,guru`.
+- `Rapor::scopeVisibleTo`, `RaporPolicy`, `RaporResource`, `RaporService::terbitkan()`, `DashboardService::waliMurid()`, `JenisNotifikasi`.
+- `PpdbDemoSeeder`: tanpa dokumen dan pas foto; teks `ppdb.info` menyebut berkas dibawa ke sekolah.
+- Docblock `TagihanService` dan `TagihanController`: contoh "uang pendidikan".
+- Test: `PendaftaranTest`, `AksesRaporTest`, `AlurRaporTest`, `DashboardTest`, `ScopeVisibilitasTest`, `AksesSilangRoleTest`, `AuditQueryTest`, `DokumentasiApiTest`, `RelasiModelTest`, `EnumKontrakTest`, `NotifikasiTest`.
+- `storage/api-docs/api.json` diekspor ulang.
+
+Pengecekan: `php artisan test --compact` 1105 lolos di SQLite dan di MariaDB 13.0.2; Pint, PHPStan, `check:slop` bersih. Di database uji MariaDB: `migrate:fresh --seed` dan `DemoSeeder` jalan, `migrate:rollback --step=1` mengembalikan tabel lalu `migrate` menghapusnya lagi. Uji curl: pendaftaran publik dan wali dengan JSON (201), detail tanpa `dokumen`, verifikasi, terima (murid tanpa foto), `GET /rapor`, `/rapor/{id}`, `/rapor/{id}/pdf` dengan token wali (403 `FORBIDDEN`) dan token Kepala Sekolah (200), dashboard wali tanpa `rapor_terbaru`.
 
 ### Revisi sekolah R1: NISN murid yang dihapus bisa dipakai lagi (branch `be/perbaikan-tambah-murid`)
 
