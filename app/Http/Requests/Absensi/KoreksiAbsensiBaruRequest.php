@@ -4,7 +4,9 @@ namespace App\Http\Requests\Absensi;
 
 use App\Enums\JenisAbsensi;
 use App\Enums\StatusAbsensi;
+use App\Services\MediaService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -29,6 +31,8 @@ class KoreksiAbsensiBaruRequest extends FormRequest
             /** Wajib untuk absen masuk; tidak boleh dikirim untuk absen pulang. */
             'status' => ['required_unless:jenis,pulang', 'prohibited_if:jenis,pulang', Rule::enum(StatusAbsensi::class)->except([StatusAbsensi::TidakHadir])],
             'catatan' => ['required', 'string', 'max:500'],
+            /** Opsional: foto atau dokumen pendukung (JPG, PNG, WebP, atau PDF, maks 5 MB). Body multipart kalau dikirim. */
+            'lampiran' => ['nullable', ...MediaService::aturanDokumen()],
         ];
     }
 
@@ -40,6 +44,8 @@ class KoreksiAbsensiBaruRequest extends FormRequest
         return [
             'status.required_unless' => 'Status wajib diisi untuk absen masuk.',
             'status.prohibited_if' => 'Absen pulang tidak punya status. Kosongkan status.',
+            'lampiran.mimes' => 'Lampiran harus berupa PDF atau gambar (JPG, PNG, WebP).',
+            'lampiran.max' => 'Ukuran lampiran maksimal 5 MB.',
         ];
     }
 
@@ -64,5 +70,12 @@ class KoreksiAbsensiBaruRequest extends FormRequest
     public function catatan(): string
     {
         return $this->string('catatan')->trim()->toString();
+    }
+
+    public function lampiran(): ?UploadedFile
+    {
+        $file = $this->file('lampiran');
+
+        return $file instanceof UploadedFile ? $file : null;
     }
 }

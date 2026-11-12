@@ -15,11 +15,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Satu baris per peserta, tanggal, dan jenis (masuk atau pulang). `status` hanya diisi untuk absen masuk.
  * Baris `tidak_hadir` dibuat scheduler tanpa waktu, koordinat, dan foto; izin dan sakit punya waktu, foto, dan
- * `keterangan`, tetapi tanpa koordinat.
+ * `keterangan`, tetapi tanpa koordinat. Absen susulan (`susulan`) punya waktu dan foto tanpa koordinat.
+ * `lampiran_path` (gambar atau PDF) hanya diisi lewat koreksi atau pencatatan Kepala Sekolah.
  */
 #[Fillable([
     'user_id', 'tanggal', 'jenis', 'status', 'waktu', 'latitude', 'longitude', 'akurasi_meter', 'jarak_meter',
-    'foto_path', 'keterangan', 'pulang_awal', 'catatan_koreksi', 'dikoreksi_oleh', 'dikoreksi_at',
+    'foto_path', 'lampiran_path', 'keterangan', 'pulang_awal', 'susulan', 'catatan_koreksi', 'dikoreksi_oleh', 'dikoreksi_at',
 ])]
 class Absensi extends Model
 {
@@ -29,7 +30,7 @@ class Absensi extends Model
     protected $table = 'absensi';
 
     /** Sama dengan bawaan kolom, supaya baris yang baru dibuat langsung punya nilai ini tanpa dibaca ulang. */
-    protected $attributes = ['pulang_awal' => false];
+    protected $attributes = ['pulang_awal' => false, 'susulan' => false];
 
     /**
      * @return array<string, string>
@@ -46,6 +47,7 @@ class Absensi extends Model
             'akurasi_meter' => 'integer',
             'jarak_meter' => 'integer',
             'pulang_awal' => 'boolean',
+            'susulan' => 'boolean',
             'dikoreksi_at' => 'datetime',
         ];
     }
@@ -86,16 +88,17 @@ class Absensi extends Model
     }
 
     /**
-     * Sebutan absensi ini di pesan untuk peserta: "Absen masuk", "Absen pulang", "Absen pulang lebih awal", "Izin",
-     * atau "Sakit".
+     * Sebutan absensi ini di pesan untuk peserta: "Absen masuk", "Absen pulang", "Absen pulang lebih awal", "Absen
+     * masuk susulan", "Izin", atau "Sakit".
      */
     public function namaAbsen(): string
     {
-        if ($this->status?->berhalangan()) {
-            return $this->status->label();
-        }
-
-        return $this->pulang_awal ? 'Absen pulang lebih awal' : "Absen {$this->jenis->value}";
+        return match (true) {
+            $this->status?->berhalangan() === true => $this->status->label(),
+            $this->pulang_awal => 'Absen pulang lebih awal',
+            $this->susulan => "Absen {$this->jenis->value} susulan",
+            default => "Absen {$this->jenis->value}",
+        };
     }
 
     /**

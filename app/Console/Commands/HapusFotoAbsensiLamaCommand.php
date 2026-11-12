@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('absensi:hapus-foto-lama {--dry-run : Hanya menghitung tanpa menghapus}')]
-#[Description('Menghapus file foto absensi yang melewati masa simpan; data absensinya tetap ada')]
+#[Description('Menghapus file foto dan lampiran absensi yang melewati masa simpan; data absensinya tetap ada')]
 class HapusFotoAbsensiLamaCommand extends Command
 {
     public function handle(AbsensiService $absensi): int
@@ -17,8 +17,8 @@ class HapusFotoAbsensiLamaCommand extends Command
         $jumlah = $absensi->hapusFotoLama(today(), $simulasi);
 
         $this->info($simulasi
-            ? "[dry run] {$jumlah} foto absensi akan dihapus."
-            : "{$jumlah} foto absensi dihapus.");
+            ? "[dry run] {$jumlah} foto dan lampiran absensi akan dihapus."
+            : "{$jumlah} foto dan lampiran absensi dihapus.");
 
         return self::SUCCESS;
     }

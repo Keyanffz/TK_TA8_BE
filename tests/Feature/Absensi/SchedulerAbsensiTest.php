@@ -223,11 +223,11 @@ it('menghapus file foto yang melewati masa simpan dan mempertahankan data absens
     $baru = Absensi::factory()->for($this->dwi)->create(['tanggal' => '2026-04-01', 'foto_path' => $fotoBaru]);
 
     $this->artisan('absensi:hapus-foto-lama', ['--dry-run' => true])
-        ->expectsOutputToContain('[dry run] 1 foto absensi akan dihapus.');
+        ->expectsOutputToContain('[dry run] 1 foto dan lampiran absensi akan dihapus.');
     Storage::disk('local')->assertExists($fotoLama);
 
     $this->artisan('absensi:hapus-foto-lama')
-        ->expectsOutputToContain('1 foto absensi dihapus.')
+        ->expectsOutputToContain('1 foto dan lampiran absensi dihapus.')
         ->assertSuccessful();
 
     Storage::disk('local')->assertMissing($fotoLama);
