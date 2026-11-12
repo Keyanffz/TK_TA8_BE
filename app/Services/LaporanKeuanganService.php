@@ -17,7 +17,8 @@ use Illuminate\Support\Collection as SupportCollection;
 
 /**
  * Laporan keuangan untuk petugas keuangan. Tagihan dikelompokkan menurut bulan jatuh temponya (tagihan
- * dibatalkan tidak dihitung); pemasukan dihitung dari pembayaran `diterima` menurut tanggal bayar.
+ * dibatalkan tidak dihitung); `terbayar` menjumlahkan pembayaran `diterima` tiap tagihan, jadi cicilan ikut
+ * terhitung. Pemasukan dihitung dari pembayaran `diterima` menurut tanggal bayar.
  * Jumlah data per sekolah kecil (puluhan murid), jadi pengelompokan dilakukan di PHP supaya sama di
  * MySQL, MariaDB, dan SQLite.
  */
@@ -64,7 +65,8 @@ class LaporanKeuanganService
     }
 
     /**
-     * Murid yang punya tagihan berstatus `terlambat`, urut total tunggakan terbesar, beserta kontak utama walinya.
+     * Murid yang punya tagihan berstatus `terlambat`, urut tunggakan terbesar, beserta kontak utama walinya.
+     * Tunggakan dihitung dari sisa tagihan: `total` murid dan `total_tunggakan` menjumlahkan `sisa`.
      *
      * @return array{
      *     total_tunggakan: int,
@@ -72,7 +74,7 @@ class LaporanKeuanganService
      *     murid: list<array{
      *         id: int, nis: string, nama_lengkap: string, kelas: array{id: int, nama: string}|null,
      *         kontak_wali: array{nama: string, no_hp: string|null}|null, jumlah_tagihan: int, total: int,
-     *         tagihan: list<array{id: int, kode: string, nama: string, jatuh_tempo: string, total: int}>
+     *         tagihan: list<array{id: int, kode: string, nama: string, jatuh_tempo: string, total: int, sisa: int}>
      *     }>
      * }
      */
@@ -80,6 +82,7 @@ class LaporanKeuanganService
     {
         $tagihan = Tagihan::query()
             ->where('status', StatusTagihan::Terlambat)
+            ->denganTerbayar()
             ->when($kelasId !== null, fn (Builder $query) => $query->whereHas('murid.kelas', fn (Builder $kelas) => $kelas->whereKey($kelasId)))
             ->with(['jenisTagihan', 'murid.kelasAktif', 'murid.waliMurid.user'])
             ->orderBy('jatuh_tempo')
@@ -98,13 +101,14 @@ class LaporanKeuanganService
                 'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama],
                 'kontak_wali' => $kontak === null ? null : ['nama' => $kontak->user->name, 'no_hp' => $kontak->user->no_hp],
                 'jumlah_tagihan' => $milikMurid->count(),
-                'total' => (int) $milikMurid->sum('total'),
+                'total' => (int) $milikMurid->sum(fn (Tagihan $satu): int => $satu->sisa()),
                 'tagihan' => $milikMurid->map(fn (Tagihan $satu): array => [
                     'id' => $satu->id,
                     'kode' => $satu->kode,
                     'nama' => $satu->label(),
                     'jatuh_tempo' => $satu->jatuh_tempo->toDateString(),
                     'total' => $satu->total,
+                    'sisa' => $satu->sisa(),
                 ])->values()->all(),
             ];
         })->sortByDesc('total')->values();
@@ -122,6 +126,7 @@ class LaporanKeuanganService
     public function tagihan(Carbon $dari, Carbon $sampai, ?int $kelasId = null): Builder
     {
         return Tagihan::query()
+            ->denganTerbayar()
             ->where('status', '!=', StatusTagihan::Dibatalkan)
             ->whereDate('jatuh_tempo', '>=', $dari->toDateString())
             ->whereDate('jatuh_tempo', '<=', $sampai->toDateString())
@@ -147,7 +152,7 @@ class LaporanKeuanganService
     private function hitung(SupportCollection $tagihan): array
     {
         $total = (int) $tagihan->sum('total');
-        $terbayar = (int) $tagihan->where('status', StatusTagihan::Lunas)->sum('total');
+        $terbayar = (int) $tagihan->sum(fn (Tagihan $satu): int => min($satu->terbayar(), $satu->total));
 
         return [
             'jumlah_tagihan' => $tagihan->count(),

@@ -29,7 +29,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * TK A1 (Bu Aini, kapasitas cukup) berisi Aisyah dan Bima; TK B1 (Bu Sri) berisi Citra. Hari ini 15 Oktober 2026.
- * SPP Oktober Rp 150.000 jatuh tempo 10 Oktober: Aisyah lunas, Bima terlambat, Citra menunggu verifikasi.
+ * SPP Oktober Rp 150.000 jatuh tempo 10 Oktober: Aisyah lunas, Bima terlambat, Citra baru mencicil Rp 50.000.
  */
 beforeEach(function () {
     Carbon::setTestNow('2026-10-15 09:00:00');
@@ -57,10 +57,11 @@ beforeEach(function () {
     ]);
     $this->sppAisyah = $tagihan($this->aisyah, StatusTagihan::Lunas);
     $this->sppBima = $tagihan($this->bima, StatusTagihan::Terlambat);
-    $this->sppCitra = $tagihan($this->citra, StatusTagihan::MenungguVerifikasi);
+    $this->sppCitra = $tagihan($this->citra, StatusTagihan::Terlambat);
     $this->sppBimaNovember = $tagihan($this->bima, StatusTagihan::BelumBayar, '2026-11-10');
     Pembayaran::factory()->for($this->sppAisyah)->create(['metode' => MetodeBayar::Tunai, 'jumlah' => 150000, 'tanggal_bayar' => '2026-10-03', 'status' => StatusPembayaran::Diterima]);
-    Pembayaran::factory()->for($this->sppCitra)->create(['jumlah' => 150000, 'tanggal_bayar' => '2026-10-12', 'status' => StatusPembayaran::Menunggu]);
+    Pembayaran::factory()->for($this->sppCitra)->create(['jumlah' => 50000, 'tanggal_bayar' => '2026-10-12']);
+    Pembayaran::factory()->for($this->sppCitra)->create(['jumlah' => 100000, 'tanggal_bayar' => '2026-10-13', 'status' => StatusPembayaran::Dibatalkan]);
 });
 
 it('mengisi beranda Kepala Sekolah dengan statistik, keuangan, grafik, dan tindakan tertunda', function () {
@@ -76,15 +77,15 @@ it('mengisi beranda Kepala Sekolah dengan statistik, keuangan, grafik, dan tinda
     $response = $this->actingAs($this->kepsek)->getJson('/api/v1/dashboard')
         ->assertOk()
         ->assertJsonPath('data.statistik', ['murid_aktif' => 3, 'guru_aktif' => 2, 'kelas' => 2, 'wali_murid' => 1])
-        ->assertJsonPath('data.keuangan_bulan_ini', ['total_tagihan' => 450000, 'terbayar' => 150000, 'belum_terbayar' => 300000, 'persen_lunas' => 33.3])
-        ->assertJsonPath('data.tertunda', ['pembayaran_menunggu' => 1, 'rapor_diajukan' => 1, 'pendaftaran_baru' => 1])
+        ->assertJsonPath('data.keuangan_bulan_ini', ['total_tagihan' => 450000, 'terbayar' => 200000, 'belum_terbayar' => 250000, 'persen_lunas' => 44.4])
+        ->assertJsonPath('data.tertunda', ['rapor_diajukan' => 1, 'pendaftaran_baru' => 1])
         ->assertJsonCount(1, 'data.pengumuman_terbaru')
         ->assertJsonCount(1, 'data.agenda_mendatang');
 
     $grafik = $response->json('data.grafik_pemasukan');
     expect($grafik)->toHaveCount(12)
         ->and($grafik[0]['bulan'])->toBe('2025-11')
-        ->and($grafik[11])->toBe(['bulan' => '2026-10', 'total' => 150000]);
+        ->and($grafik[11])->toBe(['bulan' => '2026-10', 'total' => 200000]);
 });
 
 it('mengisi beranda guru dengan kelas yang diampu, progres rapor, dan keuangan kelas', function () {
@@ -102,14 +103,24 @@ it('mengisi beranda guru dengan kelas yang diampu, progres rapor, dan keuangan k
         ->assertJsonCount(1, 'data.kegiatan_terbaru')
         ->assertJsonCount(0, 'data.pengumuman_terbaru')
         ->assertJsonPath('data.keuangan_kelas', ['lunas' => 1, 'belum' => 1])
-        ->assertJsonPath('data.pembayaran_menunggu', null);
+        ->assertJsonMissingPath('data.pembayaran_menunggu');
 });
 
-it('menampilkan jumlah pembayaran menunggu hanya untuk guru berizin keuangan', function () {
+it('menghitung tagihan yang baru dicicil sebagai belum lunas di beranda guru', function () {
     $this->actingAs($this->buSri->user)->getJson('/api/v1/dashboard')
         ->assertOk()
-        ->assertJsonPath('data.pembayaran_menunggu', 1)
+        ->assertJsonMissingPath('data.pembayaran_menunggu')
         ->assertJsonPath('data.keuangan_kelas', ['lunas' => 0, 'belum' => 1]);
+});
+
+it('menjumlahkan sisa tagihan, bukan totalnya, di beranda wali', function () {
+    $this->citra->waliMurid()->attach($this->ibu, ['hubungan' => Hubungan::Ibu, 'is_kontak_utama' => true]);
+
+    $this->actingAs($this->ibu->user)->getJson("/api/v1/dashboard?murid_id={$this->citra->id}")
+        ->assertOk()
+        ->assertJsonPath('data.tagihan_aktif.0.terbayar', 50000)
+        ->assertJsonPath('data.tagihan_aktif.0.sisa', 100000)
+        ->assertJsonPath('data.total_belum_bayar', 100000);
 });
 
 it('mengisi beranda wali untuk anak pertama atau anak yang dipilih', function () {
