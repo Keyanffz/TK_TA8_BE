@@ -173,6 +173,15 @@ it('menolak baris tanpa NISN yang nama dan tanggal lahirnya sudah terdaftar', fu
         ->assertJsonPath('data.baris.0.alasan', ['Murid bernama Raka Aditya Pratama dengan tanggal lahir yang sama sudah terdaftar. Isi NISN kalau ini murid yang berbeda.']);
 });
 
+it('menerima baris yang NISN-nya pernah dipakai murid yang sudah dihapus', function () {
+    $salahInput = Murid::factory()->create(['nama_lengkap' => 'Raka Aditya', 'nisn' => '0211234501']);
+    $this->actingAs($this->kepsek)->deleteJson("/api/v1/murid/{$salahInput->id}")->assertOk();
+
+    $this->post('/api/v1/murid/import/pratinjau', ['file' => fileXlsx([barisMurid()])])
+        ->assertOk()
+        ->assertJsonPath('data.baris.0.alasan', []);
+});
+
 it('menolak baris yang melebihi sisa kapasitas kelas', function () {
     $this->kelasA1->update(['kapasitas' => 1]);
 
