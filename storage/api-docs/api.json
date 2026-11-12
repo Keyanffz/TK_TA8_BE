@@ -15,6 +15,680 @@
         }
     ],
     "paths": {
+        "/absensi/susulan": {
+            "post": {
+                "operationId": "absenSusulan.store",
+                "summary": "Memberi satu peserta akses absen sendiri (swafoto, tanpa pemeriksaan lokasi dan jam) untuk satu tanggal dan\nsatu jenis absen, berlaku sampai akhir hari ini. Peserta mendapat notifikasi `absensi_susulan_diberikan`.\nDitolak 422 `BUSINESS_RULE` kalau: untuk Kepala Sekolah sendiri, akun bukan peserta absensi, tanggal bukan hari\nini atau hari kerja terakhir sebelumnya, tanggal sebelum tanggal mulai, bukan hari kerja, tanggal libur, absen\njenis itu sudah ada (kecuali tidak hadir buatan scheduler untuk absen masuk), untuk absen pulang peserta tercatat\nizin atau sakit, atau masih ada akses yang sama yang belum dipakai",
+                "tags": [
+                    "AbsenSusulan"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BeriAksesSusulanRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Akses absen susulan diberikan."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/AksesAbsenSusulanResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/absensi/susulan/{id}": {
+            "delete": {
+                "operationId": "absenSusulan.destroy",
+                "summary": "Mencabut akses yang belum dipakai. Akses yang sudah dipakai \u2192 422 `BUSINESS_RULE`",
+                "tags": [
+                    "AbsenSusulan"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Akses absen susulan dicabut."
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/absensi/susulan/{id}/absen": {
+            "post": {
+                "operationId": "absenSusulan.absen",
+                "summary": "Absen susulan oleh pemilik akses (`multipart/form-data`, hanya `foto`). Absen masuk berstatus `hadir`; `waktu` jam\nserver saat dikirim; koordinat kosong; `susulan` true. Tidak hadir buatan scheduler di tanggal itu diganti. Akses\nmilik peserta lain \u2192 404. Ditolak 422 `BUSINESS_RULE` kalau akses sudah dipakai atau kedaluwarsa, tanggalnya\ndijadikan libur, absen jenis itu sudah tercatat, atau untuk absen pulang absen masuk tanggal itu belum hadir atau\nterlambat. Peserta mendapat notifikasi `absensi_tercatat`. Dibatasi 10 kali per menit per pengguna",
+                "tags": [
+                    "AbsenSusulan"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AbsenSusulanRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/AbsensiResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/absensi/rekap": {
             "get": {
                 "operationId": "absensi.rekap",
@@ -282,7 +956,7 @@
         "/absensi/rekap/export": {
             "get": {
                 "operationId": "absensi.export",
-                "summary": "File CSV berisi rekap yang sama dengan `GET /absensi/rekap`. Nama file menyebut bulannya, misalnya\n`rekap-absensi-2026-10.csv` atau `rekap-absensi-2026-08-sampai-2026-10.csv`",
+                "summary": "Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah\n(`format=pdf`). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau\n`rekap-absensi-2026-08-sampai-2026-10.pdf`",
                 "tags": [
                     "Absensi"
                 ],
@@ -304,23 +978,34 @@
                             "minimum": 1,
                             "maximum": 3
                         }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "`xlsx` (bawaan) atau `pdf`.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "xlsx",
+                                "pdf"
+                            ]
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Rekap absensi (.csv)",
+                        "description": "Rekap absensi (.pdf)",
                         "content": {
-                            "text/csv": {
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                                 "schema": {
                                     "type": "string",
                                     "format": "binary"
                                 }
-                            }
-                        },
-                        "headers": {
-                            "Content-Disposition": {
+                            },
+                            "application/pdf": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "format": "binary"
                                 }
                             }
                         }
@@ -480,7 +1165,7 @@
         "/absensi/harian": {
             "get": {
                 "operationId": "absensi.harian",
-                "summary": "Absen masuk dan pulang semua peserta pada satu tanggal (bawaan hari ini), urut nama. Pesertanya sama dengan\nrekap: guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di tanggal itu.\n`hari_kerja`, `tanggal_libur`, dan `tanggal_mulai` sama artinya dengan di `GET /absensi/hari-ini`",
+                "summary": "Absen masuk dan pulang semua peserta pada satu tanggal (bawaan hari ini), urut nama. Pesertanya sama dengan\nrekap: guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di tanggal itu.\n`hari_kerja`, `tanggal_libur`, dan `tanggal_mulai` sama artinya dengan di `GET /absensi/hari-ini`.\n`akses_susulan` berisi akses absen susulan peserta untuk tanggal itu, termasuk yang sudah dipakai atau kedaluwarsa.\n`bisa_beri_susulan` true kalau tanggal itu hari ini atau hari kerja terakhir sebelumnya dan bukan hari libur, yaitu\ntanggal yang bisa diberi akses absen susulan",
                 "tags": [
                     "Absensi"
                 ],
@@ -526,6 +1211,9 @@
                                                         "string",
                                                         "null"
                                                     ]
+                                                },
+                                                "bisa_beri_susulan": {
+                                                    "type": "boolean"
                                                 },
                                                 "peserta": {
                                                     "type": "array",
@@ -573,12 +1261,19 @@
                                                                         "type": "null"
                                                                     }
                                                                 ]
+                                                            },
+                                                            "akses_susulan": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "$ref": "#/components/schemas/AksesAbsenSusulanResource"
+                                                                }
                                                             }
                                                         },
                                                         "required": [
                                                             "user",
                                                             "masuk",
-                                                            "pulang"
+                                                            "pulang",
+                                                            "akses_susulan"
                                                         ]
                                                     }
                                                 }
@@ -588,6 +1283,7 @@
                                                 "hari_kerja",
                                                 "tanggal_libur",
                                                 "tanggal_mulai",
+                                                "bisa_beri_susulan",
                                                 "peserta"
                                             ]
                                         },
@@ -760,14 +1456,14 @@
         "/absensi/koreksi": {
             "post": {
                 "operationId": "absensi.koreksiBaru",
-                "summary": "Mencatat absen masuk atau pulang (`jenis`, bawaan `masuk`) untuk peserta yang belum punya absen jenis itu pada\ntanggal tersebut, misalnya guru lupa absen padahal masuk atau lupa absen pulang. Catatan wajib; `status` wajib\nuntuk absen masuk dan tidak boleh dikirim untuk absen pulang; waktu, lokasi, dan foto kosong. Ditolak 422\n`BUSINESS_RULE` kalau akun bukan peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi,\nbukan hari kerja, tanggal libur, absen jenis itu sudah ada (absen masuk dikoreksi lewat\n`PATCH /absensi/{id}/koreksi`), untuk absen pulang belum ada absen masuk hadir atau terlambat, atau guru\nmencatat absensinya sendiri",
+                "summary": "Mencatat absen masuk atau pulang (`jenis`, bawaan `masuk`) untuk peserta yang belum punya absen jenis itu pada\ntanggal tersebut, misalnya guru lupa absen padahal masuk atau lupa absen pulang. Catatan wajib, lampiran (foto\natau PDF, multipart) opsional; `status` wajib\nuntuk absen masuk dan tidak boleh dikirim untuk absen pulang; waktu, lokasi, dan foto kosong. Ditolak 422\n`BUSINESS_RULE` kalau akun bukan peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi,\nbukan hari kerja, tanggal libur, absen jenis itu sudah ada (absen masuk dikoreksi lewat\n`PATCH /absensi/{id}/koreksi`), untuk absen pulang belum ada absen masuk hadir atau terlambat, atau guru\nmencatat absensinya sendiri",
                 "tags": [
                     "Absensi"
                 ],
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/KoreksiAbsensiBaruRequest"
                             }
@@ -961,7 +1657,7 @@
         "/absensi/{id}/koreksi": {
             "patch": {
                 "operationId": "absensi.koreksi",
-                "summary": "Mengoreksi status absen masuk dengan catatan wajib. Pengoreksi dan waktunya tersimpan di absensi itu. Pemegang\nizin kelola laporan absensi tidak bisa mengoreksi absensinya sendiri (422 `BUSINESS_RULE`)",
+                "summary": "Mengoreksi status absen masuk dengan catatan wajib dan lampiran opsional (foto atau PDF, multipart). Lampiran\nbaru menggantikan lampiran lama. Pengoreksi dan waktunya tersimpan di absensi itu. Pemegang izin kelola laporan\nabsensi tidak bisa mengoreksi absensinya sendiri (422 `BUSINESS_RULE`)",
                 "tags": [
                     "Absensi"
                 ],
@@ -978,7 +1674,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/KoreksiAbsensiRequest"
                             }
@@ -1205,7 +1901,7 @@
         "/absensi/hari-ini": {
             "get": {
                 "operationId": "absensi.hariIni",
-                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.\nSebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang\nakan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam\npulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang",
+                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.\nSebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang\nakan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam\npulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang. `susulan` berisi akses\nabsen susulan milik pengguna yang belum dipakai dan belum kedaluwarsa, urut tanggal",
                 "tags": [
                     "Absensi"
                 ],
@@ -1335,6 +2031,12 @@
                                                         "absensi",
                                                         "boleh_lebih_awal"
                                                     ]
+                                                },
+                                                "susulan": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/AksesAbsenSusulanResource"
+                                                    }
                                                 }
                                             },
                                             "required": [
@@ -1347,7 +2049,8 @@
                                                 "radius_meter",
                                                 "batas_akurasi_meter",
                                                 "masuk",
-                                                "pulang"
+                                                "pulang",
+                                                "susulan"
                                             ]
                                         },
                                         "meta": {
@@ -33579,6 +34282,22 @@
                 ],
                 "title": "AbsenRequest"
             },
+            "AbsenSusulanRequest": {
+                "type": "object",
+                "description": "`POST /absensi/susulan/{id}/absen`: hanya swafoto; lokasi dan jam tidak diperiksa.",
+                "properties": {
+                    "foto": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Swafoto, jpeg, png, atau webp, maksimal 2 MB."
+                    }
+                },
+                "required": [
+                    "foto"
+                ],
+                "title": "AbsenSusulanRequest"
+            },
             "AbsensiResource": {
                 "type": "object",
                 "properties": {
@@ -33647,6 +34366,33 @@
                     "pulang_awal": {
                         "type": "boolean"
                     },
+                    "susulan": {
+                        "type": "boolean",
+                        "description": "True kalau dikirim peserta lewat akses absen susulan dari Kepala Sekolah."
+                    },
+                    "lampiran": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Foto atau dokumen dari Kepala Sekolah saat koreksi atau pencatatan. `url` adalah signed URL yang berlaku 30 menit.",
+                        "properties": {
+                            "jenis": {
+                                "type": "string",
+                                "enum": [
+                                    "pdf",
+                                    "gambar"
+                                ]
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "jenis",
+                            "url"
+                        ]
+                    },
                     "catatan_koreksi": {
                         "type": [
                             "string",
@@ -33693,6 +34439,8 @@
                     "ada_foto",
                     "keterangan",
                     "pulang_awal",
+                    "susulan",
+                    "lampiran",
                     "catatan_koreksi",
                     "dikoreksi_oleh",
                     "dikoreksi_at"
@@ -33745,6 +34493,65 @@
                     "created_at"
                 ],
                 "title": "AgendaResource"
+            },
+            "AksesAbsenSusulanResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "user_id": {
+                        "type": "integer"
+                    },
+                    "tanggal": {
+                        "type": "string"
+                    },
+                    "jenis": {
+                        "$ref": "#/components/schemas/JenisAbsensi"
+                    },
+                    "catatan": {
+                        "type": "string"
+                    },
+                    "berlaku_sampai": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Akhir hari akses diberikan (23:59:59 WIB)."
+                    },
+                    "dipakai_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Null kalau belum dipakai."
+                    },
+                    "diberikan_oleh": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "user_id",
+                    "tanggal",
+                    "jenis",
+                    "catatan",
+                    "berlaku_sampai",
+                    "dipakai_at",
+                    "diberikan_oleh"
+                ],
+                "title": "AksesAbsenSusulanResource"
             },
             "AkunResource": {
                 "type": "object",
@@ -33910,6 +34717,35 @@
                     "tanggal_bayar"
                 ],
                 "title": "BayarTagihanRequest"
+            },
+            "BeriAksesSusulanRequest": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "description": "Peserta absensi: guru aktif."
+                    },
+                    "tanggal": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "`YYYY-MM-DD`: hari ini atau hari kerja terakhir sebelum hari ini."
+                    },
+                    "jenis": {
+                        "$ref": "#/components/schemas/JenisAbsensi"
+                    },
+                    "catatan": {
+                        "type": "string",
+                        "description": "Alasan akses diberikan, misalnya \"Wifi sekolah mati sejak pagi.\"",
+                        "maxLength": 500
+                    }
+                },
+                "required": [
+                    "user_id",
+                    "tanggal",
+                    "jenis",
+                    "catatan"
+                ],
+                "title": "BeriAksesSusulanRequest"
             },
             "BuatPendaftaranRequest": {
                 "type": "object",
@@ -34570,7 +35406,7 @@
             },
             "JenisNotifikasi": {
                 "type": "string",
-                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |",
+                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |\n| `absensi_susulan_diberikan` <br/>  |",
                 "enum": [
                     "tagihan_baru",
                     "tagihan_tertunda",
@@ -34587,7 +35423,8 @@
                     "pendaftaran_diproses",
                     "anak_tertaut",
                     "absensi_tercatat",
-                    "absensi_dikoreksi"
+                    "absensi_dikoreksi",
+                    "absensi_susulan_diberikan"
                 ],
                 "title": "JenisNotifikasi"
             },
@@ -35182,6 +36019,15 @@
                     "catatan": {
                         "type": "string",
                         "maxLength": 500
+                    },
+                    "lampiran": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Opsional: foto atau dokumen pendukung (JPG, PNG, WebP, atau PDF, maks 5 MB). Body multipart kalau dikirim."
                     }
                 },
                 "required": [
@@ -35200,6 +36046,15 @@
                     "catatan": {
                         "type": "string",
                         "maxLength": 500
+                    },
+                    "lampiran": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Opsional: foto atau dokumen pendukung (JPG, PNG, WebP, atau PDF, maks 5 MB). Body multipart kalau dikirim."
                     }
                 },
                 "required": [
@@ -36007,7 +36862,10 @@
                         "format": "date-time"
                     },
                     "alasan_pembatalan": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "dibatalkan_oleh": {
                         "type": [
@@ -36028,7 +36886,11 @@
                         ]
                     },
                     "dibatalkan_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "created_at": {
                         "type": [
@@ -37331,7 +38193,10 @@
                         "format": "date-time"
                     },
                     "alasan_pembatalan": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "dibatalkan_oleh": {
                         "type": [
@@ -37352,7 +38217,11 @@
                         ]
                     },
                     "dibatalkan_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "created_at": {
                         "type": [

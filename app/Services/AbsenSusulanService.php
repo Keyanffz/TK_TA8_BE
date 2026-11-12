@@ -165,7 +165,6 @@ class AbsenSusulanService
     public function tanggalBisaDiberikan(CarbonInterface $tanggal): bool
     {
         $aturan = $this->absensi->aturan();
-
         $terakhir = $this->hariKerjaTerakhir($aturan);
 
         return ! $tanggal->isFuture() && $aturan->sudahMulai($tanggal) && $aturan->hariKerja($tanggal) && ! $aturan->tanggalLibur($tanggal)
