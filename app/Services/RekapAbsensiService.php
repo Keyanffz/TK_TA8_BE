@@ -6,6 +6,7 @@ use App\Enums\JenisAbsensi;
 use App\Enums\Role;
 use App\Enums\StatusAbsensi;
 use App\Models\Absensi;
+use App\Models\AksesAbsenSusulan;
 use App\Models\User;
 use App\Support\AturanAbsensi;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -55,16 +56,18 @@ class RekapAbsensiService
     }
 
     /**
-     * Absen masuk dan pulang setiap peserta pada satu tanggal, dengan aturan peserta yang sama seperti rekap.
+     * Absen masuk dan pulang setiap peserta pada satu tanggal, beserta akses absen susulannya untuk tanggal itu,
+     * dengan aturan peserta yang sama seperti rekap.
      *
-     * @return list<array{user: array{id: int, nama: string, jabatan: string|null}, masuk: Absensi|null, pulang: Absensi|null}>
+     * @return list<array{user: array{id: int, nama: string, jabatan: string|null}, masuk: Absensi|null, pulang: Absensi|null, akses_susulan: EloquentCollection<int, AksesAbsenSusulan>}>
      */
     public function harian(Carbon $tanggal): array
     {
         $padaTanggal = fn (Builder $absensi) => $absensi->whereDate('tanggal', $tanggal->toDateString());
         $absensi = Absensi::query()->with('pengoreksi')->tap($padaTanggal)->get()->groupBy('user_id');
+        $akses = AksesAbsenSusulan::query()->with('pemberi')->whereDate('tanggal', $tanggal->toDateString())->orderBy('id')->get()->groupBy('user_id');
 
-        return $this->peserta($padaTanggal)->map(function (User $user) use ($absensi): array {
+        return $this->peserta($padaTanggal)->map(function (User $user) use ($absensi, $akses): array {
             /** @var Collection<int, Absensi> $milik */
             $milik = $absensi->get($user->id, collect());
 
@@ -72,6 +75,7 @@ class RekapAbsensiService
                 'user' => $this->ringkasan($user),
                 'masuk' => $milik->firstWhere('jenis', JenisAbsensi::Masuk),
                 'pulang' => $milik->firstWhere('jenis', JenisAbsensi::Pulang),
+                'akses_susulan' => $akses->get($user->id, new EloquentCollection),
             ];
         })->values()->all();
     }

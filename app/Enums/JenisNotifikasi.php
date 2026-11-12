@@ -24,6 +24,7 @@ enum JenisNotifikasi: string
     case AnakTertaut = 'anak_tertaut';
     case AbsensiTercatat = 'absensi_tercatat';
     case AbsensiDikoreksi = 'absensi_dikoreksi';
+    case AbsensiSusulanDiberikan = 'absensi_susulan_diberikan';
 
     public function label(): string
     {
@@ -44,6 +45,7 @@ enum JenisNotifikasi: string
             self::AnakTertaut => 'Wali murid tertaut',
             self::AbsensiTercatat => 'Absensi tercatat',
             self::AbsensiDikoreksi => 'Absensi dikoreksi',
+            self::AbsensiSusulanDiberikan => 'Akses absen susulan',
         };
     }
 }

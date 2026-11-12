@@ -198,6 +198,7 @@ it('menampilkan status hari ini: jam, jendela yang terbuka, dan absensi yang sud
             'batas_akurasi_meter' => 100,
             'masuk' => ['buka' => '06:30', 'batas_terlambat' => '07:15', 'tutup' => '09:00', 'terbuka' => true, 'absensi' => null],
             'pulang' => ['buka' => '11:00', 'tutup' => '15:00', 'terbuka' => false, 'absensi' => null, 'boleh_lebih_awal' => false],
+            'susulan' => [],
         ]]);
 
     $this->actingAs($this->guru)->post('/api/v1/absensi', isianAbsen())->assertCreated();
