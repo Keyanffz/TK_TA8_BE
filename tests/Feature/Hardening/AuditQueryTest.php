@@ -48,7 +48,7 @@ it('tidak menambah query saat daftar berisi lebih banyak baris', function () {
             '/kegiatan', '/rapor', '/pengumuman', '/pendaftaran', '/galeri-album', '/log-aktivitas'],
         'guru' => ['/murid', '/tagihan', '/kegiatan', '/rapor', '/pengumuman', '/kelas'],
         'bendahara' => ['/pembayaran', '/tagihan'],
-        'wali' => ['/murid', '/tagihan', '/pembayaran', '/kegiatan', '/rapor', '/pengumuman', '/pendaftaran'],
+        'wali' => ['/murid', '/tagihan', '/pembayaran', '/kegiatan', '/pengumuman', '/pendaftaran'],
         'publik' => ['/public/pengumuman', '/public/galeri'],
     ];
 

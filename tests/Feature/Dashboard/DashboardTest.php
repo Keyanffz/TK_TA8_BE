@@ -125,7 +125,7 @@ it('mengisi beranda wali untuk anak pertama atau anak yang dipilih', function ()
         ->assertJsonCount(0, 'data.tagihan_aktif')
         ->assertJsonPath('data.total_belum_bayar', 0)
         ->assertJsonCount(1, 'data.kegiatan_terbaru')
-        ->assertJsonPath('data.rapor_terbaru', null);
+        ->assertJsonMissingPath('data.rapor_terbaru');
 
     $this->actingAs($this->ibu->user)->getJson("/api/v1/dashboard?murid_id={$this->bima->id}")
         ->assertOk()
@@ -133,7 +133,7 @@ it('mengisi beranda wali untuk anak pertama atau anak yang dipilih', function ()
         ->assertJsonCount(2, 'data.tagihan_aktif')
         ->assertJsonPath('data.tagihan_aktif.0.id', $this->sppBima->id)
         ->assertJsonPath('data.total_belum_bayar', 300000)
-        ->assertJsonPath('data.rapor_terbaru.status', 'terbit');
+        ->assertJsonMissingPath('data.rapor_terbaru');
 });
 
 it('mengirim banner info sekolah ke beranda wali selama aktif dan belum lewat masa berlakunya', function (array $info, ?array $harapan) {
@@ -169,8 +169,7 @@ it('mengisi beranda wali tanpa anak tertaut dengan anak null', function () {
     $this->actingAs(WaliMurid::factory()->create()->user)->getJson('/api/v1/dashboard')
         ->assertOk()
         ->assertJsonPath('data.anak', null)
-        ->assertJsonPath('data.tagihan_aktif', [])
-        ->assertJsonPath('data.rapor_terbaru', null);
+        ->assertJsonPath('data.tagihan_aktif', []);
 });
 
 it('tidak menghitung penempatan yang sudah tidak aktif di kelas guru', function () {

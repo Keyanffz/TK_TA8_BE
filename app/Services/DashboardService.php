@@ -17,7 +17,6 @@ use App\Http\Resources\AgendaResource;
 use App\Http\Resources\AnakWaliResource;
 use App\Http\Resources\KegiatanKelasResource;
 use App\Http\Resources\PengumumanResource;
-use App\Http\Resources\RaporResource;
 use App\Http\Resources\TagihanResource;
 use App\Models\Agenda;
 use App\Models\KegiatanKelas;
@@ -155,7 +154,6 @@ class DashboardService
      *     kegiatan_terbaru: AnonymousResourceCollection,
      *     pengumuman_terbaru: AnonymousResourceCollection,
      *     agenda_mendatang: AnonymousResourceCollection,
-     *     rapor_terbaru: RaporResource|null,
      *     info_sekolah: array{judul: string, isi: string, nada: NadaInfo, berlaku_sampai: string|null}|null
      * }
      */
@@ -167,8 +165,6 @@ class DashboardService
 
         $tagihan = Tagihan::query()->where('murid_id', $anakId)->whereIn('status', self::STATUS_TAGIHAN_AKTIF)
             ->with(['jenisTagihan', 'murid.kelasAktif'])->orderBy('jatuh_tempo')->get();
-        $rapor = Rapor::query()->where('murid_id', $anakId)->where('status', StatusRapor::Terbit)
-            ->with(['murid', 'kelas', 'tahunAjaran', 'pembuat.user'])->latest('terbit_at')->first();
 
         return [
             'anak' => $anak === null ? null : new AnakWaliResource($anak),
@@ -180,8 +176,6 @@ class DashboardService
             ),
             'pengumuman_terbaru' => $this->pengumumanTerbaru($user),
             'agenda_mendatang' => $this->agendaMendatang(),
-            /** @var RaporResource|null */
-            'rapor_terbaru' => $rapor === null ? null : new RaporResource($rapor),
             'info_sekolah' => $this->pengaturan->infoWali(),
         ];
     }

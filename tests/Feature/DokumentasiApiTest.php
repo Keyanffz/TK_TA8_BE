@@ -108,7 +108,7 @@ it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/tagihan/{id}']['get'], 404))->toBe(['NOT_FOUND'])
         ->and(kodeErrorTerdokumentasi($dokumen['paths']['/murid']['get'], 403))->not->toContain('FORBIDDEN');
 
-    foreach (['/murid/{id}', '/tagihan/{id}', '/kegiatan/{id}', '/rapor/{id}', '/rapor/{id}/pdf', '/pengumuman/{id}'] as $path) {
+    foreach (['/murid/{id}', '/tagihan/{id}', '/kegiatan/{id}', '/pengumuman/{id}'] as $path) {
         expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->not->toContain('FORBIDDEN');
     }
 });
@@ -228,7 +228,7 @@ it('mewajibkan field relasi yang selalu dikirim dan membiarkan opsional hanya fi
         ->and($skema['RaporResource']['required'])->toContain('murid', 'kelas', 'tahun_ajaran', 'pembuat')
         ->and($skema['RaporDetailResource']['required'])->toContain('detail')
         ->and($opsional('MuridDetailResource'))->toBe([])
-        ->and($opsional('RaporResource'))->toBe(['catatan_revisi'])
+        ->and($opsional('RaporResource'))->toBe([])
         ->and($opsional('PengumumanResource'))->toBe(['kelas', 'murid'])
         ->and($opsional('GuruResource'))->toBe([]);
 });
@@ -254,7 +254,8 @@ it('mendokumentasikan endpoint publik tanpa auth dan dashboard sebagai gabungan 
     expect($dashboard['anyOf'])->toHaveCount(3)
         ->and($dashboard['anyOf'][0]['required'])->toContain('statistik', 'grafik_pemasukan', 'tertunda')
         ->and($dashboard['anyOf'][1]['required'])->toContain('kelas_saya', 'progres_rapor', 'pembayaran_menunggu')
-        ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'rapor_terbaru', 'info_sekolah')
+        ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'info_sekolah')
+        ->and($dashboard['anyOf'][2]['required'])->not->toContain('rapor_terbaru')
         ->and($dashboard['anyOf'][2]['properties']['info_sekolah']['type'])->toBe(['object', 'null'])
         ->and($dashboard['anyOf'][2]['properties']['info_sekolah']['properties']['nada'])->toBe(['$ref' => '#/components/schemas/NadaInfo'])
         ->and($dokumen['paths']['/public/ppdb']['get']['responses'][200]['content']['application/json']['schema']['properties']['data']['properties']['dibuka'])->toBe(['type' => 'boolean']);

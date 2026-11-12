@@ -34,8 +34,8 @@ class RaporController extends Controller
     public function __construct(private readonly RaporService $raporService) {}
 
     /**
-     * Daftar rapor. Kepala Sekolah melihat semua, guru rapor kelas yang dia ampu di tahun ajaran aktif, wali murid
-     * rapor anaknya yang sudah terbit.
+     * Daftar rapor. Kepala Sekolah melihat semua, guru rapor kelas yang dia ampu di tahun ajaran aktif. Wali murid
+     * tidak membuka rapor di aplikasi; rapor terbit dicetak dan dibagikan sekolah.
      *
      * Filter `filter[kelas_id]`, `filter[semester]`, `filter[status]`, `filter[tahun_ajaran_id]`, `filter[murid_id]`.
      * `search` mencari nama dan NIS murid. Urutan `sort` = `updated_at` | `diajukan_at` | `created_at`
@@ -123,7 +123,7 @@ class RaporController extends Controller
     }
 
     /**
-     * Menerbitkan rapor yang sudah diajukan; wali murid diberi tahu dan bisa mengunduh PDF-nya.
+     * Menerbitkan rapor yang sudah diajukan. Rapor terbit adalah rapor final yang dicetak dan dibagikan sekolah.
      */
     public function terbitkan(int $id, #[CurrentUser] User $user): JsonResponse
     {
@@ -143,8 +143,7 @@ class RaporController extends Controller
     }
 
     /**
-     * Menarik rapor yang sudah terbit kembali ke revisi, dengan catatan untuk guru pembuat. Wali murid tidak
-     * bisa melihat rapor itu lagi sampai diterbitkan ulang.
+     * Menarik rapor yang sudah terbit kembali ke revisi, dengan catatan untuk guru pembuat.
      */
     public function tarik(CatatanRevisiRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
@@ -154,8 +153,7 @@ class RaporController extends Controller
     }
 
     /**
-     * Rapor PDF. Wali murid hanya bisa mengunduh rapor yang sudah terbit; rapor yang belum terbit diberi tanda
-     * pratinjau.
+     * Rapor PDF. Rapor yang belum terbit diberi tanda pratinjau.
      */
     #[Response(200, 'Rapor PDF', mediaType: 'application/pdf', type: 'string', format: 'binary')]
     public function pdf(int $id, RaporPdfService $raporPdf): HttpResponse

@@ -44,40 +44,34 @@ it('menampilkan rapor sesuai jangkauan tiap role', function () {
     $this->actingAs($this->kepsek)->getJson('/api/v1/rapor?filter[status]=diajukan')->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $this->diajukanBima->id);
     $this->actingAs($this->buAini->user)->getJson('/api/v1/rapor')->assertJsonPath('meta.total', 2);
     $this->actingAs($this->buAini->user)->getJson('/api/v1/rapor?filter[semester]=2')->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.status', 'draft');
-
-    $this->actingAs($this->ibu->user)->getJson('/api/v1/rapor')
-        ->assertOk()
-        ->assertJsonPath('meta.total', 1)
-        ->assertJsonPath('data.0.id', $this->terbit->id)
-        ->assertJsonMissingPath('data.0.catatan_revisi');
 });
 
-it('membalas 404 untuk rapor di luar jangkauan, termasuk rapor anak sendiri yang belum terbit', function () {
-    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$this->draft->id}")->assertNotFound();
-    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$this->diajukanBima->id}")->assertNotFound();
-    $this->actingAs($this->ibu->user)->get("/api/v1/rapor/{$this->draft->id}/pdf")->assertNotFound();
+it('menolak wali murid membuka daftar, detail, dan PDF rapor, termasuk rapor terbit anaknya', function () {
+    $this->actingAs($this->ibu->user)->getJson('/api/v1/rapor')->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$this->terbit->id}")->assertForbidden();
+    $this->actingAs($this->ibu->user)->get("/api/v1/rapor/{$this->terbit->id}/pdf")->assertForbidden();
+    expect(Rapor::query()->visibleTo($this->ibu->user)->count())->toBe(0);
+});
+
+it('membalas 404 untuk rapor di luar kelas yang diampu guru', function () {
     $this->actingAs($this->buAini->user)->getJson("/api/v1/rapor/{$this->diajukanBima->id}")->assertNotFound();
 });
 
-it('menampilkan detail rapor terbit ke wali tanpa catatan revisi, dan ke guru dengan catatan revisi', function () {
+it('menampilkan detail rapor terbit ke guru kelasnya beserta catatan revisi', function () {
     RaporDetail::factory()->for($this->terbit)->create(['deskripsi' => 'Aisyah hafal doa sebelum makan.', 'foto_path' => 'rapor/karya.jpg']);
-
-    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$this->terbit->id}")
-        ->assertOk()
-        ->assertJsonMissingPath('data.catatan_revisi')
-        ->assertJsonPath('data.detail.0.deskripsi', 'Aisyah hafal doa sebelum makan.');
 
     $this->actingAs($this->buAini->user)->getJson("/api/v1/rapor/{$this->terbit->id}")
         ->assertOk()
+        ->assertJsonPath('data.detail.0.deskripsi', 'Aisyah hafal doa sebelum makan.')
         ->assertJsonPath('data.catatan_revisi', 'Catatan lama untuk guru.');
 });
 
-it('mengunduh rapor PDF yang sudah terbit untuk wali, dengan nama file rapi', function () {
+it('mengunduh rapor PDF yang sudah terbit dengan nama file rapi', function () {
     Pengaturan::query()->create(['kunci' => 'profil.nama_sekolah', 'nilai' => 'TK Tarbiyatul Athfal 8', 'grup' => 'profil']);
     Storage::disk('local')->put('rapor/karya.jpg', UploadedFile::fake()->image('karya.jpg', 400, 300)->getContent());
     RaporDetail::factory()->for($this->terbit)->create(['deskripsi' => 'Aisyah hafal doa sebelum makan.', 'foto_path' => 'rapor/karya.jpg']);
 
-    $response = $this->actingAs($this->ibu->user)->get("/api/v1/rapor/{$this->terbit->id}/pdf")
+    $response = $this->actingAs($this->buAini->user)->get("/api/v1/rapor/{$this->terbit->id}/pdf")
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 

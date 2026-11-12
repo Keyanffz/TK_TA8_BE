@@ -72,12 +72,12 @@ it('memperlihatkan semua tagihan dan pembayaran ke petugas keuangan, dan hanya m
         ->and(Pembayaran::query()->visibleTo($this->ibuAisyah->user)->count())->toBe(1);
 });
 
-it('memperlihatkan ke wali murid hanya rapor anaknya yang sudah terbit', function () {
+it('tidak memperlihatkan rapor apa pun ke wali murid, termasuk rapor terbit anaknya', function () {
     Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->create(['status' => StatusRapor::Diajukan]);
-    $terbit = Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->terbit()->create(['semester' => 2]);
+    Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->terbit()->create(['semester' => 2]);
     Rapor::factory()->for($this->bima)->for($this->kelasB1)->terbit()->create();
 
-    expect(Rapor::query()->visibleTo($this->ibuAisyah->user)->pluck('id')->all())->toBe([$terbit->id])
+    expect(Rapor::query()->visibleTo($this->ibuAisyah->user)->count())->toBe(0)
         ->and(Rapor::query()->visibleTo($this->buAini->user)->count())->toBe(2)
         ->and(Rapor::query()->visibleTo($this->kepsek)->count())->toBe(3);
 });

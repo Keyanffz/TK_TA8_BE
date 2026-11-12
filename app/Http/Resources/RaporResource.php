@@ -2,14 +2,12 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\Role;
 use App\Models\Rapor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * `catatan_revisi` adalah catatan internal Kepala Sekolah untuk guru dan tidak dikirim ke wali murid.
- * Butuh relasi `murid`, `kelas`, `tahunAjaran`, dan `pembuat.user`; isi per elemen ada di `RaporDetailResource`.
+ * `catatan_revisi` adalah catatan Kepala Sekolah untuk guru pembuat. Butuh relasi `murid`, `kelas`, `tahunAjaran`, dan `pembuat.user`; isi per elemen ada di `RaporDetailResource`.
  *
  * @mixin Rapor
  */
@@ -20,8 +18,6 @@ class RaporResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $bukanWali = $request->user()?->role !== Role::WaliMurid;
-
         return [
             'id' => $this->id,
             'murid' => [
@@ -37,8 +33,7 @@ class RaporResource extends JsonResource
             'berat_badan' => $this->berat_badan === null ? null : (float) $this->berat_badan,
             'catatan_guru' => $this->catatan_guru,
             'status' => $this->status,
-            /** Tidak dikirim ke wali murid. */
-            'catatan_revisi' => $this->when($bukanWali, fn () => $this->catatan_revisi),
+            'catatan_revisi' => $this->catatan_revisi,
             'pembuat' => ['id' => $this->pembuat->id, 'nama' => $this->pembuat->user->name],
             'diajukan_at' => $this->diajukan_at,
             'terbit_at' => $this->terbit_at,
