@@ -71,7 +71,7 @@ it('menolak izin lihat untuk aksi kelola di setiap modul', function (string $mod
         ->assertJsonPath('code', 'FORBIDDEN');
 })->with([
     'tambah keringanan' => ['keuangan', 'POST', '/api/v1/keringanan'],
-    'terima pembayaran' => ['keuangan', 'POST', '/api/v1/pembayaran/1/terima'],
+    'ubah tagihan' => ['keuangan', 'PUT', '/api/v1/tagihan/1'],
     'tambah album galeri' => ['konten_website', 'POST', '/api/v1/galeri-album'],
     'catat absensi peserta' => ['laporan_absensi', 'POST', '/api/v1/absensi/koreksi'],
     'tambah murid' => ['data_murid', 'POST', '/api/v1/murid'],
@@ -100,7 +100,7 @@ it('tetap menolak guru dengan semua izin di bagian yang khusus Kepala Sekolah', 
     'baca pengaturan absensi' => ['GET', fn () => '/api/v1/pengaturan?grup=absensi', []],
     'baca semua pengaturan' => ['GET', fn () => '/api/v1/pengaturan', []],
     'ubah pengaturan absensi' => ['PUT', fn () => '/api/v1/pengaturan', ['items' => ['absensi.radius_meter' => 200]]],
-    'ubah rekening sekolah' => ['PUT', fn () => '/api/v1/pengaturan', ['items' => ['keuangan.tanggal_jatuh_tempo' => 15]]],
+    'ubah tanggal jatuh tempo' => ['PUT', fn () => '/api/v1/pengaturan', ['items' => ['keuangan.tanggal_jatuh_tempo' => 15]]],
     'ubah pengaturan PPDB' => ['PUT', fn () => '/api/v1/pengaturan', ['items' => ['ppdb.kuota' => 40]]],
     'daftar wali murid' => ['GET', fn () => '/api/v1/wali-murid', []],
     'generate tagihan' => ['POST', fn () => '/api/v1/tagihan/generate', ['periode' => '2026-10']],

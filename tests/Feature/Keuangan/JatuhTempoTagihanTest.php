@@ -4,6 +4,7 @@ use App\Enums\Hubungan;
 use App\Enums\StatusTagihan;
 use App\Models\JenisTagihan;
 use App\Models\Murid;
+use App\Models\Pembayaran;
 use App\Models\Pengaturan;
 use App\Models\Tagihan;
 use App\Models\WaliMurid;
@@ -78,4 +79,13 @@ it('tidak mengubah apa pun saat command dijalankan dengan --dry-run', function (
 
     expect($this->agustus->fresh()?->status)->toBe(StatusTagihan::BelumBayar);
     Notification::assertNothingSent();
+});
+
+it('menyebut sisa yang belum dibayar saat tagihan yang sudah dicicil lewat jatuh tempo', function () {
+    Pembayaran::factory()->for($this->agustus)->create(['jumlah' => 100000]);
+
+    $this->artisan('tagihan:tandai-terlambat')->assertSuccessful();
+
+    expect($this->agustus->fresh()?->status)->toBe(StatusTagihan::Terlambat);
+    Notification::assertSentTo($this->ibu->user, TagihanTerlambatNotification::class, fn ($notifikasi, $channels, $penerima) => $notifikasi->toDatabase($penerima)['pesan'] === 'Tagihan SPP Agustus 2026 untuk Aisyah sebesar Rp 50.000 sudah lewat jatuh tempo 10 Agustus. Mohon segera dibayar.');
 });

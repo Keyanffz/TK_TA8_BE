@@ -3,12 +3,11 @@
 namespace App\Http\Resources;
 
 use App\Models\Tagihan;
-use App\Services\PengaturanService;
 use Illuminate\Http\Request;
 
 /**
  * Detail tagihan (`GET /tagihan/{id}`): bentuk daftar ditambah riwayat pembayaran (butuh relasi `pembayaran`
- * beserta `pembayar` dan `verifikator`) dan rekening sekolah untuk transfer.
+ * beserta `pembayar`, `verifikator`, dan `pembatal`).
  *
  * @mixin Tagihan
  */
@@ -22,8 +21,6 @@ class TagihanDetailResource extends TagihanResource
         return [
             ...parent::toArray($request),
             'pembayaran' => RiwayatPembayaranResource::collection($this->pembayaran),
-            /** @var list<array{bank: string, nomor: string, atas_nama: string}> */
-            'rekening' => app(PengaturanService::class)->rekeningSekolah(),
         ];
     }
 }

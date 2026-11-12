@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\PeriodeTagihan;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
-use App\Enums\StatusPembayaran;
 use App\Enums\StatusTagihan;
 use App\Enums\TipeKeringanan;
 use App\Exceptions\BusinessRuleException;
@@ -149,6 +148,9 @@ class TagihanService
     }
 
     /**
+     * Tagihan yang sudah dicicil tidak bisa dibatalkan, supaya uang yang sudah diterima tidak kehilangan
+     * tagihannya; pembayarannya dibatalkan dulu kalau memang salah catat.
+     *
      * @throws BusinessRuleException
      */
     public function batalkan(Tagihan $tagihan, string $alasan, User $pelaku): Tagihan
@@ -156,6 +158,10 @@ class TagihanService
         $tagihan = DB::transaction(function () use ($tagihan, $alasan): Tagihan {
             $tagihan = Tagihan::query()->lockForUpdate()->findOrFail($tagihan->id);
             $this->pastikanBisaDiubah($tagihan, 'dibatalkan');
+
+            if ($tagihan->terbayar() > 0) {
+                throw new BusinessRuleException('Tagihan ini sudah punya pembayaran ('.Rupiah::format($tagihan->terbayar()).') sehingga tidak bisa dibatalkan. Batalkan dulu pembayarannya kalau salah catat.');
+            }
 
             $tagihan->update(['status' => StatusTagihan::Dibatalkan, 'catatan' => $alasan]);
 
@@ -170,10 +176,10 @@ class TagihanService
     }
 
     /**
-     * Mengubah jatuh tempo, potongan, atau catatan tagihan yang belum dibayar; `total` dihitung ulang dari
-     * nominal. Jatuh tempo baru tidak boleh sudah lewat. Tagihan terlambat yang jatuh temponya dimundurkan
-     * kembali `belum_bayar`; potongan sebesar nominal membuat tagihan langsung lunas, sama seperti keringanan
-     * penuh saat generate.
+     * Mengubah jatuh tempo, potongan, atau catatan tagihan yang belum lunas; `total` dihitung ulang dari
+     * nominal dan tidak boleh di bawah yang sudah dibayar. Jatuh tempo baru tidak boleh sudah lewat. Tagihan
+     * terlambat yang jatuh temponya dimundurkan kembali `belum_bayar`; potongan yang membuat total sama dengan
+     * yang sudah dibayar (termasuk potongan sebesar nominal) membuat tagihan langsung lunas.
      *
      * @param  array{jatuh_tempo?: string, potongan?: int, catatan?: string|null}  $data
      *
@@ -188,8 +194,12 @@ class TagihanService
             $sebelum = $tagihan->only(['jatuh_tempo', 'potongan', 'total', 'status']);
 
             $potongan = $data['potongan'] ?? $tagihan->potongan;
+            $terbayar = $tagihan->terbayar();
             if ($potongan > $tagihan->nominal) {
                 throw ValidationException::withMessages(['potongan' => 'Potongan tidak boleh melebihi nominal tagihan ('.Rupiah::format($tagihan->nominal).').']);
+            }
+            if ($potongan > $tagihan->nominal - $terbayar) {
+                throw ValidationException::withMessages(['potongan' => 'Tagihan ini sudah dibayar '.Rupiah::format($terbayar).', jadi potongan paling banyak '.Rupiah::format($tagihan->nominal - $terbayar).'.']);
             }
 
             $jatuhTempo = isset($data['jatuh_tempo']) ? Carbon::parse($data['jatuh_tempo']) : $tagihan->jatuh_tempo;
@@ -204,11 +214,11 @@ class TagihanService
                 'total' => $total,
                 'catatan' => array_key_exists('catatan', $data) ? $data['catatan'] : $tagihan->catatan,
                 'status' => match (true) {
-                    $total === 0 => StatusTagihan::Lunas,
+                    $total === $terbayar => StatusTagihan::Lunas,
                     $tagihan->status === StatusTagihan::Terlambat && $jatuhTempo->gte(today()) => StatusTagihan::BelumBayar,
                     default => $tagihan->status,
                 },
-                'lunas_at' => $total === 0 ? now() : null,
+                'lunas_at' => $total === $terbayar ? now() : null,
             ])->save();
 
             return [$tagihan, $sebelum];
@@ -281,17 +291,15 @@ class TagihanService
     }
 
     /**
-     * Tagihan yang sudah lunas, sudah dibatalkan, atau punya bukti transfer yang menunggu verifikasi tidak
-     * bisa diubah maupun dibatalkan.
+     * Tagihan yang sudah lunas atau sudah dibatalkan tidak bisa diubah maupun dibatalkan.
      *
      * @throws BusinessRuleException
      */
     private function pastikanBisaDiubah(Tagihan $tagihan, string $aksi = 'diubah'): void
     {
-        $alasanTolak = match (true) {
-            $tagihan->status === StatusTagihan::Dibatalkan => 'Tagihan ini sudah dibatalkan.',
-            $tagihan->status === StatusTagihan::Lunas => "Tagihan yang sudah lunas tidak bisa {$aksi}.",
-            $tagihan->pembayaran()->where('status', StatusPembayaran::Menunggu)->exists() => 'Masih ada bukti transfer yang menunggu verifikasi. Terima atau tolak pembayaran itu terlebih dahulu.',
+        $alasanTolak = match ($tagihan->status) {
+            StatusTagihan::Dibatalkan => 'Tagihan ini sudah dibatalkan.',
+            StatusTagihan::Lunas => "Tagihan yang sudah lunas tidak bisa {$aksi}.",
             default => null,
         };
 
@@ -404,6 +412,7 @@ class TagihanService
     private function beriTahuWali(Collection $tagihan): void
     {
         Tagihan::query()->whereKey($tagihan->modelKeys())->where('total', '>', 0)
+            ->denganTerbayar()
             ->with(['jenisTagihan', 'murid.waliMurid.user'])
             ->get()
             ->each(fn (Tagihan $satu) => Notification::send($satu->murid->waliMurid->pluck('user'), new TagihanBaruNotification($satu)));

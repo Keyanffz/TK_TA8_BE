@@ -18,6 +18,6 @@ class TagihanTerlambatNotification extends NotifikasiTagihan
 
     protected function pesan(object $notifiable): string
     {
-        return "Tagihan {$this->labelTagihan} untuk {$this->namaAnak} sebesar {$this->total} sudah lewat jatuh tempo {$this->jatuhTempo}. Mohon segera dibayar.";
+        return "Tagihan {$this->labelTagihan} untuk {$this->namaAnak} sebesar {$this->sisa} sudah lewat jatuh tempo {$this->jatuhTempo}. Mohon segera dibayar.";
     }
 }

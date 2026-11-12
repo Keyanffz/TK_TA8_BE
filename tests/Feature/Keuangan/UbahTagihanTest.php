@@ -105,7 +105,7 @@ it('menerima jatuh tempo lama yang sudah lewat kalau tidak diubah', function () 
         ->assertJsonPath('data.total', 130000);
 });
 
-it('menolak mengubah tagihan yang lunas, dibatalkan, atau punya bukti menunggu verifikasi', function (Closure $siapkan) {
+it('menolak mengubah tagihan yang lunas atau dibatalkan', function (Closure $siapkan) {
     $siapkan($this->tagihan);
 
     $this->actingAs($this->kepsek)->putJson("/api/v1/tagihan/{$this->tagihan->id}", ['potongan' => 10000])
@@ -116,11 +116,29 @@ it('menolak mengubah tagihan yang lunas, dibatalkan, atau punya bukti menunggu v
 })->with([
     'lunas' => [fn (Tagihan $tagihan) => $tagihan->update(['status' => StatusTagihan::Lunas])],
     'dibatalkan' => [fn (Tagihan $tagihan) => $tagihan->update(['status' => StatusTagihan::Dibatalkan])],
-    'bukti menunggu verifikasi' => [function (Tagihan $tagihan) {
-        Pembayaran::factory()->for($tagihan)->create(['status' => StatusPembayaran::Menunggu]);
-        $tagihan->update(['status' => StatusTagihan::MenungguVerifikasi]);
-    }],
 ]);
+
+it('menolak potongan yang membuat total di bawah yang sudah dibayar', function () {
+    Pembayaran::factory()->for($this->tagihan)->create(['jumlah' => 100000]);
+    Pembayaran::factory()->for($this->tagihan)->create(['jumlah' => 150000, 'status' => StatusPembayaran::Dibatalkan]);
+
+    $this->actingAs($this->kepsek)->putJson("/api/v1/tagihan/{$this->tagihan->id}", ['potongan' => 50001])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.potongan.0', 'Tagihan ini sudah dibayar Rp 100.000, jadi potongan paling banyak Rp 50.000.');
+
+    expect($this->tagihan->fresh()?->potongan)->toBe(0);
+});
+
+it('melunasi tagihan yang sudah dicicil saat potongan menutup sisanya', function () {
+    Pembayaran::factory()->for($this->tagihan)->create(['jumlah' => 100000]);
+
+    $this->actingAs($this->kepsek)->putJson("/api/v1/tagihan/{$this->tagihan->id}", ['potongan' => 50000])
+        ->assertOk()
+        ->assertJsonPath('data.total', 100000)
+        ->assertJsonPath('data.terbayar', 100000)
+        ->assertJsonPath('data.sisa', 0)
+        ->assertJsonPath('data.status', 'lunas');
+});
 
 it('menutup perubahan tagihan untuk guru tanpa izin keuangan dan wali murid', function () {
     $wali = WaliMurid::factory()->create();

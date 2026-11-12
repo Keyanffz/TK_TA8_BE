@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'kode', 'tagihan_id', 'dibayar_oleh', 'metode', 'jumlah', 'tanggal_bayar', 'bukti_path',
     'bank_pengirim', 'nama_pengirim', 'status', 'alasan_penolakan', 'diverifikasi_oleh', 'diverifikasi_at',
+    'alasan_pembatalan', 'dibatalkan_oleh', 'dibatalkan_at',
 ])]
 class Pembayaran extends Model
 {
@@ -34,6 +35,7 @@ class Pembayaran extends Model
             'tanggal_bayar' => 'date',
             'status' => StatusPembayaran::class,
             'diverifikasi_at' => 'datetime',
+            'dibatalkan_at' => 'datetime',
         ];
     }
 
@@ -69,10 +71,20 @@ class Pembayaran extends Model
     }
 
     /**
+     * Petugas yang mencatat pembayaran tunai, atau yang memverifikasi transfer di riwayat lama.
+     *
      * @return BelongsTo<User, $this>
      */
     public function verifikator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'diverifikasi_oleh');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function pembatal(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'dibatalkan_oleh');
     }
 }

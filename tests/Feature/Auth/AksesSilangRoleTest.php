@@ -95,7 +95,7 @@ it('membatasi role di setiap route login kecuali route bersama yang dipakai semu
         'GET api/v1/auth/me', 'POST api/v1/auth/logout', 'PUT api/v1/auth/profil',
         'GET api/v1/dashboard',
         'GET api/v1/murid', 'GET api/v1/murid/{id}',
-        'GET api/v1/tagihan', 'GET api/v1/tagihan/{id}', 'POST api/v1/tagihan/{id}/pembayaran',
+        'GET api/v1/tagihan', 'GET api/v1/tagihan/{id}',
         'GET api/v1/pembayaran', 'GET api/v1/pembayaran/{id}', 'GET api/v1/pembayaran/{id}/bukti', 'GET api/v1/pembayaran/{id}/kwitansi',
         'GET api/v1/kegiatan', 'GET api/v1/kegiatan/{id}',
         'GET api/v1/pengumuman', 'GET api/v1/pengumuman/{id}',

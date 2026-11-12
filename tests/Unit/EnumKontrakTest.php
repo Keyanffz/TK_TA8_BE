@@ -35,7 +35,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'TipeKeringanan' => [TipeKeringanan::class, ['persen', 'nominal']],
     'StatusTagihan' => [StatusTagihan::class, ['belum_bayar', 'menunggu_verifikasi', 'lunas', 'terlambat', 'dibatalkan']],
     'MetodeBayar' => [MetodeBayar::class, ['transfer', 'tunai']],
-    'StatusPembayaran' => [StatusPembayaran::class, ['menunggu', 'diterima', 'ditolak']],
+    'StatusPembayaran' => [StatusPembayaran::class, ['menunggu', 'diterima', 'ditolak', 'dibatalkan']],
     'TargetPengumuman' => [TargetPengumuman::class, ['semua', 'guru', 'wali_murid', 'kelas', 'murid']],
     'JenisAgenda' => [JenisAgenda::class, ['kegiatan', 'libur', 'rapat', 'lainnya']],
     'StatusRapor' => [StatusRapor::class, ['draft', 'diajukan', 'revisi', 'terbit']],

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ModulIzin;
+use App\Enums\StatusPembayaran;
 use App\Enums\StatusTagihan;
 use Database\Factories\TagihanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -51,6 +52,32 @@ class Tagihan extends Model
         }
 
         $query->whereHas('murid', fn (Builder $murid) => $murid->visibleTo($user));
+    }
+
+    /**
+     * Menyertakan jumlah pembayaran `diterima` sebagai atribut `terbayar`, supaya daftar tagihan tidak
+     * menghitungnya satu per satu.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeDenganTerbayar(Builder $query): void
+    {
+        $query->withSum(['pembayaran as terbayar' => fn (Builder $pembayaran) => $pembayaran->where('status', StatusPembayaran::Diterima)], 'jumlah');
+    }
+
+    /**
+     * Jumlah pembayaran `diterima` (cicilan dijumlahkan). Memakai hasil `denganTerbayar()` kalau ada.
+     */
+    public function terbayar(): int
+    {
+        return (int) (array_key_exists('terbayar', $this->attributes)
+            ? $this->attributes['terbayar']
+            : $this->pembayaran()->where('status', StatusPembayaran::Diterima)->sum('jumlah'));
+    }
+
+    public function sisa(): int
+    {
+        return max(0, $this->total - $this->terbayar());
     }
 
     /**

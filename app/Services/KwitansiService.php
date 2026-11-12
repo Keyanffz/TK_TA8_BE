@@ -9,7 +9,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DokumenPdf;
 
 /**
- * Kwitansi PDF untuk pembayaran yang sudah diterima. Kop diambil dari pengaturan profil sekolah.
+ * Kwitansi PDF untuk satu pembayaran yang diterima. Karena tagihan boleh dicicil, kwitansi memuat total
+ * tagihan, yang sudah dibayar sebelum pembayaran ini, dan sisa sesudahnya. Kop diambil dari pengaturan profil
+ * sekolah.
  */
 class KwitansiService
 {
@@ -22,21 +24,38 @@ class KwitansiService
      */
     public function buat(Pembayaran $pembayaran): DokumenPdf
     {
+        return Pdf::loadView('pdf.kwitansi', $this->isi($pembayaran))
+            ->setPaper('a5', 'landscape')
+            ->setOption('isFontSubsettingEnabled', true);
+    }
+
+    /**
+     * Data untuk template kwitansi. "Sudah dibayar sebelumnya" mengikuti urutan pencatatan (id), bukan tanggal
+     * bayar yang boleh diisi mundur.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws BusinessRuleException
+     */
+    public function isi(Pembayaran $pembayaran): array
+    {
         if ($pembayaran->status !== StatusPembayaran::Diterima) {
             throw new BusinessRuleException('Kwitansi hanya tersedia untuk pembayaran yang sudah diterima.');
         }
 
-        $pembayaran->loadMissing(['tagihan.jenisTagihan', 'tagihan.murid.kelasAktif', 'verifikator', 'pembayar']);
+        $pembayaran->loadMissing(['tagihan.jenisTagihan', 'tagihan.murid.kelasAktif', 'verifikator']);
+        $tagihan = $pembayaran->tagihan;
+        $dibayarSebelumnya = (int) $tagihan->pembayaran()->where('status', StatusPembayaran::Diterima)->where('id', '<', $pembayaran->id)->sum('jumlah');
 
-        return Pdf::loadView('pdf.kwitansi', [
+        return [
             'sekolah' => $this->pengaturan->kopSekolah(),
             'pembayaran' => $pembayaran,
-            'tagihan' => $pembayaran->tagihan,
-            'murid' => $pembayaran->tagihan->murid,
-            'kelas' => $pembayaran->tagihan->murid->kelasAktif->first(),
-        ])
-            ->setPaper('a5', 'landscape')
-            ->setOption('isFontSubsettingEnabled', true);
+            'tagihan' => $tagihan,
+            'dibayarSebelumnya' => $dibayarSebelumnya,
+            'sisa' => max(0, $tagihan->total - $dibayarSebelumnya - $pembayaran->jumlah),
+            'murid' => $tagihan->murid,
+            'kelas' => $tagihan->murid->kelasAktif->first(),
+        ];
     }
 
     public function namaFile(Pembayaran $pembayaran): string

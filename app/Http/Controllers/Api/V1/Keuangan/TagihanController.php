@@ -25,8 +25,8 @@ use Spatie\QueryBuilder\QueryBuilder;
 class TagihanController extends Controller
 {
     /**
-     * Daftar tagihan. Petugas keuangan melihat semua tagihan, guru lain hanya tagihan murid kelasnya
-     * (read-only), wali murid hanya tagihan anaknya.
+     * Daftar tagihan beserta `terbayar` dan `sisa`. Pemegang izin keuangan melihat semua tagihan, guru lain
+     * hanya tagihan murid kelasnya, wali murid hanya tagihan anaknya.
      *
      * Filter `filter[status]`, `filter[periode]` (YYYY-MM), `filter[kelas_id]`, `filter[murid_id]`,
      * `filter[jenis_tagihan_id]`. `search` mencari kode tagihan dan nama murid.
@@ -35,7 +35,7 @@ class TagihanController extends Controller
     public function index(DaftarTagihanRequest $request, #[CurrentUser] User $user): JsonResponse
     {
         $kata = $request->kataCari();
-        $query = Tagihan::query()->visibleTo($user)->with(['murid.kelasAktif', 'jenisTagihan'])
+        $query = Tagihan::query()->visibleTo($user)->denganTerbayar()->with(['murid.kelasAktif', 'jenisTagihan'])
             ->when($kata !== null, fn (Builder $query) => $query->where(fn (Builder $cari) => $cari
                 ->where('kode', 'like', "%{$kata}%")
                 ->orWhereHas('murid', fn (Builder $murid) => $murid->cari($kata))));
@@ -59,7 +59,7 @@ class TagihanController extends Controller
     }
 
     /**
-     * Detail tagihan beserta riwayat pembayaran dan rekening sekolah untuk transfer.
+     * Detail tagihan beserta riwayat pembayarannya, termasuk pembayaran yang dibatalkan.
      */
     public function show(int $id): JsonResponse
     {
@@ -68,7 +68,7 @@ class TagihanController extends Controller
 
         $tagihan->load([
             'murid.kelasAktif', 'jenisTagihan',
-            'pembayaran' => fn ($pembayaran) => $pembayaran->with(['pembayar', 'verifikator'])->latest('id'),
+            'pembayaran' => fn ($pembayaran) => $pembayaran->with(['pembayar', 'verifikator', 'pembatal'])->latest('id'),
         ]);
 
         return ApiResponse::success(new TagihanDetailResource($tagihan));
@@ -105,8 +105,8 @@ class TagihanController extends Controller
 
     /**
      * Mengubah jatuh tempo, potongan, atau catatan tagihan; `total` dihitung ulang dari nominal dikurangi
-     * potongan. Ditolak untuk tagihan yang lunas, dibatalkan, atau punya bukti transfer yang menunggu
-     * verifikasi. Tagihan terlambat yang jatuh temponya dimundurkan kembali berstatus belum bayar.
+     * potongan dan tidak boleh di bawah yang sudah dibayar. Ditolak untuk tagihan yang lunas atau dibatalkan.
+     * Tagihan terlambat yang jatuh temponya dimundurkan kembali berstatus belum bayar.
      */
     public function update(PerbaruiTagihanRequest $request, int $id, TagihanService $tagihanService, #[CurrentUser] User $user): JsonResponse
     {
@@ -131,8 +131,8 @@ class TagihanController extends Controller
     }
 
     /**
-     * Membatalkan tagihan. Ditolak untuk tagihan yang sudah lunas atau masih punya bukti transfer yang
-     * menunggu verifikasi. Alasan disimpan di `catatan`.
+     * Membatalkan tagihan. Ditolak untuk tagihan yang sudah lunas atau sudah punya pembayaran yang diterima
+     * (batalkan dulu pembayarannya). Alasan disimpan di `catatan`.
      */
     public function batalkan(AlasanRequest $request, int $id, TagihanService $tagihanService, #[CurrentUser] User $user): JsonResponse
     {

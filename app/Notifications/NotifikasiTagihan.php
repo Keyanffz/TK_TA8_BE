@@ -6,8 +6,8 @@ use App\Models\Tagihan;
 use App\Support\Rupiah;
 
 /**
- * Dasar notifikasi tagihan untuk wali murid. Label, nama anak, jumlah, dan jatuh tempo disalin saat
- * notifikasi dibuat (butuh relasi `jenisTagihan` dan `murid` pada tagihan).
+ * Dasar notifikasi tagihan untuk wali murid. Label, nama anak, sisa yang belum dibayar, dan jatuh tempo
+ * disalin saat notifikasi dibuat (butuh relasi `jenisTagihan` dan `murid` pada tagihan).
  */
 abstract class NotifikasiTagihan extends NotifikasiDatabase
 {
@@ -17,7 +17,7 @@ abstract class NotifikasiTagihan extends NotifikasiDatabase
 
     protected readonly string $namaAnak;
 
-    protected readonly string $total;
+    protected readonly string $sisa;
 
     protected readonly string $jatuhTempo;
 
@@ -26,7 +26,7 @@ abstract class NotifikasiTagihan extends NotifikasiDatabase
         $this->tagihanId = $tagihan->id;
         $this->labelTagihan = $tagihan->label();
         $this->namaAnak = $tagihan->murid->nama_panggilan;
-        $this->total = Rupiah::format($tagihan->total);
+        $this->sisa = Rupiah::format($tagihan->sisa());
         $this->jatuhTempo = $tagihan->jatuh_tempo->translatedFormat('j F');
     }
 

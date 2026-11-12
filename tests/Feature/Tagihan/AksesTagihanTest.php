@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\Hubungan;
-use App\Enums\MetodeBayar;
+use App\Enums\StatusPembayaran;
 use App\Enums\StatusTagihan;
 use App\Models\Guru;
 use App\Models\JenisTagihan;
@@ -77,24 +77,30 @@ it('membalas 404 saat wali murid membuka tagihan anak orang lain', function () {
         ->assertJsonPath('message', 'Data tidak ditemukan.');
 });
 
-it('menampilkan detail tagihan dengan riwayat pembayaran dan rekening sekolah ke wali', function () {
+it('menampilkan detail tagihan ke wali dengan sisa dan riwayat pembayaran, tanpa rekening sekolah', function () {
     Pengaturan::query()->create([
         'kunci' => 'keuangan.rekening',
         'nilai' => [['bank' => 'Bank Jateng', 'nomor' => '2012345678', 'atas_nama' => 'TK Tarbiyatul Athfal 8']],
         'grup' => 'keuangan',
     ]);
-    Pembayaran::factory()->for($this->tagihanAisyah)->create(['metode' => MetodeBayar::Transfer, 'bukti_path' => 'bukti-bayar/aisyah.jpg']);
+    Pembayaran::factory()->for($this->tagihanAisyah)->transferLama(StatusPembayaran::Ditolak)->create(['bukti_path' => 'bukti-bayar/aisyah.jpg']);
+    Pembayaran::factory()->for($this->tagihanAisyah)->create(['jumlah' => 60000]);
 
     $response = $this->actingAs($this->ibuAisyah->user)->getJson("/api/v1/tagihan/{$this->tagihanAisyah->id}")
         ->assertOk()
-        ->assertJsonPath('data.rekening.0.nomor', '2012345678')
-        ->assertJsonCount(1, 'data.pembayaran');
+        ->assertJsonMissingPath('data.rekening')
+        ->assertJsonPath('data.terbayar', 60000)
+        ->assertJsonPath('data.sisa', $this->tagihanAisyah->total - 60000)
+        ->assertJsonCount(2, 'data.pembayaran')
+        ->assertJsonPath('data.pembayaran.0.metode', 'tunai');
 
-    expect($response->json('data.pembayaran.0.bukti_url'))->toContain('/api/v1/media/');
+    expect($response->json('data.pembayaran.1.bukti_url'))->toContain('/api/v1/media/');
+    $pengaturan = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan?grup=keuangan')->assertOk()->json('data');
+    expect(array_keys($pengaturan))->not->toContain('keuangan.rekening');
 });
 
 it('menyembunyikan foto bukti transfer dari guru tanpa izin keuangan', function () {
-    Pembayaran::factory()->for($this->tagihanAisyah)->create(['metode' => MetodeBayar::Transfer, 'bukti_path' => 'bukti-bayar/aisyah.jpg']);
+    Pembayaran::factory()->for($this->tagihanAisyah)->transferLama()->create();
 
     $this->actingAs($this->buAini->user)->getJson("/api/v1/tagihan/{$this->tagihanAisyah->id}")
         ->assertOk()

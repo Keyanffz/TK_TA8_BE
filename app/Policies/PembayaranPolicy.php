@@ -10,7 +10,8 @@ use Illuminate\Auth\Access\Response;
 
 /**
  * Menu pembayaran untuk pemegang izin lihat keuangan (semua pembayaran) dan wali murid (pembayaran tagihan anaknya).
- * Guru tanpa izin keuangan hanya melihat riwayat pembayaran lewat detail tagihan.
+ * Guru tanpa izin keuangan membuka pembayaran murid kelasnya satu per satu lewat detail tagihan, misalnya wali
+ * kelas yang mencetak kwitansi pembayaran yang baru dicatatnya.
  */
 class PembayaranPolicy
 {
@@ -22,15 +23,22 @@ class PembayaranPolicy
     }
 
     /**
-     * Pembayaran di luar jangkauan dibalas 404; guru tanpa izin keuangan ditolak 403 untuk pembayaran
-     * murid kelasnya.
+     * Pembayaran di luar jangkauan dibalas 404 (B4).
      */
     public function view(User $user, Pembayaran $pembayaran): Response
     {
-        if (! Pembayaran::query()->visibleTo($user)->whereKey($pembayaran->id)->exists()) {
-            return Response::denyAsNotFound();
-        }
+        return Pembayaran::query()->visibleTo($user)->whereKey($pembayaran->id)->exists()
+            ? Response::allow()
+            : Response::denyAsNotFound();
+    }
 
-        return $this->viewAny($user);
+    /**
+     * Bukti transfer di riwayat lama: guru tanpa izin keuangan ditolak 403 untuk pembayaran murid kelasnya.
+     */
+    public function lihatBukti(User $user, Pembayaran $pembayaran): Response
+    {
+        $lihat = $this->view($user, $pembayaran);
+
+        return $lihat->denied() ? $lihat : $this->viewAny($user);
     }
 }
