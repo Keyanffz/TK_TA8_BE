@@ -64,7 +64,6 @@ class PengaturanSeeder extends Seeder
             ],
             'landing.fasilitas' => [],
             'landing.keunggulan' => [],
-            'keuangan.rekening' => [],
             'keuangan.tanggal_jatuh_tempo' => 10,
             'keuangan.hari_pengingat' => 3,
             'ppdb.dibuka' => false,

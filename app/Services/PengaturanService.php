@@ -49,6 +49,12 @@ class PengaturanService
         'absensi.radius_meter', 'absensi.batas_akurasi_meter', 'absensi.masa_simpan_foto_bulan',
     ];
 
+    /**
+     * Kunci yang barisnya masih ada di database lama tetapi tidak dipakai lagi: rekening sekolah, sejak
+     * pembayaran hanya tunai. Tidak dikirim di respons dan tidak bisa diubah.
+     */
+    private const KUNCI_TIDAK_DIPAKAI = ['keuangan.rekening'];
+
     private const MAKSIMAL_TANGGAL_LIBUR = 366;
 
     private const MAKSIMAL_ITEM_DAFTAR = 20;
@@ -70,16 +76,6 @@ class PengaturanService
     }
 
     /**
-     * @return list<array{bank: string, nomor: string, atas_nama: string}>
-     */
-    public function rekeningSekolah(): array
-    {
-        $rekening = $this->nilai('keuangan.rekening', []);
-
-        return is_array($rekening) ? array_values($rekening) : [];
-    }
-
-    /**
      * Pengaturan satu grup (atau semua grup kalau null) sebagai objek datar berkunci lengkap, dengan pasangan
      * `*_url` untuk setiap field gambar (A7 CMS & pengaturan).
      *
@@ -91,7 +87,9 @@ class PengaturanService
         $hasil = [];
 
         foreach ($this->semua() as $kunci => $nilai) {
-            if ($grup !== null && ! in_array(strstr($kunci, '.', true), $grup, true)) {
+            $diLuarGrup = $grup !== null && ! in_array(strstr($kunci, '.', true), $grup, true);
+
+            if ($diLuarGrup || in_array($kunci, self::KUNCI_TIDAK_DIPAKAI, true)) {
                 continue;
             }
 
@@ -275,11 +273,6 @@ class PengaturanService
             'landing.keunggulan.*.judul' => ['required', 'string', 'max:255'],
             'landing.keunggulan.*.deskripsi' => ['nullable', 'string', 'max:1000'],
             'landing.keunggulan.*.ikon' => $ikon,
-            'keuangan.rekening' => ['array', 'list', 'max:5'],
-            'keuangan.rekening.*' => ['array:bank,nomor,atas_nama'],
-            'keuangan.rekening.*.bank' => ['required', 'string', 'max:50'],
-            'keuangan.rekening.*.nomor' => ['required', 'string', 'regex:/^[0-9 .-]{5,30}$/'],
-            'keuangan.rekening.*.atas_nama' => ['required', 'string', 'max:100'],
             'keuangan.tanggal_jatuh_tempo' => ['integer', 'between:1,28'],
             'keuangan.hari_pengingat' => ['integer', 'between:1,14'],
             'ppdb.dibuka' => ['boolean:strict'],

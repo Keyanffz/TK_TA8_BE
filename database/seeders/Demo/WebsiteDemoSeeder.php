@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * Dua album galeri publik, data kontak demo supaya landing page lokal tidak kosong, dan banner info
  * di beranda wali murid.
- * Alamat, telepon, email (.test), dan rekening di sini fiktif dan hanya untuk pengembangan.
+ * Alamat, telepon, dan email (.test) di sini fiktif dan hanya untuk pengembangan.
  */
 class WebsiteDemoSeeder extends Seeder
 {
@@ -49,7 +49,6 @@ class WebsiteDemoSeeder extends Seeder
             'profil.alamat' => 'Jl. Tlogosari Raya No. 45, Kec. Pedurungan, Kota Semarang',
             'profil.telepon' => '(024) 6723418',
             'profil.email' => 'tu@tkta8.test',
-            'keuangan.rekening' => [['bank' => 'Bank Jateng', 'nomor' => '2012345678', 'atas_nama' => 'TK Tarbiyatul Athfal 8']],
             'beranda.info_wali' => [
                 'aktif' => true,
                 'judul' => 'Pertemuan wali murid Kelompok B',
