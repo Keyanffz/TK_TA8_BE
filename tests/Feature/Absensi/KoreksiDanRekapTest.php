@@ -4,8 +4,10 @@ use App\Enums\StatusAbsensi;
 use App\Enums\StatusAkun;
 use App\Models\Absensi;
 use App\Models\User;
+use App\Services\RekapAbsensiService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Spatie\Activitylog\Models\Activity;
 
 /**
@@ -193,16 +195,36 @@ it('tetap merekap guru nonaktif yang punya absensi di bulan itu', function () {
     expect($rekap[$this->nur->id]['hadir'])->toBe(1);
 });
 
-it('mengekspor rekap sebagai CSV', function () {
+it('mengekspor rekap sebagai file Excel dengan satu sel per kolom', function () {
     $respons = $this->actingAs($this->kepsek)->get('/api/v1/absensi/rekap/export?bulan=2026-10')
         ->assertOk()
-        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
-        ->assertHeader('Content-Disposition', 'attachment; filename="rekap-absensi-2026-10.csv"');
+        ->assertDownload('rekap-absensi-2026-10.xlsx');
 
-    $baris = explode("\n", trim($respons->getContent()));
-    expect($baris[0])->toBe("\xEF\xBB\xBFNama,Jabatan,Hadir,Terlambat,Izin,Sakit,\"Tidak Hadir\",\"Tidak Absen Pulang\"")
+    $baris = IOFactory::load($respons->baseResponse->getFile()->getPathname())->getActiveSheet()->toArray(formatData: false);
+    expect($baris[0])->toBe(['Nama', 'Jabatan', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak Hadir', 'Tidak Absen Pulang'])
         ->and($baris)->toHaveCount(4)
-        ->and($baris)->toContain('"Nur Aini, S.Pd.","Guru Kelas",1,1,0,0,0,0');
+        ->and($baris)->toContain(['Nur Aini, S.Pd.', 'Guru Kelas', 1, 1, 0, 0, 0, 0]);
+});
+
+it('mengekspor rekap sebagai PDF berkop sekolah dengan nama panjang dan bergelar', function () {
+    $this->nur->update(['name' => 'Dra. Hj. Siti Nurhasanah Kusumawardhani Prameswari, S.Pd., M.Pd.']);
+
+    $respons = $this->actingAs($this->kepsek)->get('/api/v1/absensi/rekap/export?bulan=2026-10&format=pdf')
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+    expect($respons->headers->get('content-disposition'))->toContain('rekap-absensi-2026-10.pdf')
+        ->and(substr((string) $respons->getContent(), 0, 4))->toBe('%PDF');
+
+    $this->view('pdf.rekap-absensi', app(RekapAbsensiService::class)->isiPdf(Carbon::parse('2026-08-01'), Carbon::parse('2026-10-31')))
+        ->assertSee('REKAP ABSENSI GURU DAN KEPALA SEKOLAH')
+        ->assertSee('Agustus – Oktober 2026')
+        ->assertSee('Dra. Hj. Siti Nurhasanah Kusumawardhani Prameswari, S.Pd., M.Pd.');
+});
+
+it('menolak format ekspor selain xlsx dan pdf', function () {
+    $this->actingAs($this->kepsek)->getJson('/api/v1/absensi/rekap/export?format=csv')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['format']);
 });
 
 it('menolak guru membuka rekap dan ekspornya', function () {
@@ -244,11 +266,11 @@ it('ikut merekap akun nonaktif yang punya absensi di salah satu bulan rentang', 
 it('menamai file ekspor menurut rentang bulannya', function (string $query, string $nama) {
     $this->actingAs($this->kepsek)->get("/api/v1/absensi/rekap/export?{$query}")
         ->assertOk()
-        ->assertHeader('Content-Disposition', "attachment; filename=\"{$nama}\"");
+        ->assertDownload($nama);
 })->with([
-    'tiga bulan' => ['bulan=2026-10&jumlah_bulan=3', 'rekap-absensi-2026-08-sampai-2026-10.csv'],
-    'melewati tahun' => ['bulan=2026-01&jumlah_bulan=2', 'rekap-absensi-2025-12-sampai-2026-01.csv'],
-    'satu bulan' => ['bulan=2026-10&jumlah_bulan=1', 'rekap-absensi-2026-10.csv'],
+    'tiga bulan' => ['bulan=2026-10&jumlah_bulan=3', 'rekap-absensi-2026-08-sampai-2026-10.xlsx'],
+    'melewati tahun, PDF' => ['bulan=2026-01&jumlah_bulan=2&format=pdf', 'rekap-absensi-2025-12-sampai-2026-01.pdf'],
+    'satu bulan' => ['bulan=2026-10&jumlah_bulan=1', 'rekap-absensi-2026-10.xlsx'],
 ]);
 
 it('menampilkan riwayat satu peserta untuk beberapa bulan sekaligus', function () {

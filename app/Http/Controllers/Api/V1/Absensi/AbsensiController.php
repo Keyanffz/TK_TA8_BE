@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\V1\Absensi;
 use App\Enums\JenisAbsensi;
 use App\Enums\LevelIzin;
 use App\Enums\ModulIzin;
+use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Absensi\AbsenRequest;
 use App\Http\Requests\Absensi\BulanAbsensiRequest;
+use App\Http\Requests\Absensi\EksporRekapAbsensiRequest;
 use App\Http\Requests\Absensi\HarianAbsensiRequest;
 use App\Http\Requests\Absensi\KoreksiAbsensiBaruRequest;
 use App\Http\Requests\Absensi\KoreksiAbsensiRequest;
@@ -24,6 +26,8 @@ use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response as HttpResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AbsensiController extends Controller
@@ -248,18 +252,19 @@ class AbsensiController extends Controller
     }
 
     /**
-     * File CSV berisi rekap yang sama dengan `GET /absensi/rekap`. Nama file menyebut bulannya, misalnya
-     * `rekap-absensi-2026-10.csv` atau `rekap-absensi-2026-08-sampai-2026-10.csv`.
+     * Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah
+     * (`format=pdf`). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau
+     * `rekap-absensi-2026-08-sampai-2026-10.pdf`.
      */
-    #[Response(200, 'Rekap absensi (.csv)', mediaType: 'text/csv', type: 'string', format: 'binary')]
-    public function export(BulanAbsensiRequest $request, RekapAbsensiService $rekap): HttpResponse
+    #[Response(200, 'Rekap absensi (.xlsx)', mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', type: 'string', format: 'binary')]
+    #[Response(200, 'Rekap absensi (.pdf)', mediaType: 'application/pdf', type: 'string', format: 'binary')]
+    public function export(EksporRekapAbsensiRequest $request, RekapAbsensiService $rekap): HttpResponse|BinaryFileResponse
     {
         [$awal, $akhir] = $request->rentang();
-        $bulanFile = $awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}";
+        $namaFile = RekapAbsensiService::namaFile($awal, $akhir).'.'.$request->formatFile();
 
-        return response($rekap->csv($awal, $akhir), 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"rekap-absensi-{$bulanFile}.csv\"",
-        ]);
+        return $request->formatFile() === 'pdf'
+            ? $rekap->pdf($awal, $akhir)->download($namaFile)
+            : Excel::download(new RekapAbsensiExport($rekap->rekap($awal, $akhir)), $namaFile);
     }
 }

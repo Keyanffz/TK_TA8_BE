@@ -8,6 +8,8 @@ use App\Enums\StatusAbsensi;
 use App\Models\Absensi;
 use App\Models\User;
 use App\Support\AturanAbsensi;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF as DokumenPdf;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -75,26 +77,42 @@ class RekapAbsensiService
     }
 
     /**
-     * Isi file CSV rekap, diawali BOM UTF-8 supaya nama bergelar terbaca benar di Excel.
+     * Rekap dalam PDF A4 landscape berkop sekolah. Lebar kolom nama dan jabatan tetap, jadi nama panjang dan
+     * bergelar terbungkus di selnya sendiri, tidak mendorong kolom angka.
      */
-    public function csv(Carbon $awal, Carbon $akhir): string
+    public function pdf(Carbon $awal, Carbon $akhir): DokumenPdf
     {
-        $berkas = fopen('php://temp', 'r+');
-        fwrite($berkas, "\xEF\xBB\xBF");
-        fputcsv($berkas, ['Nama', 'Jabatan', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak Hadir', 'Tidak Absen Pulang'], escape: '');
+        return Pdf::loadView('pdf.rekap-absensi', $this->isiPdf($awal, $akhir))
+            ->setPaper('a4', 'landscape')
+            ->setOption('isFontSubsettingEnabled', true);
+    }
 
-        foreach ($this->rekap($awal, $akhir) as $baris) {
-            fputcsv($berkas, [
-                $baris['user']['nama'], $baris['user']['jabatan'] ?? '',
-                $baris['hadir'], $baris['terlambat'], $baris['izin'], $baris['sakit'], $baris['tidak_hadir'], $baris['tidak_absen_pulang'],
-            ], escape: '');
+    /**
+     * @return array{sekolah: array<string, string|null>, rentang: string, rekap: list<array<string, mixed>>}
+     */
+    public function isiPdf(Carbon $awal, Carbon $akhir): array
+    {
+        return [
+            'sekolah' => $this->pengaturan->kopSekolah(),
+            'rentang' => self::labelRentang($awal, $akhir),
+            'rekap' => $this->rekap($awal, $akhir),
+        ];
+    }
+
+    /** "Oktober 2026", "Agustus – Oktober 2026", atau "Desember 2025 – Januari 2026". */
+    public static function labelRentang(Carbon $awal, Carbon $akhir): string
+    {
+        if ($awal->isSameMonth($akhir)) {
+            return $akhir->translatedFormat('F Y');
         }
 
-        rewind($berkas);
-        $isi = (string) stream_get_contents($berkas);
-        fclose($berkas);
+        return ($awal->isSameYear($akhir) ? $awal->translatedFormat('F') : $awal->translatedFormat('F Y')).' – '.$akhir->translatedFormat('F Y');
+    }
 
-        return $isi;
+    /** `rekap-absensi-2026-10` atau `rekap-absensi-2026-08-sampai-2026-10`, tanpa ekstensi. */
+    public static function namaFile(Carbon $awal, Carbon $akhir): string
+    {
+        return 'rekap-absensi-'.($awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}");
     }
 
     /**

@@ -5,6 +5,7 @@ use App\Models\Absensi;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * Kamis, 1 Oktober 2026 pukul 06:50. Jam masuk 06:30–09:00, jam pulang 11:00–15:00, hari kerja Senin–Sabtu,
@@ -179,6 +180,7 @@ it('merekap izin dan sakit tanpa menghitungnya sebagai tidak absen pulang', func
     $rekap = collect($this->actingAs($this->kepsek)->getJson('/api/v1/absensi/rekap?bulan=2026-09')->assertOk()->json('data'))->keyBy('user.id');
     expect($rekap[$this->guru->id])->toMatchArray(['hadir' => 1, 'terlambat' => 0, 'izin' => 1, 'sakit' => 2, 'tidak_hadir' => 0, 'tidak_absen_pulang' => 1]);
 
-    $csv = $this->actingAs($this->kepsek)->get('/api/v1/absensi/rekap/export?bulan=2026-09')->assertOk()->getContent();
-    expect(explode("\n", trim($csv)))->toContain('"Rina Kusumawati","Guru Kelas",1,0,1,2,0,1');
+    $ekspor = $this->actingAs($this->kepsek)->get('/api/v1/absensi/rekap/export?bulan=2026-09')->assertOk();
+    expect(IOFactory::load($ekspor->baseResponse->getFile()->getPathname())->getActiveSheet()->toArray(formatData: false))
+        ->toContain(['Rina Kusumawati', 'Guru Kelas', 1, 0, 1, 2, 0, 1]);
 });
