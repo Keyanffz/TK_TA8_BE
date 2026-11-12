@@ -81,7 +81,7 @@ class RekapAbsensiService
     }
 
     /**
-     * Rekap dalam PDF A4 landscape berkop sekolah. Lebar kolom nama dan jabatan tetap, jadi nama panjang dan
+     * Rekap dalam PDF A4 landscape berkop sekolah. Kolom nama dan jabatan diberi lebar, jadi nama panjang dan
      * bergelar terbungkus di selnya sendiri, tidak mendorong kolom angka.
      */
     public function pdf(Carbon $awal, Carbon $akhir): DokumenPdf

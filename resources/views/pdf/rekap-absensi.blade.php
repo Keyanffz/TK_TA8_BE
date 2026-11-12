@@ -12,7 +12,7 @@
         .nama-sekolah { font-size: 16px; font-weight: bold; color: #15803d; }
         h1 { font-size: 13px; text-align: center; margin: 0; letter-spacing: 1px; }
         .rentang { text-align: center; margin: 2px 0 10px; }
-        .rekap { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .rekap { width: 100%; border-collapse: collapse; }
         .rekap th, .rekap td { border: 1px solid #9ca3af; padding: 4px 5px; vertical-align: top; }
         .rekap th { background: #dcfce7; font-weight: bold; }
         .rekap td.teks { word-wrap: break-word; }
@@ -30,8 +30,8 @@
         <thead>
             <tr>
                 <th style="width: 24px;">No</th>
-                <th style="width: 190px;">Nama</th>
-                <th style="width: 120px;">Jabatan</th>
+                <th style="width: 270px;">Nama</th>
+                <th style="width: 140px;">Jabatan</th>
                 <th class="angka">Hadir</th>
                 <th class="angka">Terlambat</th>
                 <th class="angka">Izin</th>
