@@ -41,6 +41,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`, di atas `be/absensi-murid`) | Selesai, menunggu review; test SQLite, test rapor dan absensi murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru. Template kertas rapor menunggu contoh dari sekolah |
 | Revisi sekolah R7: Docker (branch `be/docker`, di atas `be/ekspor-rapor-kelas`) | Selesai, menunggu review; build image dan `docker compose up` diuji di laptop. Pindah ke VPS belum, uji dulu di VM `debian-lab` (`docs/docker.md`) |
 | Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`, di atas `be/docker`) | Selesai, menunggu review; test SQLite dan MariaDB uji, migration diuji di database uji |
+| Audit dan perbaikan AI-slop (branch `be/anti-slop`; FE `fe/anti-slop`) | Selesai, menunggu review; test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, `DemoSeeder` di MariaDB |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -159,6 +160,18 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 5. FE ikut di `deploy/compose.yaml` dengan jaringan host, karena `BE_API_URL` harus sama untuk browser dan server FE.
 6. `TRUSTED_PROXIES` perlu `172.16.0.0/12` karena request dari Nginx host masuk lewat gateway jaringan Docker.
 7. Backup DB lewat `mariadb-dump` di container dari crontab host. Langkah pindah, deploy berikutnya, dan rollback di `docs/docker.md`.
+
+### Audit AI-slop (branch `be/anti-slop`)
+
+Acuan: Bagian C dan, sebagai rujukan tambahan, `antislop.md` dan `GUIDE.md` dari repo miqdadbadjuber/anti-slop (dibaca sebagai data di folder sementara, tidak dipasang dan tidak disalin). Pesan untuk pengguna, notifikasi, dan template PDF sudah spesifik; tidak ada pesan error generik, tanda seru, atau em dash di `app/`, `lang/`, dan `resources/`. Temuan dan tindakannya:
+
+1. Diperbaiki: `PengaturanService::namaAtribut()` memakai bagian sebelum `.*` sebagai nama field, sehingga item daftar yang kosong judulnya mendapat pesan "Program wajib diisi." (docblock-nya menyebut "judul"). Sekarang bagian terakhir kunci: "Judul wajib diisi.". Kunci tanpa `.*` dan daftar seperti `absensi.tanggal_libur.*` tidak berubah. Ditambah test.
+2. Diperbaiki: pengumuman demo "Pengingat pembayaran SPP September" (`KomunikasiDemoSeeder`) masih meminta wali mengunggah bukti transfer, padahal pembayaran hanya tunai sejak R3.
+3. Diperbaiki: relasi `Pendaftaran::pemroses()` tidak dipakai di mana pun (dihapus); komentar stub Laravel "Run the migrations." dan "Reverse the migrations." di migration `personal_access_tokens` (dihapus, migration lain tidak memakainya).
+4. Diperbaiki di branch `be/jam-absensi`, bukan di sini supaya tidak bentrok: komentar `pdf/bagian/kop.blade.php` yang menyebut kop hanya untuk kwitansi dan rapor.
+5. `check:slop` mendapat dua pola: pesan error generik ("terjadi kesalahan", "something went wrong", "oops") di file konten, dan komentar banner (`// ====`, `/* ----`, `# ----`) di luar test. Keduanya nol temuan di kode sekarang dan diuji dengan file sementara.
+6. Diusulkan: komentar banner `|----` di `config/*.php` adalah bawaan file konfigurasi Laravel. Tidak dihapus karena file itu disalin dari framework dan lebih mudah dibandingkan dengan versi Laravel berikutnya kalau tetap utuh.
+7. Diusulkan: pesan format tanggal dan jam dari `lang/id/validation.php` ("... tidak cocok dengan format H:i.") menyebut format teknis. FE memeriksa format lebih dulu, jadi pesan ini jarang terlihat; perbaikannya butuh pesan khusus per format.
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 
@@ -975,6 +988,14 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Audit dan perbaikan AI-slop (branch `be/anti-slop`)
+
+Pasangan FE `fe/anti-slop`. Bagian A tidak berubah. Temuan di "Audit AI-slop".
+
+Diubah: `PengaturanService::namaAtribut()`, `Pendaftaran` (relasi `pemroses()` dihapus), `database/seeders/Demo/KomunikasiDemoSeeder.php`, migration `2026_09_26_072119_create_personal_access_tokens_table.php` (komentar saja), `scripts/check-slop.sh`; test `PengaturanTest` (pesan validasi item daftar).
+
+Pengecekan: `php artisan test --compact` lolos di SQLite dan di MariaDB 10.11.14 (database terpisah); Pint, PHPStan, `check:slop` bersih; `migrate:fresh --seed` dan `DemoSeeder` di MariaDB. Test baru gagal dengan kode `namaAtribut()` lama.
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 
