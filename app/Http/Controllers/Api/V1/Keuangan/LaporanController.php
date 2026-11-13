@@ -51,7 +51,8 @@ class LaporanController extends Controller
     }
 
     /**
-     * Murid yang punya tagihan terlambat, urut total tunggakan terbesar, beserta kontak utama walinya.
+     * Murid yang punya tagihan terlambat, urut tunggakan terbesar, beserta kontak utama walinya. Tunggakan
+     * dihitung dari sisa tagihan: `total` murid dan `total_tunggakan` menjumlahkan `sisa` tiap tagihan.
      *
      * @response array{
      *     success: true,
@@ -62,7 +63,7 @@ class LaporanController extends Controller
      *         murid: list<array{
      *             id: int, nis: string, nama_lengkap: string, kelas: array{id: int, nama: string}|null,
      *             kontak_wali: array{nama: string, no_hp: string|null}|null, jumlah_tagihan: int, total: int,
-     *             tagihan: list<array{id: int, kode: string, nama: string, jatuh_tempo: string, total: int}>
+     *             tagihan: list<array{id: int, kode: string, nama: string, jatuh_tempo: string, total: int, sisa: int}>
      *         }>
      *     },
      *     meta: null

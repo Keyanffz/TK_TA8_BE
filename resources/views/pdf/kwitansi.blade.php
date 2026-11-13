@@ -44,7 +44,12 @@
         @if ($tagihan->potongan > 0)
             <tr><td>Potongan</td><td style="text-align: right;">- {{ \App\Support\Rupiah::format($tagihan->potongan) }}</td></tr>
         @endif
-        <tr><td><strong>Jumlah dibayar</strong></td><td class="total">{{ \App\Support\Rupiah::format($pembayaran->jumlah) }}</td></tr>
+        <tr><td>Total tagihan</td><td style="text-align: right;">{{ \App\Support\Rupiah::format($tagihan->total) }}</td></tr>
+        @if ($dibayarSebelumnya > 0)
+            <tr><td>Sudah dibayar sebelumnya</td><td style="text-align: right;">{{ \App\Support\Rupiah::format($dibayarSebelumnya) }}</td></tr>
+        @endif
+        <tr><td><strong>Dibayar kali ini</strong></td><td class="total">{{ \App\Support\Rupiah::format($pembayaran->jumlah) }}</td></tr>
+        <tr><td>Sisa tagihan</td><td style="text-align: right;">{{ $sisa === 0 ? 'Lunas' : \App\Support\Rupiah::format($sisa) }}</td></tr>
     </table>
 
     <table class="tanda-tangan">
@@ -52,7 +57,7 @@
             <td></td>
             <td>
                 Diterima {{ $pembayaran->diverifikasi_at?->translatedFormat('j F Y') }}<br>
-                Petugas keuangan
+                Petugas
                 <br><br>
                 <strong>{{ $pembayaran->verifikator?->name }}</strong>
             </td>

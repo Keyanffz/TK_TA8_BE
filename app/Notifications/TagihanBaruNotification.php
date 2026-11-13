@@ -18,6 +18,6 @@ class TagihanBaruNotification extends NotifikasiTagihan
 
     protected function pesan(object $notifiable): string
     {
-        return "Tagihan {$this->labelTagihan} untuk {$this->namaAnak} sebesar {$this->total} jatuh tempo {$this->jatuhTempo}.";
+        return "Tagihan {$this->labelTagihan} untuk {$this->namaAnak} sebesar {$this->sisa} jatuh tempo {$this->jatuhTempo}.";
     }
 }

@@ -2,7 +2,6 @@
 
 use App\Enums\Hubungan;
 use App\Enums\StatusKelasMurid;
-use App\Enums\StatusPembayaran;
 use App\Enums\StatusTagihan;
 use App\Models\Guru;
 use App\Models\JenisTagihan;
@@ -150,10 +149,7 @@ it('menolak membatalkan tagihan yang lunas, sudah dibatalkan, atau punya bukti m
 })->with([
     'lunas' => [fn (Tagihan $tagihan) => $tagihan->update(['status' => StatusTagihan::Lunas])],
     'sudah dibatalkan' => [fn (Tagihan $tagihan) => $tagihan->update(['status' => StatusTagihan::Dibatalkan])],
-    'bukti menunggu verifikasi' => [function (Tagihan $tagihan) {
-        Pembayaran::factory()->for($tagihan)->create(['status' => StatusPembayaran::Menunggu]);
-        $tagihan->update(['status' => StatusTagihan::MenungguVerifikasi]);
-    }],
+    'sudah dicicil' => [fn (Tagihan $tagihan) => Pembayaran::factory()->for($tagihan)->create(['jumlah' => 50000])],
 ]);
 
 it('hanya Kepala Sekolah yang bisa membatalkan tagihan', function () {

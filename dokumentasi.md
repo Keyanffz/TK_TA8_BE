@@ -35,6 +35,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, `check:slop`, dan uji manual dengan `upload_max_filesize=2M`; di-merge (PR #19) |
 | Revisi sekolah R1: NISN murid yang dihapus bisa dipakai lagi (branch `be/perbaikan-tambah-murid`) | Selesai, menunggu review; test SQLite, test murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop` |
 | Revisi sekolah R2: PPDB tanpa unggah berkas, rapor tertutup untuk wali murid, contoh "uang pendidikan" (branch `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
+| Revisi sekolah R3: pembayaran tunai dengan cicilan, wali kelas ikut mencatat, pembatalan pembayaran (branch `be/pembayaran-tunai-cicilan`, di atas `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -53,7 +54,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Jenis tagihan | `GET /jenis-tagihan` (izin lihat keuangan), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
 | Keringanan | `GET /keringanan` (izin lihat keuangan), `POST /keringanan`, `PUT/DELETE /keringanan/{id}` (K) |
 | Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (izin lihat keuangan semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan`, `POST /tagihan/{id}/aktifkan` (SA) |
-| Pembayaran | `POST /tagihan/{id}/pembayaran` (W bukti transfer, K tunai atau transfer), `GET /pembayaran`, `GET /pembayaran/{id}`, `GET /pembayaran/{id}/bukti`, `GET /pembayaran/{id}/kwitansi` (izin lihat keuangan, W sendiri), `POST /pembayaran/{id}/terima`, `POST /pembayaran/{id}/tolak` (K) |
+| Pembayaran | `POST /tagihan/{id}/pembayaran` (K atau wali kelas murid itu; tunai, boleh dicicil), `GET /pembayaran` (izin lihat keuangan, W sendiri), `GET /pembayaran/{id}` dan `GET /pembayaran/{id}/kwitansi` (izin lihat keuangan, G kelasnya, W sendiri), `GET /pembayaran/{id}/bukti` (riwayat transfer lama), `POST /pembayaran/{id}/batalkan` (SA) |
 | Laporan (izin lihat keuangan) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
@@ -93,6 +94,23 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 4. Wali murid tidak membuka rapor. `GET /rapor`, `GET /rapor/{id}`, dan `GET /rapor/{id}/pdf` masuk grup `role:super_admin,guru` (wali 403 `FORBIDDEN`), dan `Rapor::scopeVisibleTo` tidak mengembalikan apa pun untuk wali supaya pemanggil lain tidak membocorkannya. Dashboard wali tanpa `rapor_terbaru`. `catatan_revisi` sekarang selalu dikirim karena pembacanya tinggal guru dan Kepala Sekolah.
 5. Menerbitkan rapor tidak mengirim notifikasi ke wali; `RaporTerbitNotification` dihapus. Jenis `rapor_terbit` tetap ada di enum `JenisNotifikasi`, berbeda dari usulan R0 yang menghapusnya: notifikasi lama berjenis itu masih tersimpan di tabel `notifications`, dan `GET /notifikasi` akan gagal (500) kalau jenisnya tidak dikenali. Notifikasi lama tidak dihapus; FE mengarahkannya ke beranda wali.
 6. Contoh nama tagihan sekali bayar di dokumentasi API dan Bagian A memakai "uang pendidikan". Tidak ada data yang diubah; nama jenis tagihan tetap diisi sekolah.
+
+### Revisi sekolah R3: pembayaran tunai dengan cicilan (branch `be/pembayaran-tunai-cicilan`)
+
+1. Pembayaran baru hanya tunai dan dicatat petugas: `POST /tagihan/{id}/pembayaran` menerima JSON `{ jumlah, tanggal_bayar }`, langsung `diterima`. Wali murid tidak bisa lagi mengirim pembayaran (403). Endpoint `terima` dan `tolak` dihapus.
+2. Cicilan tanpa status tagihan baru dan tanpa kolom baru di `tagihan`. `terbayar` dan `sisa` dihitung dari jumlah pembayaran `diterima` (`Tagihan::terbayar()`, `sisa()`, dan scope `denganTerbayar()` untuk daftar). Tagihan yang baru dicicil tetap `belum_bayar` atau `terlambat`.
+3. Yang boleh mencatat: petugas keuangan (Kepala Sekolah, guru berizin kelola keuangan) dan wali kelas untuk murid yang penempatannya aktif di kelasnya pada tahun ajaran aktif. Guru pendamping tidak (403), guru lain 404. Wali kelas tidak mendapat menu pembayaran (`GET /pembayaran` tetap 403), tetapi bisa membuka `GET /pembayaran/{id}` dan kwitansi pembayaran murid kelasnya. Guru pendamping ikut bisa membuka keduanya karena cakupannya sama dengan cakupan tagihan.
+4. `diverifikasi_oleh` dan `diverifikasi_at` dipakai untuk petugas pencatat dan waktu pencatatan. Nama kolom tidak diganti supaya riwayat lama tidak perlu dipindah.
+5. `POST /pembayaran/{id}/batalkan` hanya untuk Kepala Sekolah, alasan wajib, hanya pembayaran `diterima` (termasuk transfer lama yang sudah diterima). Tidak ada notifikasi ke wali. Pembayaran yang dibatalkan tetap tampil di riwayat dan tidak punya kwitansi.
+6. Tagihan yang sudah punya pembayaran `diterima` tidak bisa dibatalkan; pembayarannya dibatalkan dulu. Potongan dibatasi `nominal - terbayar`, dan potongan yang menutup sisa membuat tagihan `lunas`.
+7. Migration `2026_11_13_100000_tambah_pembatalan_ke_pembayaran_table` berhenti dengan pesan kalau masih ada pembayaran `menunggu`. Periksa sebelum memasang: `SELECT COUNT(*) FROM pembayaran WHERE status = 'menunggu';`. Kalau ada, terima atau tolak dulu di versi sebelum R3. Database lokal yang berisi data demo lama perlu `migrate:fresh --seed` lalu `DemoSeeder`.
+8. Rekening sekolah: kunci `keuangan.rekening` tidak lagi dikirim `GET /pengaturan`, tidak bisa diubah lewat `PUT /pengaturan` (422 kunci tidak dikenal), dan tidak ada di detail tagihan. Barisnya di database lama tidak dihapus. Seeder tidak membuatnya lagi.
+9. `GET /pembayaran/{id}/bukti` tetap ada untuk riwayat transfer lama. Enum `menunggu_verifikasi`, `transfer`, `menunggu`, `ditolak`, dan jenis notifikasi `pembayaran_masuk`, `pembayaran_ditolak` tetap ada untuk data lama; tidak ada kode yang membuatnya lagi.
+10. Kwitansi dibuat per pembayaran: total tagihan, sudah dibayar sebelumnya (pembayaran `diterima` yang dicatat lebih dulu, urut id), dibayar kali ini, dan sisa. Kalau pembayaran yang lebih awal dibatalkan, kwitansi cicilan sesudahnya ikut berubah saat diunduh ulang.
+11. Notifikasi tagihan baru, pengingat, dan terlambat menyebut sisa yang belum dibayar, bukan total. Untuk tagihan yang belum dicicil angkanya sama.
+12. Laporan: `terbayar` menjumlahkan pembayaran `diterima` tiap tagihan; tunggakan menjumlahkan sisa dan tiap tagihan di daftar tunggakan mendapat field `sisa`. Ekspor Excel mendapat kolom Terbayar dan Sisa; kolom "Diverifikasi Oleh" menjadi "Petugas".
+13. Dashboard: `tertunda.pembayaran_menunggu` (Kepala Sekolah) dan `pembayaran_menunggu` (guru) dihapus; `total_belum_bayar` wali menjumlahkan sisa.
+14. `DemoSeeder`: semua pembayaran tunai; ada tagihan lunas lewat dua cicilan dan tagihan terlambat yang baru dicicil separuh. Tidak ada lagi pembayaran menunggu atau ditolak.
 
 ## Keputusan yang sudah diterapkan
 
@@ -893,6 +911,36 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R3: pembayaran tunai dengan cicilan (branch `be/pembayaran-tunai-cicilan`)
+
+Diminta sekolah: pembayaran hanya tunai, boleh dicicil, wali kelas ikut mencatat untuk kelasnya; wali murid tidak mengunggah bukti. Pembatalan pembayaran salah catat disetujui pemilik repo. Bagian A (A1, A2.4, A2.5, A2.13, A3, A4, A5, A6, A7) dan B4, B6.3, B6.13, B7, B8 diperbarui; Bagian A tetap identik dengan PROMPT FE.
+
+Baru:
+
+- `database/migrations/2026_11_13_100000_tambah_pembatalan_ke_pembayaran_table.php`: `alasan_pembatalan`, `dibatalkan_oleh`, `dibatalkan_at`.
+
+Dihapus:
+
+- `app/Notifications/PembayaranMasukNotification.php`, `app/Notifications/PembayaranDitolakNotification.php`.
+- `PembayaranService::unggahBukti()`, `catatOlehPetugas()`, `terima()`, `tolak()`; `PengaturanService::rekeningSekolah()`; route `POST /pembayaran/{id}/terima` dan `/tolak`.
+
+Diubah:
+
+- `PembayaranService`: `catat()` (tunai, jumlah 1 sampai sisa, lunas saat sisa habis) dan `batalkan()`.
+- `Tagihan`: `scopeDenganTerbayar()`, `terbayar()`, `sisa()`. `Pembayaran`: kolom pembatalan dan relasi `pembatal`. `StatusPembayaran`: `dibatalkan`.
+- `TagihanService`: potongan dibatasi yang sudah dibayar, lunas saat total sama dengan terbayar, batalkan ditolak kalau sudah ada pembayaran.
+- `TagihanPolicy::bayar` (petugas keuangan atau wali kelas murid itu), `PembayaranPolicy` (`view` menurut cakupan, `lihatBukti` untuk bukti lama).
+- `BayarTagihanRequest`, `PembayaranController` (`bayar`, `batalkan`, relasi dengan `terbayar`), `TagihanController`, `routes/api.php` (`POST /tagihan/{id}/pembayaran` masuk grup `role:super_admin,guru`).
+- `TagihanResource` (`terbayar`, `sisa`), `TagihanDetailResource` (tanpa `rekening`), `RiwayatPembayaranResource` (data pembatalan).
+- `KwitansiService` dan `resources/views/pdf/kwitansi.blade.php`: rincian cicilan.
+- `LaporanKeuanganService`, `LaporanController`, `TagihanSheet`, `PembayaranSheet`, `DashboardService`, `JatuhTempoTagihanService`.
+- `NotifikasiTagihan` dan turunannya memakai sisa; `PembayaranDiterimaNotification` menyebut jumlah dan sisa.
+- `PengaturanService`: `keuangan.rekening` tidak dikirim dan tidak divalidasi. `PengaturanSeeder`, `WebsiteDemoSeeder`, `KeuanganDemoSeeder`, `PembayaranFactory` (bawaan tunai diterima, state `transferLama`).
+- Test: `PembayaranTest` ditulis ulang; `UbahTagihanTest`, `TagihanSekaliDanPembatalanTest`, `LaporanKeuanganTest`, `JatuhTempoTagihanTest`, `DashboardTest`, `AksesTagihanTest`, `PengaturanTest`, `CakupanIzinTest`, `EnforcementIzinTest`, `AksesSilangRoleTest`, `DokumentasiApiTest`, `SeederTest`, `RelasiModelTest`, `EnumKontrakTest`.
+- `storage/api-docs/api.json` diekspor ulang.
+
+Pengecekan: `php artisan test --compact` 1107 lolos di SQLite dan di MariaDB 13.0.2 (database `TK_TA8_uji`); Pint, PHPStan, `check:slop` bersih. Di database uji MariaDB: `migrate:fresh --seed` dan `DemoSeeder` jalan (203 tagihan lunas, 37 terlambat, 6 di antaranya sudah dicicil; 212 pembayaran tunai diterima), `migrate:rollback --step=1` lalu `migrate` jalan, dan migration berhenti dengan pesan saat satu pembayaran diubah menjadi `menunggu`. Uji curl ke `php artisan serve` dengan database uji: wali kelas mencicil (201), jumlah di atas sisa dan tanggal besok (422), pelunasan oleh Kepala Sekolah, kwitansi kedua cicilan (PDF), wali murid mencatat (403), guru lain (404), wali kelas membuka daftar pembayaran dan membatalkan (403), Kepala Sekolah membatalkan (tagihan kembali `terlambat` dengan sisa), batalkan ulang dan kwitansi pembayaran dibatalkan (422), potongan di atas sisa (422), endpoint `terima` lama (404), dashboard ketiga role, tunggakan dengan `sisa`, pengaturan keuangan tanpa rekening, dan ekspor Excel. Notifikasi dan log aktivitas hanya diperiksa lewat test (queue tidak dijalankan saat uji curl).
 
 ### Revisi sekolah R2: PPDB tanpa unggah berkas, rapor tertutup untuk wali murid (branch `be/revisi-kecil`)
 

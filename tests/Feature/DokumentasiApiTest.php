@@ -113,7 +113,7 @@ it('mendokumentasikan 404 untuk data di luar jangkauan pengguna', function () {
     }
 });
 
-it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru tanpa izin keuangan', function () {
+it('mendokumentasikan respons file hanya dengan tipe file, dan 403 hanya untuk bukti transfer lama', function () {
     $dokumen = $this->getJson('/docs/api.json')->assertOk()->json();
     $tipeFile = [
         '/pembayaran/{id}/bukti' => 'image/jpeg',
@@ -129,8 +129,9 @@ it('mendokumentasikan respons file hanya dengan tipe file, dan 403 untuk guru ta
     foreach ($tipeFile as $path => $tipe) {
         expect(array_keys($dokumen['paths'][$path]['get']['responses'][200]['content']))->toBe([$tipe]);
     }
-    foreach (['/pembayaran/{id}', '/pembayaran/{id}/bukti', '/pembayaran/{id}/kwitansi'] as $path) {
-        expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->toContain('FORBIDDEN');
+    expect(kodeErrorTerdokumentasi($dokumen['paths']['/pembayaran/{id}/bukti']['get'], 403))->toContain('FORBIDDEN');
+    foreach (['/pembayaran/{id}', '/pembayaran/{id}/kwitansi'] as $path) {
+        expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->not->toContain('FORBIDDEN');
     }
 });
 
@@ -221,8 +222,9 @@ it('mewajibkan field relasi yang selalu dikirim dan membiarkan opsional hanya fi
     $opsional = fn (string $nama) => array_values(array_diff(array_keys($skema[$nama]['properties']), $skema[$nama]['required']));
 
     expect($skema['TagihanResource']['required'])->toContain('murid', 'jenis_tagihan')
-        ->and($skema['TagihanDetailResource']['required'])->toContain('murid', 'jenis_tagihan', 'pembayaran', 'rekening')
-        ->and($skema['PembayaranResource']['required'])->toContain('tagihan', 'dibayar_oleh', 'diverifikasi_oleh')
+        ->and($skema['TagihanDetailResource']['required'])->toContain('murid', 'jenis_tagihan', 'terbayar', 'sisa', 'pembayaran')
+        ->and($skema['TagihanDetailResource']['properties'])->not->toHaveKey('rekening')
+        ->and($skema['PembayaranResource']['required'])->toContain('tagihan', 'dibayar_oleh', 'diverifikasi_oleh', 'dibatalkan_oleh', 'alasan_pembatalan')
         ->and($skema['KelasDetailResource']['required'])->toContain('jumlah_murid', 'tahun_ajaran', 'murid')
         ->and($skema['WaliMuridDetailResource']['required'])->toContain('user', 'jumlah_anak', 'anak')
         ->and($skema['RaporResource']['required'])->toContain('murid', 'kelas', 'tahun_ajaran', 'pembuat')
@@ -253,7 +255,9 @@ it('mendokumentasikan endpoint publik tanpa auth dan dashboard sebagai gabungan 
 
     expect($dashboard['anyOf'])->toHaveCount(3)
         ->and($dashboard['anyOf'][0]['required'])->toContain('statistik', 'grafik_pemasukan', 'tertunda')
-        ->and($dashboard['anyOf'][1]['required'])->toContain('kelas_saya', 'progres_rapor', 'pembayaran_menunggu')
+        ->and($dashboard['anyOf'][1]['required'])->toContain('kelas_saya', 'progres_rapor', 'keuangan_kelas')
+        ->and($dashboard['anyOf'][1]['properties'])->not->toHaveKey('pembayaran_menunggu')
+        ->and($dashboard['anyOf'][0]['properties']['tertunda']['properties'])->not->toHaveKey('pembayaran_menunggu')
         ->and($dashboard['anyOf'][2]['required'])->toContain('anak', 'tagihan_aktif', 'info_sekolah')
         ->and($dashboard['anyOf'][2]['required'])->not->toContain('rapor_terbaru')
         ->and($dashboard['anyOf'][2]['properties']['info_sekolah']['type'])->toBe(['object', 'null'])

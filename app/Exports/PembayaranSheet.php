@@ -40,7 +40,7 @@ class PembayaranSheet implements FromQuery, ShouldAutoSize, WithHeadings, WithMa
      */
     public function headings(): array
     {
-        return ['Kode', 'Tanggal Bayar', 'Kode Tagihan', 'Nama Murid', 'Tagihan', 'Metode', 'Bank Pengirim', 'Jumlah', 'Diverifikasi Oleh'];
+        return ['Kode', 'Tanggal Bayar', 'Kode Tagihan', 'Nama Murid', 'Tagihan', 'Metode', 'Bank Pengirim', 'Jumlah', 'Petugas'];
     }
 
     /**

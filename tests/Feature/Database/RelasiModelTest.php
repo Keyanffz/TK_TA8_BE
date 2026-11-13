@@ -88,7 +88,7 @@ it('menghubungkan tagihan ke murid, jenis tagihan, tahun ajaran, dan pembayarann
         ->and($tagihan->total)->toBe(150000)
         ->and($tagihan->tahun_ajaran_id)->toBe($tagihan->jenisTagihan->tahun_ajaran_id)
         ->and($tagihan->murid->tagihan()->first()?->is($tagihan))->toBeTrue()
-        ->and($tagihan->pembayaran()->pluck('status')->all())->toBe([StatusPembayaran::Ditolak, StatusPembayaran::Menunggu])
+        ->and($tagihan->pembayaran()->pluck('status')->all())->toBe([StatusPembayaran::Ditolak, StatusPembayaran::Diterima])
         ->and($tagihan->pembayaran()->first()?->jumlah)->toBe($tagihan->total);
 });
 

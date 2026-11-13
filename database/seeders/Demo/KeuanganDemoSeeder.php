@@ -24,8 +24,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * SPP bulanan Juli–September 2026 dan uang kegiatan untuk semua murid, dengan status campuran:
- * sebagian besar lunas, sebagian terlambat, beberapa pembayaran menunggu verifikasi, dan
- * beberapa percobaan pembayaran yang ditolak.
+ * sebagian besar lunas (ada yang lewat dua cicilan), sebagian terlambat, dan beberapa tagihan terlambat yang
+ * baru dicicil. Semua pembayaran tunai dan dicatat petugas.
  */
 class KeuanganDemoSeeder extends Seeder
 {
@@ -64,10 +64,7 @@ class KeuanganDemoSeeder extends Seeder
             'is_aktif' => true,
         ]);
 
-        $murid = Murid::query()
-            ->with(['waliMurid' => fn ($wali) => $wali->whereHas('user', fn ($user) => $user->where('wajib_ganti_password', false)), 'waliMurid.user'])
-            ->orderBy('id')
-            ->get();
+        $murid = Murid::query()->orderBy('id')->get();
         $keringananSpp = $this->buatKeringanan($murid, $spp, $kepalaSekolah);
 
         foreach (self::PERIODE_SPP as $bulanKe => $periode) {
@@ -113,13 +110,12 @@ class KeuanganDemoSeeder extends Seeder
     private function buatTagihanSpp(Murid $murid, JenisTagihan $spp, Carbon $periode, int $bulanKe, int $urutan, int $potongan): void
     {
         $total = self::NOMINAL_SPP - $potongan;
-        $sudahTertaut = $murid->waliMurid->isNotEmpty();
 
         $rencana = match (true) {
             $total === 0 => 'gratis',
             $bulanKe === 0 => $urutan % 20 === 7 ? 'terlambat' : 'lunas',
             $bulanKe === 1 => $urutan % 10 === 7 ? 'terlambat' : 'lunas',
-            $urutan % 10 === 7 => $sudahTertaut ? 'menunggu' : 'terlambat',
+            $urutan % 10 === 7 => 'dicicil',
             in_array($urutan % 10, [8, 9], true) => 'terlambat',
             default => 'lunas',
         };
@@ -138,24 +134,33 @@ class KeuanganDemoSeeder extends Seeder
             'created_at' => $periode->copy()->setTime(0, 10),
             'updated_at' => $periode->copy()->setTime(0, 10),
         ]);
+        $tanggalBayar = $periode->copy()->day(2 + $urutan % 8);
 
         match ($rencana) {
             'gratis' => $tagihan->update(['status' => StatusTagihan::Lunas, 'lunas_at' => $tagihan->created_at]),
             'terlambat' => $tagihan->update(['status' => StatusTagihan::Terlambat]),
-            'menunggu' => $this->bayar($tagihan, $murid, $periode->copy()->day(20 + $urutan % 5), StatusPembayaran::Menunggu),
-            'lunas' => $this->bayarLunas($tagihan, $murid, $periode, $bulanKe, $urutan),
+            'dicicil' => $this->cicil($tagihan, $periode->copy()->day(20 + $urutan % 5)),
+            'lunas' => $bulanKe === 1 && $urutan % 10 === 3
+                ? $this->bayarDuaKali($tagihan, $tanggalBayar)
+                : $this->bayar($tagihan, $tanggalBayar, $total),
         };
     }
 
-    private function bayarLunas(Tagihan $tagihan, Murid $murid, Carbon $periode, int $bulanKe, int $urutan): void
+    /**
+     * Separuh tagihan dibayar setelah jatuh tempo; sisanya masih menunggak.
+     */
+    private function cicil(Tagihan $tagihan, Carbon $tanggal): void
     {
-        $tanggalBayar = $periode->copy()->day(2 + $urutan % 8);
+        $this->bayar($tagihan, $tanggal, intdiv($tagihan->total, 2));
+        $tagihan->update(['status' => StatusTagihan::Terlambat]);
+    }
 
-        if ($bulanKe === 1 && $urutan % 10 === 3 && $murid->waliMurid->isNotEmpty()) {
-            $this->bayar($tagihan, $murid, $tanggalBayar->copy()->subDay(), StatusPembayaran::Ditolak);
-        }
+    private function bayarDuaKali(Tagihan $tagihan, Carbon $tanggal): void
+    {
+        $cicilanPertama = intdiv($tagihan->total, 2);
 
-        $this->bayar($tagihan, $murid, $tanggalBayar, StatusPembayaran::Diterima, tunai: $urutan % 5 === 0);
+        $this->bayar($tagihan, $tanggal->copy()->subDay(), $cicilanPertama);
+        $this->bayar($tagihan, $tanggal, $tagihan->total - $cicilanPertama);
     }
 
     private function buatTagihanUangKegiatan(Murid $murid, JenisTagihan $uangKegiatan, int $urutan, User $pembuat): void
@@ -184,42 +189,32 @@ class KeuanganDemoSeeder extends Seeder
             return;
         }
 
-        $this->bayar($tagihan, $murid, Carbon::parse('2026-07-20')->addDays($urutan % 25), StatusPembayaran::Diterima, tunai: $urutan % 4 === 0);
+        $this->bayar($tagihan, Carbon::parse('2026-07-20')->addDays($urutan % 25), self::NOMINAL_UANG_KEGIATAN);
     }
 
     /**
-     * Wali yang belum pernah login (masih memakai password awal) tidak bisa mengunggah bukti, jadi pembayaran
-     * anaknya selalu tunai. Relasi `waliMurid` di sini hanya berisi akun yang sudah dipakai.
+     * Tagihan lunas saat jumlah yang sudah dibayar menyamai totalnya.
      */
-    private function bayar(Tagihan $tagihan, Murid $murid, Carbon $tanggal, StatusPembayaran $status, bool $tunai = false): void
+    private function bayar(Tagihan $tagihan, Carbon $tanggal, int $jumlah): void
     {
-        $pembayar = $murid->waliMurid->first();
-        $tunai = $tunai || $pembayar === null;
-        $diverifikasi = $status === StatusPembayaran::Menunggu ? null : $tanggal->copy()->addDay()->setTime(9, 0);
+        $dicatat = $tanggal->copy()->setTime(9, 0);
 
         Pembayaran::query()->forceCreate([
             'kode' => $this->kodePembayaran($tanggal),
             'tagihan_id' => $tagihan->id,
-            'dibayar_oleh' => $tunai ? null : $pembayar->user_id,
-            'metode' => $tunai ? MetodeBayar::Tunai : MetodeBayar::Transfer,
-            'jumlah' => $tagihan->total,
+            'metode' => MetodeBayar::Tunai,
+            'jumlah' => $jumlah,
             'tanggal_bayar' => $tanggal->toDateString(),
-            'bukti_path' => $tunai ? null : GambarContoh::simpan('local', 'bukti-bayar', 600, 800),
-            'bank_pengirim' => $tunai ? null : fake()->randomElement(['BRI', 'BCA', 'Bank Jateng', 'Mandiri', 'BSI']),
-            'nama_pengirim' => $tunai ? null : $pembayar->user->name,
-            'status' => $status,
-            'alasan_penolakan' => $status === StatusPembayaran::Ditolak ? 'Foto bukti transfer buram sehingga nominal dan nama pengirim tidak terbaca. Unggah ulang foto yang jelas.' : null,
-            'diverifikasi_oleh' => $diverifikasi === null ? null : fake()->randomElement($this->petugasKeuangan),
-            'diverifikasi_at' => $diverifikasi,
-            'created_at' => $tanggal->copy()->setTime(19, 30),
-            'updated_at' => $diverifikasi ?? $tanggal->copy()->setTime(19, 30),
+            'status' => StatusPembayaran::Diterima,
+            'diverifikasi_oleh' => fake()->randomElement($this->petugasKeuangan),
+            'diverifikasi_at' => $dicatat,
+            'created_at' => $dicatat,
+            'updated_at' => $dicatat,
         ]);
 
-        match ($status) {
-            StatusPembayaran::Diterima => $tagihan->update(['status' => StatusTagihan::Lunas, 'lunas_at' => $diverifikasi]),
-            StatusPembayaran::Menunggu => $tagihan->update(['status' => StatusTagihan::MenungguVerifikasi]),
-            StatusPembayaran::Ditolak => null,
-        };
+        if ($tagihan->sisa() === 0) {
+            $tagihan->update(['status' => StatusTagihan::Lunas, 'lunas_at' => $dicatat]);
+        }
     }
 
     private function kodeTagihan(Carbon $bulan): string

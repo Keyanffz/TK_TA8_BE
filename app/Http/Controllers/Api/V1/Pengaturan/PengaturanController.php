@@ -37,7 +37,7 @@ class PengaturanController extends Controller
      * field `*_url` diabaikan. `ppdb.dibuka = true` ditolak kalau `ppdb.tahun_ajaran_id` belum diisi.
      *
      * Guru dengan izin kelola konten website hanya boleh mengirim kunci grup `profil`, `landing`, dan `beranda`;
-     * kunci grup lain (rekening dan aturan tagihan, PPDB, absensi) membuat seluruh permintaan ditolak 403.
+     * kunci grup lain (aturan tagihan, PPDB, absensi) membuat seluruh permintaan ditolak 403.
      */
     public function update(SimpanPengaturanRequest $request, #[CurrentUser] User $user): JsonResponse
     {

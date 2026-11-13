@@ -103,6 +103,26 @@ it('menampilkan daftar murid menunggak beserta kontak utama walinya', function (
         ->assertJsonPath('data.jumlah_murid', 0);
 });
 
+it('menghitung cicilan di laporan dan memakai sisa tagihan di tunggakan', function () {
+    Pembayaran::factory()->for($this->terlambat)->create(['jumlah' => 100000, 'tanggal_bayar' => '2026-09-20']);
+    Pembayaran::factory()->for($this->terlambat)->create(['jumlah' => 150000, 'tanggal_bayar' => '2026-09-21', 'status' => StatusPembayaran::Dibatalkan]);
+
+    $this->actingAs($this->kepsek)->getJson('/api/v1/laporan/keuangan?dari=2026-08-01&sampai=2026-09-30')
+        ->assertOk()
+        ->assertJsonPath('data.ringkasan.terbayar', 750000)
+        ->assertJsonPath('data.ringkasan.belum_terbayar', 50000)
+        ->assertJsonPath('data.ringkasan.pemasukan', 750000)
+        ->assertJsonPath('data.per_bulan.1.terbayar', 100000)
+        ->assertJsonPath('data.per_bulan.1.pemasukan', 450000);
+
+    $this->getJson('/api/v1/laporan/tunggakan')
+        ->assertOk()
+        ->assertJsonPath('data.total_tunggakan', 50000)
+        ->assertJsonPath('data.murid.0.total', 50000)
+        ->assertJsonPath('data.murid.0.tagihan.0.total', 150000)
+        ->assertJsonPath('data.murid.0.tagihan.0.sisa', 50000);
+});
+
 it('mengunduh laporan keuangan sebagai file Excel', function () {
     Excel::fake();
 
@@ -113,6 +133,7 @@ it('mengunduh laporan keuangan sebagai file Excel', function () {
 
         return $tagihan->query()->count() === 4
             && $tagihan->map($tagihan->query()->first())[4] === 'SPP Agustus 2026'
+            && array_slice($tagihan->map($tagihan->query()->first()), 8, 3) === [150000, 150000, 0]
             && $pembayaran->query()->count() === 3;
     });
 });

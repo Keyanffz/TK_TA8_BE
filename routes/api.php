@@ -104,6 +104,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/tagihan/generate', [TagihanController::class, 'generate']);
         Route::patch('/tagihan/{id}/batalkan', [TagihanController::class, 'batalkan']);
         Route::post('/tagihan/{id}/aktifkan', [TagihanController::class, 'aktifkan']);
+        Route::post('/pembayaran/{id}/batalkan', [PembayaranController::class, 'batalkan']);
 
         Route::post('/rapor/{id}/terbitkan', [RaporController::class, 'terbitkan']);
         Route::post('/rapor/{id}/revisi', [RaporController::class, 'revisi']);
@@ -140,8 +141,6 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
 
         Route::post('/tagihan', [TagihanController::class, 'store']);
         Route::put('/tagihan/{id}', [TagihanController::class, 'update']);
-        Route::post('/pembayaran/{id}/terima', [PembayaranController::class, 'terima']);
-        Route::post('/pembayaran/{id}/tolak', [PembayaranController::class, 'tolak']);
     });
 
     Route::middleware('izin:konten_website,lihat')->group(function () {
@@ -212,6 +211,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/rapor/{id}/detail/{detail_id}/foto', [RaporController::class, 'foto']);
         Route::post('/rapor/{id}/ajukan', [RaporController::class, 'ajukan']);
 
+        // Petugas keuangan atau wali kelas murid itu; diperiksa TagihanPolicy.
+        Route::post('/tagihan/{id}/pembayaran', [PembayaranController::class, 'bayar']);
+
         Route::post('/pengumuman', [PengumumanController::class, 'store']);
         Route::put('/pengumuman/{id}', [PengumumanController::class, 'update']);
         Route::delete('/pengumuman/{id}', [PengumumanController::class, 'destroy']);
@@ -227,7 +229,6 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
 
     Route::get('/tagihan', [TagihanController::class, 'index']);
     Route::get('/tagihan/{id}', [TagihanController::class, 'show']);
-    Route::post('/tagihan/{id}/pembayaran', [PembayaranController::class, 'bayar']);
 
     Route::get('/pembayaran', [PembayaranController::class, 'index']);
     Route::get('/pembayaran/{id}', [PembayaranController::class, 'show']);

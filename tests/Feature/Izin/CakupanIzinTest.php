@@ -59,15 +59,15 @@ it('membuka semua murid untuk izin lihat data murid tanpa membuka tagihannya', f
     $this->getJson("/api/v1/tagihan/{$this->tagihanBima->id}")->assertNotFound();
 });
 
-it('membuka semua tagihan dan pembayaran untuk izin lihat keuangan tanpa boleh memverifikasi', function () {
+it('membuka semua tagihan dan pembayaran untuk izin lihat keuangan tanpa boleh mencatat atau membatalkan', function () {
     $pembayaran = Pembayaran::factory()->for($this->tagihanBima)->create();
     $guru = beriIzin($this->buAini, 'keuangan', 'lihat');
 
     $this->actingAs($guru)->getJson("/api/v1/tagihan/{$this->tagihanBima->id}")->assertOk();
     $this->getJson('/api/v1/pembayaran')->assertOk()->assertJsonPath('meta.total', 1);
     $this->getJson('/api/v1/pengaturan?grup=keuangan')->assertOk();
-    $this->postJson("/api/v1/pembayaran/{$pembayaran->id}/terima")->assertForbidden();
-    $this->postJson("/api/v1/tagihan/{$this->tagihanBima->id}/pembayaran", ['metode' => 'tunai', 'tanggal_bayar' => '2026-10-02'])->assertForbidden();
+    $this->postJson("/api/v1/pembayaran/{$pembayaran->id}/batalkan", ['alasan' => 'Salah ketik.'])->assertForbidden();
+    $this->postJson("/api/v1/tagihan/{$this->tagihanBima->id}/pembayaran", ['jumlah' => 50000, 'tanggal_bayar' => '2026-10-02'])->assertForbidden();
 });
 
 it('mencatat perubahan keringanan oleh guru berizin kelola keuangan di log aktivitas', function () {

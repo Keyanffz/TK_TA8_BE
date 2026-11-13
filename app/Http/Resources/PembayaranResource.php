@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 /**
  * Pembayaran beserta tagihannya, untuk `GET /pembayaran` dan aksi pembayaran. Butuh relasi `tagihan` (dengan
- * `murid` dan `jenisTagihan`), `pembayar`, dan `verifikator`.
+ * `murid` dan `jenisTagihan`), `pembayar`, `verifikator`, dan `pembatal`.
  *
  * @mixin Pembayaran
  */

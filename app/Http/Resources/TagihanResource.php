@@ -8,7 +8,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Bentuk tagihan di daftar dan hasil aksi. Butuh relasi `murid` dan `jenisTagihan` (`murid.kelasAktif` untuk
- * nama kelas). Riwayat pembayaran dan rekening sekolah ada di `TagihanDetailResource`.
+ * nama kelas). `terbayar` = jumlah pembayaran diterima, `sisa` = `total` dikurangi `terbayar`; daftar tagihan
+ * memuatnya lewat `Tagihan::denganTerbayar()`. Riwayat pembayaran ada di `TagihanDetailResource`.
  *
  * @mixin Tagihan
  */
@@ -42,6 +43,8 @@ class TagihanResource extends JsonResource
             'nominal' => $this->nominal,
             'potongan' => $this->potongan,
             'total' => $this->total,
+            'terbayar' => $this->terbayar(),
+            'sisa' => $this->sisa(),
             'jatuh_tempo' => $this->jatuh_tempo->toDateString(),
             'status' => $this->status,
             'lunas_at' => $this->lunas_at,

@@ -11,9 +11,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Satu pembayaran tanpa data tagihannya, untuk riwayat di detail tagihan. Butuh relasi `pembayar` dan
- * `verifikator`. `bukti_url` hanya untuk petugas keuangan dan wali murid (yang hanya bisa melihat pembayaran
- * anaknya); guru tanpa izin keuangan melihat riwayat pembayaran murid kelasnya tanpa foto bukti transfer.
+ * Satu pembayaran tanpa data tagihannya, untuk riwayat di detail tagihan. Butuh relasi `pembayar`,
+ * `verifikator`, dan `pembatal`. `diverifikasi_oleh` adalah petugas yang mencatat pembayaran tunai. `bukti_url`,
+ * `bank_pengirim`, `nama_pengirim`, `dibayar_oleh`, dan `alasan_penolakan` hanya terisi di riwayat transfer lama;
+ * `bukti_url` hanya untuk petugas keuangan dan wali murid, tidak untuk guru tanpa izin keuangan.
  *
  * @mixin Pembayaran
  */
@@ -45,6 +46,10 @@ class RiwayatPembayaranResource extends JsonResource
             /** @var array{id: int, nama: string}|null */
             'diverifikasi_oleh' => $this->verifikator === null ? null : ['id' => $this->verifikator->id, 'nama' => $this->verifikator->name],
             'diverifikasi_at' => $this->diverifikasi_at,
+            'alasan_pembatalan' => $this->alasan_pembatalan,
+            /** @var array{id: int, nama: string}|null */
+            'dibatalkan_oleh' => $this->pembatal === null ? null : ['id' => $this->pembatal->id, 'nama' => $this->pembatal->name],
+            'dibatalkan_at' => $this->dibatalkan_at,
             'created_at' => $this->created_at,
         ];
     }

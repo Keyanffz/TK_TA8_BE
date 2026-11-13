@@ -4246,10 +4246,6 @@
                                                         "tertunda": {
                                                             "type": "object",
                                                             "properties": {
-                                                                "pembayaran_menunggu": {
-                                                                    "type": "integer",
-                                                                    "minimum": 0
-                                                                },
                                                                 "rapor_diajukan": {
                                                                     "type": "integer",
                                                                     "minimum": 0
@@ -4260,7 +4256,6 @@
                                                                 }
                                                             },
                                                             "required": [
-                                                                "pembayaran_menunggu",
                                                                 "rapor_diajukan",
                                                                 "pendaftaran_baru"
                                                             ]
@@ -4372,13 +4367,6 @@
                                                                 "lunas",
                                                                 "belum"
                                                             ]
-                                                        },
-                                                        "pembayaran_menunggu": {
-                                                            "type": [
-                                                                "integer",
-                                                                "null"
-                                                            ],
-                                                            "minimum": 0
                                                         }
                                                     },
                                                     "required": [
@@ -4387,8 +4375,7 @@
                                                         "kegiatan_terbaru",
                                                         "pengumuman_terbaru",
                                                         "agenda_mendatang",
-                                                        "keuangan_kelas",
-                                                        "pembayaran_menunggu"
+                                                        "keuangan_kelas"
                                                     ]
                                                 },
                                                 {
@@ -15679,7 +15666,7 @@
         "/laporan/tunggakan": {
             "get": {
                 "operationId": "laporan.tunggakan",
-                "summary": "Murid yang punya tagihan terlambat, urut total tunggakan terbesar, beserta kontak utama walinya",
+                "summary": "Murid yang punya tagihan terlambat, urut tunggakan terbesar, beserta kontak utama walinya. Tunggakan\ndihitung dari sisa tagihan: `total` murid dan `total_tunggakan` menjumlahkan `sisa` tiap tagihan",
                 "tags": [
                     "Laporan"
                 ],
@@ -15796,6 +15783,9 @@
                                                                         },
                                                                         "total": {
                                                                             "type": "integer"
+                                                                        },
+                                                                        "sisa": {
+                                                                            "type": "integer"
                                                                         }
                                                                     },
                                                                     "required": [
@@ -15803,7 +15793,8 @@
                                                                         "kode",
                                                                         "nama",
                                                                         "jatuh_tempo",
-                                                                        "total"
+                                                                        "total",
+                                                                        "sisa"
                                                                     ]
                                                                 }
                                                             }
@@ -18924,237 +18915,10 @@
                 }
             }
         },
-        "/pembayaran/{id}/terima": {
+        "/pembayaran/{id}/batalkan": {
             "post": {
-                "operationId": "pembayaran.terima",
-                "summary": "Menerima pembayaran yang menunggu verifikasi; tagihan menjadi lunas dan wali diberi tahu",
-                "tags": [
-                    "Pembayaran"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/PembayaranResource"
-                                        },
-                                        "meta": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data",
-                                        "meta"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHENTICATED",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "UNAUTHENTICATED"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "FORBIDDEN",
-                                                "ACCOUNT_INACTIVE",
-                                                "PASSWORD_WAJIB_DIGANTI"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "NOT_FOUND"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "BUSINESS_RULE",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "BUSINESS_RULE"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "TOO_MANY_REQUESTS",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "enum": [
-                                                "TOO_MANY_REQUESTS"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "code",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Retry-After": {
-                                "description": "Jumlah detik sampai boleh mencoba lagi.",
-                                "required": true,
-                                "schema": {
-                                    "type": "integer"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/pembayaran/{id}/tolak": {
-            "post": {
-                "operationId": "pembayaran.tolak",
-                "summary": "Menolak bukti transfer beserta alasannya. Tagihan kembali belum dibayar (atau terlambat jika sudah\nlewat jatuh tempo) dan wali diberi tahu",
+                "operationId": "pembayaran.batalkan",
+                "summary": "Membatalkan pembayaran yang salah catat, dengan alasan. Hanya pembayaran yang diterima. Sisa tagihan\ndihitung ulang: tagihan yang tadinya lunas kembali belum bayar, atau terlambat kalau sudah lewat jatuh\ntempo. Setelah itu petugas bisa mencatat ulang jumlah yang benar",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -19398,7 +19162,7 @@
         "/tagihan/{id}/pembayaran": {
             "post": {
                 "operationId": "pembayaran.bayar",
-                "summary": "Membayar tagihan. Wali murid mengunggah bukti transfer (`multipart/form-data`: `bukti`, `tanggal_bayar`,\n`bank_pengirim`, `nama_pengirim`) dan pembayaran menunggu verifikasi. Petugas keuangan mencatat pembayaran\nyang langsung diterima: `metode: tunai`, atau `metode: transfer` dengan `bukti`, `bank_pengirim`, dan\n`nama_pengirim` opsional",
+                "summary": "Mencatat pembayaran tunai yang diterima di sekolah (`jumlah`, `tanggal_bayar`). Untuk petugas keuangan,\ndan wali kelas untuk murid kelasnya. Pembayaran langsung diterima; `jumlah` boleh sebagian dari tagihan\n(cicilan) dan tidak boleh melebihi sisa. Tagihan lunas saat sisanya habis",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -19415,7 +19179,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/BayarTagihanRequest"
                             }
@@ -19643,7 +19407,7 @@
             "get": {
                 "operationId": "pembayaran.index",
                 "description": "Filter `filter[status]`, `filter[metode]`, `filter[tanggal]` (tanggal bayar, YYYY-MM-DD). `search` mencari\nkode pembayaran dan nama murid. Urutan `sort` = `tanggal_bayar` | `created_at` (bawaan `-created_at`).",
-                "summary": "Daftar pembayaran. Petugas keuangan melihat semua pembayaran, wali murid pembayaran tagihan anaknya",
+                "summary": "Daftar pembayaran. Pemegang izin keuangan melihat semua pembayaran, wali murid pembayaran tagihan anaknya",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -19922,7 +19686,7 @@
         "/pembayaran/{id}": {
             "get": {
                 "operationId": "pembayaran.show",
-                "summary": "Detail pembayaran. Guru tanpa izin keuangan ditolak 403 untuk pembayaran murid kelasnya",
+                "summary": "Detail pembayaran. Guru tanpa izin keuangan hanya bisa membuka pembayaran murid kelasnya",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -20002,7 +19766,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20017,7 +19781,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "FORBIDDEN",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -20117,7 +19880,7 @@
         "/pembayaran/{id}/bukti": {
             "get": {
                 "operationId": "pembayaran.bukti",
-                "summary": "File bukti transfer. Pembayaran tunai atau transfer tanpa bukti dibalas 404. Guru tanpa izin keuangan\nditolak 403 untuk pembayaran murid kelasnya",
+                "summary": "File bukti transfer dari riwayat lama. Pembayaran tanpa bukti (semua pembayaran tunai) dibalas 404. Guru\ntanpa izin keuangan ditolak 403 untuk pembayaran murid kelasnya",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -20292,7 +20055,7 @@
         "/pembayaran/{id}/kwitansi": {
             "get": {
                 "operationId": "pembayaran.kwitansi",
-                "summary": "Kwitansi PDF, hanya untuk pembayaran yang sudah diterima. Guru tanpa izin keuangan ditolak 403 untuk\npembayaran murid kelasnya",
+                "summary": "Kwitansi PDF satu pembayaran, memuat total tagihan, yang sudah dibayar sebelumnya, dan sisa setelah\npembayaran ini. Hanya untuk pembayaran yang diterima",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -20352,7 +20115,7 @@
                         }
                     },
                     "403": {
-                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "description": "ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20367,7 +20130,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "FORBIDDEN",
                                                 "ACCOUNT_INACTIVE",
                                                 "PASSWORD_WAJIB_DIGANTI"
                                             ]
@@ -23348,7 +23110,7 @@
             },
             "put": {
                 "operationId": "pengaturan.update",
-                "description": "Guru dengan izin kelola konten website hanya boleh mengirim kunci grup `profil`, `landing`, dan `beranda`;\nkunci grup lain (rekening dan aturan tagihan, PPDB, absensi) membuat seluruh permintaan ditolak 403.",
+                "description": "Guru dengan izin kelola konten website hanya boleh mengirim kunci grup `profil`, `landing`, dan `beranda`;\nkunci grup lain (aturan tagihan, PPDB, absensi) membuat seluruh permintaan ditolak 403.",
                 "summary": "Menyimpan sebagian pengaturan `{ items: { kunci: nilai } }`. Kunci yang tidak dikirim tidak berubah;\nfield `*_url` diabaikan. `ppdb.dibuka = true` ditolak kalau `ppdb.tahun_ajaran_id` belum diisi",
                 "tags": [
                     "Pengaturan"
@@ -30029,7 +29791,7 @@
         "/tagihan/{id}/batalkan": {
             "patch": {
                 "operationId": "tagihan.batalkan",
-                "summary": "Membatalkan tagihan. Ditolak untuk tagihan yang sudah lunas atau masih punya bukti transfer yang\nmenunggu verifikasi. Alasan disimpan di `catatan`",
+                "summary": "Membatalkan tagihan. Ditolak untuk tagihan yang sudah lunas atau sudah punya pembayaran yang diterima\n(batalkan dulu pembayarannya). Alasan disimpan di `catatan`",
                 "tags": [
                     "Tagihan"
                 ],
@@ -30745,7 +30507,7 @@
             "get": {
                 "operationId": "tagihan.index",
                 "description": "Filter `filter[status]`, `filter[periode]` (YYYY-MM), `filter[kelas_id]`, `filter[murid_id]`,\n`filter[jenis_tagihan_id]`. `search` mencari kode tagihan dan nama murid.\nUrutan `sort` = `jatuh_tempo` | `periode` | `created_at` (bawaan `-created_at`).",
-                "summary": "Daftar tagihan. Petugas keuangan melihat semua tagihan, guru lain hanya tagihan murid kelasnya\n(read-only), wali murid hanya tagihan anaknya",
+                "summary": "Daftar tagihan beserta `terbayar` dan `sisa`. Pemegang izin keuangan melihat semua tagihan, guru lain\nhanya tagihan murid kelasnya, wali murid hanya tagihan anaknya",
                 "tags": [
                     "Tagihan"
                 ],
@@ -31038,7 +30800,7 @@
         "/tagihan/{id}": {
             "put": {
                 "operationId": "tagihan.update",
-                "summary": "Mengubah jatuh tempo, potongan, atau catatan tagihan; `total` dihitung ulang dari nominal dikurangi\npotongan. Ditolak untuk tagihan yang lunas, dibatalkan, atau punya bukti transfer yang menunggu\nverifikasi. Tagihan terlambat yang jatuh temponya dimundurkan kembali berstatus belum bayar",
+                "summary": "Mengubah jatuh tempo, potongan, atau catatan tagihan; `total` dihitung ulang dari nominal dikurangi\npotongan dan tidak boleh di bawah yang sudah dibayar. Ditolak untuk tagihan yang lunas atau dibatalkan.\nTagihan terlambat yang jatuh temponya dimundurkan kembali berstatus belum bayar",
                 "tags": [
                     "Tagihan"
                 ],
@@ -31279,7 +31041,7 @@
             },
             "get": {
                 "operationId": "tagihan.show",
-                "summary": "Detail tagihan beserta riwayat pembayaran dan rekening sekolah untuk transfer",
+                "summary": "Detail tagihan beserta riwayat pembayarannya, termasuk pembayaran yang dibatalkan",
                 "tags": [
                     "Tagihan"
                 ],
@@ -34132,41 +33894,19 @@
             },
             "BayarTagihanRequest": {
                 "type": "object",
-                "description": "`POST /tagihan/{id}/pembayaran`. Wali murid selalu transfer dan wajib mengirim bukti (multipart). Petugas\nkeuangan mencatat pembayaran tunai atau transfer yang sudah masuk ke rekening sekolah; untuk transfer,\nbukti, bank, dan nama pengirim boleh dikosongkan. Jumlah tidak dikirim karena selalu sama dengan total tagihan.",
+                "description": "`POST /tagihan/{id}/pembayaran`: pembayaran tunai yang diterima petugas di sekolah. `jumlah` boleh sebagian\ndari tagihan (cicilan); batas atasnya, sisa tagihan, dicek di service terhadap data tagihan.",
                 "properties": {
-                    "metode": {
-                        "$ref": "#/components/schemas/MetodeBayar"
+                    "jumlah": {
+                        "type": "integer",
+                        "minimum": 1
                     },
                     "tanggal_bayar": {
                         "type": "string",
                         "format": "date"
-                    },
-                    "bukti": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "binary",
-                        "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
-                    },
-                    "bank_pengirim": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 50
-                    },
-                    "nama_pengirim": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 100
                     }
                 },
                 "required": [
-                    "metode",
+                    "jumlah",
                     "tanggal_bayar"
                 ],
                 "title": "BayarTagihanRequest"
@@ -36266,6 +36006,30 @@
                         ],
                         "format": "date-time"
                     },
+                    "alasan_pembatalan": {
+                        "type": "string"
+                    },
+                    "dibatalkan_oleh": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "dibatalkan_at": {
+                        "type": "string"
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -36292,6 +36056,9 @@
                     "dibayar_oleh",
                     "diverifikasi_oleh",
                     "diverifikasi_at",
+                    "alasan_pembatalan",
+                    "dibatalkan_oleh",
+                    "dibatalkan_at",
                     "created_at",
                     "tagihan"
                 ],
@@ -37563,6 +37330,30 @@
                         ],
                         "format": "date-time"
                     },
+                    "alasan_pembatalan": {
+                        "type": "string"
+                    },
+                    "dibatalkan_oleh": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "nama": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nama"
+                        ]
+                    },
+                    "dibatalkan_at": {
+                        "type": "string"
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -37586,6 +37377,9 @@
                     "dibayar_oleh",
                     "diverifikasi_oleh",
                     "diverifikasi_at",
+                    "alasan_pembatalan",
+                    "dibatalkan_oleh",
+                    "dibatalkan_at",
                     "created_at"
                 ],
                 "title": "RiwayatPembayaranResource"
@@ -38266,10 +38060,12 @@
             },
             "StatusPembayaran": {
                 "type": "string",
+                "description": "`menunggu` dan `ditolak` hanya ada di riwayat transfer lama; sejak pembayaran dicatat tunai oleh petugas, pembayaran baru langsung `diterima` dan hanya bisa berubah menjadi `dibatalkan`.\n",
                 "enum": [
                     "menunggu",
                     "diterima",
-                    "ditolak"
+                    "ditolak",
+                    "dibatalkan"
                 ],
                 "title": "StatusPembayaran"
             },
@@ -38392,6 +38188,12 @@
                     "total": {
                         "type": "integer"
                     },
+                    "terbayar": {
+                        "type": "integer"
+                    },
+                    "sisa": {
+                        "type": "integer"
+                    },
                     "jatuh_tempo": {
                         "type": "string"
                     },
@@ -38423,28 +38225,6 @@
                         "items": {
                             "$ref": "#/components/schemas/RiwayatPembayaranResource"
                         }
-                    },
-                    "rekening": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "bank": {
-                                    "type": "string"
-                                },
-                                "nomor": {
-                                    "type": "string"
-                                },
-                                "atas_nama": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "bank",
-                                "nomor",
-                                "atas_nama"
-                            ]
-                        }
                     }
                 },
                 "required": [
@@ -38457,13 +38237,14 @@
                     "nominal",
                     "potongan",
                     "total",
+                    "terbayar",
+                    "sisa",
                     "jatuh_tempo",
                     "status",
                     "lunas_at",
                     "catatan",
                     "created_at",
-                    "pembayaran",
-                    "rekening"
+                    "pembayaran"
                 ],
                 "title": "TagihanDetailResource"
             },
@@ -38555,6 +38336,12 @@
                     "total": {
                         "type": "integer"
                     },
+                    "terbayar": {
+                        "type": "integer"
+                    },
+                    "sisa": {
+                        "type": "integer"
+                    },
                     "jatuh_tempo": {
                         "type": "string"
                     },
@@ -38592,6 +38379,8 @@
                     "nominal",
                     "potongan",
                     "total",
+                    "terbayar",
+                    "sisa",
                     "jatuh_tempo",
                     "status",
                     "lunas_at",

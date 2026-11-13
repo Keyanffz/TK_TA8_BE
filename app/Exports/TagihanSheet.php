@@ -40,7 +40,7 @@ class TagihanSheet implements FromQuery, ShouldAutoSize, WithHeadings, WithMappi
      */
     public function headings(): array
     {
-        return ['Kode', 'NIS', 'Nama Murid', 'Kelas', 'Tagihan', 'Jatuh Tempo', 'Nominal', 'Potongan', 'Total', 'Status', 'Lunas Pada'];
+        return ['Kode', 'NIS', 'Nama Murid', 'Kelas', 'Tagihan', 'Jatuh Tempo', 'Nominal', 'Potongan', 'Total', 'Terbayar', 'Sisa', 'Status', 'Lunas Pada'];
     }
 
     /**
@@ -59,6 +59,8 @@ class TagihanSheet implements FromQuery, ShouldAutoSize, WithHeadings, WithMappi
             $row->nominal,
             $row->potongan,
             $row->total,
+            $row->terbayar(),
+            $row->sisa(),
             $row->status->label(),
             $row->lunas_at?->format('Y-m-d H:i'),
         ];

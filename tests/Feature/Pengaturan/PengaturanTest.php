@@ -29,7 +29,7 @@ function unggahGambarPengaturan(object $test): string
 it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan url gambar', function () {
     $data = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(35)
+    expect($data)->toHaveCount(34)
         ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyatul Athfal 8')
         ->and($data)->toHaveKey('profil.logo', null)
         ->and($data)->toHaveKey('profil.logo_url', null)
@@ -44,7 +44,7 @@ it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan 
 it('hanya mengizinkan guru berizin keuangan membaca grup keuangan', function () {
     $bendahara = Guru::factory()->kelolaKeuangan()->create()->user;
 
-    $this->actingAs($bendahara)->getJson('/api/v1/pengaturan?grup=keuangan')->assertOk()->assertJsonCount(3, 'data');
+    $this->actingAs($bendahara)->getJson('/api/v1/pengaturan?grup=keuangan')->assertOk()->assertJsonCount(2, 'data');
     $this->actingAs($bendahara)->getJson('/api/v1/pengaturan?grup=profil')->assertForbidden();
     $this->actingAs($bendahara)->getJson('/api/v1/pengaturan')->assertForbidden();
     $this->actingAs(buatGuru()->user)->getJson('/api/v1/pengaturan?grup=keuangan')->assertForbidden();
@@ -87,7 +87,7 @@ it('memvalidasi nilai per kunci dan menolak kunci yang tidak dikenal', function 
     'misi bukan daftar' => [['profil.misi' => 'satu misi'], 'profil.misi'],
     'program tanpa judul' => [['landing.program' => [['deskripsi' => 'x', 'ikon' => 'blocks']]], 'landing.program.0.judul'],
     'ikon berisi spasi' => [['landing.keunggulan' => [['judul' => 'Guru', 'ikon' => 'user check']]], 'landing.keunggulan.0.ikon'],
-    'rekening tanpa nomor' => [['keuangan.rekening' => [['bank' => 'BRI', 'atas_nama' => 'TK']]], 'keuangan.rekening.0.nomor'],
+    'rekening sekolah, tidak dipakai lagi' => [['keuangan.rekening' => [['bank' => 'BRI', 'nomor' => '2012345678', 'atas_nama' => 'TK']]], 'items'],
     'dibuka bukan boolean' => [['ppdb.dibuka' => 'ya'], 'ppdb.dibuka'],
     'gambar belum diunggah' => [['profil.logo' => 'pengaturan/tidak-ada.jpg'], 'profil.logo'],
     'tahun ajaran PPDB tidak ada' => [['ppdb.tahun_ajaran_id' => 999], 'ppdb.tahun_ajaran_id'],

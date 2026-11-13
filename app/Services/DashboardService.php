@@ -2,14 +2,11 @@
 
 namespace App\Services;
 
-use App\Enums\LevelIzin;
-use App\Enums\ModulIzin;
 use App\Enums\NadaInfo;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusMurid;
-use App\Enums\StatusPembayaran;
 use App\Enums\StatusPendaftaran;
 use App\Enums\StatusRapor;
 use App\Enums\StatusTagihan;
@@ -23,7 +20,6 @@ use App\Models\KegiatanKelas;
 use App\Models\Kelas;
 use App\Models\KelasMurid;
 use App\Models\Murid;
-use App\Models\Pembayaran;
 use App\Models\Pendaftaran;
 use App\Models\Pengumuman;
 use App\Models\Rapor;
@@ -56,7 +52,7 @@ class DashboardService
      *     statistik: array{murid_aktif: int, guru_aktif: int, kelas: int, wali_murid: int},
      *     keuangan_bulan_ini: array{total_tagihan: int, terbayar: int, belum_terbayar: int, persen_lunas: float},
      *     grafik_pemasukan: list<array{bulan: string, total: int}>,
-     *     tertunda: array{pembayaran_menunggu: int, rapor_diajukan: int, pendaftaran_baru: int},
+     *     tertunda: array{rapor_diajukan: int, pendaftaran_baru: int},
      *     pengumuman_terbaru: AnonymousResourceCollection,
      *     agenda_mendatang: AnonymousResourceCollection
      * }
@@ -84,7 +80,6 @@ class DashboardService
             /** @var list<array{bulan: string, total: int}> */
             'grafik_pemasukan' => array_map(fn (array $bulan): array => ['bulan' => $bulan['bulan'], 'total' => $bulan['pemasukan']], $grafik),
             'tertunda' => [
-                'pembayaran_menunggu' => Pembayaran::query()->where('status', StatusPembayaran::Menunggu)->count(),
                 'rapor_diajukan' => Rapor::query()->where('status', StatusRapor::Diajukan)->count(),
                 'pendaftaran_baru' => Pendaftaran::query()->where('status', StatusPendaftaran::Diajukan)->count(),
             ],
@@ -104,8 +99,7 @@ class DashboardService
      *     kegiatan_terbaru: AnonymousResourceCollection,
      *     pengumuman_terbaru: AnonymousResourceCollection,
      *     agenda_mendatang: AnonymousResourceCollection,
-     *     keuangan_kelas: array{lunas: int, belum: int},
-     *     pembayaran_menunggu: int|null
+     *     keuangan_kelas: array{lunas: int, belum: int}
      * }
      */
     public function guru(User $user): array
@@ -137,14 +131,13 @@ class DashboardService
             'pengumuman_terbaru' => $this->pengumumanTerbaru($user),
             'agenda_mendatang' => $this->agendaMendatang(),
             'keuangan_kelas' => ['lunas' => $lunas, 'belum' => $tagihanBulanIni->count() - $lunas],
-            'pembayaran_menunggu' => $user->punyaIzin(ModulIzin::Keuangan, LevelIzin::Kelola) ? Pembayaran::query()->where('status', StatusPembayaran::Menunggu)->count() : null,
         ];
     }
 
     /**
      * Beranda untuk satu anak: anak pilihan `murid_id` (harus anaknya sendiri), atau anak pertama menurut nama
      * panggilan. Wali yang belum punya anak tertaut mendapat `anak: null` dan daftar anak yang kosong.
-     * `total_belum_bayar` tidak menghitung tagihan yang menunggu verifikasi. `info_sekolah` = banner dari
+     * `total_belum_bayar` menjumlahkan sisa tagihan yang belum lunas. `info_sekolah` = banner dari
      * pengaturan `beranda.info_wali`, null kalau tidak aktif atau sudah lewat masa berlakunya.
      *
      * @return array{
@@ -164,12 +157,12 @@ class DashboardService
         $anakId = $anak->id ?? 0;
 
         $tagihan = Tagihan::query()->where('murid_id', $anakId)->whereIn('status', self::STATUS_TAGIHAN_AKTIF)
-            ->with(['jenisTagihan', 'murid.kelasAktif'])->orderBy('jatuh_tempo')->get();
+            ->denganTerbayar()->with(['jenisTagihan', 'murid.kelasAktif'])->orderBy('jatuh_tempo')->get();
 
         return [
             'anak' => $anak === null ? null : new AnakWaliResource($anak),
             'tagihan_aktif' => TagihanResource::collection($tagihan),
-            'total_belum_bayar' => (int) $tagihan->filter(fn (Tagihan $satu): bool => $satu->status !== StatusTagihan::MenungguVerifikasi)->sum('total'),
+            'total_belum_bayar' => (int) $tagihan->sum(fn (Tagihan $satu): int => $satu->sisa()),
             'kegiatan_terbaru' => KegiatanKelasResource::collection(
                 KegiatanKelas::query()->whereHas('kelas.murid', fn (Builder $murid) => $murid->whereKey($anakId))
                     ->with(['kelas', 'guru.user', 'foto'])->latest('tanggal')->latest('id')->limit(self::JUMLAH_DAFTAR)->get(),

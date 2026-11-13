@@ -38,8 +38,8 @@ enum ModulIzin: string
 
     /**
      * Modul yang mengatur grup pengaturan, atau null untuk grup yang hanya boleh dibaca Kepala Sekolah. Grup
-     * `keuangan` boleh dibaca pemegang izin keuangan, tetapi tetap hanya diubah Kepala Sekolah (rekening dan
-     * aturan tagihan), lihat `untukUbahPengaturan()`.
+     * `keuangan` boleh dibaca pemegang izin keuangan, tetapi tetap hanya diubah Kepala Sekolah (aturan
+     * tagihan), lihat `untukUbahPengaturan()`.
      */
     public static function untukBacaPengaturan(string $grup): ?self
     {

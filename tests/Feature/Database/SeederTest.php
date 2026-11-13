@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MetodeBayar;
 use App\Enums\Role;
 use App\Enums\StatusAkun;
 use App\Enums\StatusPembayaran;
@@ -43,7 +44,7 @@ it('membuat satu Kepala Sekolah beserta profil gurunya, elemen penilaian, dan pe
         ->and(Hash::check('kepsek2026', (string) $kepsek->password))->toBeTrue()
         ->and($kepsek->guru?->jabatan)->toBe(Guru::JABATAN_KEPALA_SEKOLAH)
         ->and(ElemenPenilaian::query()->orderBy('urutan')->pluck('kode')->all())->toBe(['NAB', 'JD', 'LITERASI_STEAM'])
-        ->and(Pengaturan::query()->count())->toBe(34)
+        ->and(Pengaturan::query()->count())->toBe(33)
         ->and(Pengaturan::query()->where('kunci', 'keuangan.tanggal_jatuh_tempo')->value('nilai'))->toBe(10)
         ->and(Pengaturan::query()->where('kunci', 'ppdb.dibuka')->value('nilai'))->toBeFalse();
 });
@@ -98,8 +99,11 @@ it('mengisi data demo sesuai B8', function () {
     expect(Tagihan::query()->whereNotNull('periode')->distinct()->pluck('periode')->map->toDateString()->sort()->values()->all())
         ->toBe(['2026-07-01', '2026-08-01', '2026-09-01'])
         ->and(Tagihan::query()->pluck('status')->map->value->unique()->sort()->values()->all())
-        ->toBe([StatusTagihan::Lunas->value, StatusTagihan::MenungguVerifikasi->value, StatusTagihan::Terlambat->value])
-        ->and(Pembayaran::query()->where('status', StatusPembayaran::Menunggu)->count())->toBeGreaterThan(0)
+        ->toBe([StatusTagihan::Lunas->value, StatusTagihan::Terlambat->value])
+        ->and(Pembayaran::query()->where('status', '!=', StatusPembayaran::Diterima)->orWhere('metode', '!=', MetodeBayar::Tunai)->exists())->toBeFalse()
+        ->and(Tagihan::query()->where('status', StatusTagihan::Terlambat)->whereHas('pembayaran')->count())->toBeGreaterThan(0)
+        ->and(Tagihan::query()->where('status', StatusTagihan::Lunas)->has('pembayaran', '>=', 2)->count())->toBeGreaterThan(0)
+        ->and(Tagihan::query()->denganTerbayar()->get()->every(fn (Tagihan $tagihan): bool => ($tagihan->sisa() === 0) === ($tagihan->status === StatusTagihan::Lunas)))->toBeTrue()
         ->and(Rapor::query()->pluck('status')->map->value->unique()->sort()->values()->all())
         ->toBe([StatusRapor::Diajukan->value, StatusRapor::Draft->value, StatusRapor::Revisi->value, StatusRapor::Terbit->value])
         ->and(Pendaftaran::query()->count())->toBe(5)

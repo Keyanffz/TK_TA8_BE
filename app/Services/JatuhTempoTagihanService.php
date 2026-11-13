@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Notification;
 
 /**
  * Tugas harian scheduler (B6.2): menandai tagihan terlambat dan mengirim pengingat H-N sebelum jatuh tempo.
- * Hanya tagihan `belum_bayar` yang diproses; tagihan yang bukti transfernya sedang diverifikasi dilewati.
+ * Hanya tagihan `belum_bayar` yang diproses, termasuk yang baru dicicil; pesannya menyebut sisa yang belum dibayar.
  */
 class JatuhTempoTagihanService
 {
@@ -79,6 +79,6 @@ class JatuhTempoTagihanService
      */
     private function denganPenerima(Builder $query): Builder
     {
-        return $query->with(['jenisTagihan', 'murid.waliMurid.user']);
+        return $query->denganTerbayar()->with(['jenisTagihan', 'murid.waliMurid.user']);
     }
 }
