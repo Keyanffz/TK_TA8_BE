@@ -40,6 +40,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R5: absensi murid per kelas oleh guru kelas (branch `be/absensi-murid`, di atas `be/absensi-ekspor-susulan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru |
 | Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`, di atas `be/absensi-murid`) | Selesai, menunggu review; test SQLite, test rapor dan absensi murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru. Template kertas rapor menunggu contoh dari sekolah |
 | Revisi sekolah R7: Docker (branch `be/docker`, di atas `be/ekspor-rapor-kelas`) | Selesai, menunggu review; build image dan `docker compose up` diuji di laptop. Pindah ke VPS belum, uji dulu di VM `debian-lab` (`docs/docker.md`) |
+| Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`, di atas `be/docker`) | Selesai, menunggu review; test SQLite dan MariaDB uji, migration diuji di database uji |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -70,7 +71,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik, JSON tanpa unggahan), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
 | Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; multipart dengan `lampiran` opsional; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, `format=xlsx|pdf`; izin lihat laporan absensi), `POST /absensi/susulan`, `DELETE /absensi/susulan/{id}` (SA), `POST /absensi/susulan/{id}/absen` (pemilik akses) |
-| Absensi murid | `GET/PUT /kelas/{id}/absensi-murid`, `GET /kelas/{id}/absensi-murid/rekap`, `GET /kelas/{id}/absensi-murid/rekap/export` (SA, wali kelas dan guru pendamping kelas itu di TA aktif) |
+| Absensi murid | `GET/PUT /kelas/{id}/absensi-murid`, `GET /kelas/{id}/absensi-murid/rekap`, `GET /kelas/{id}/absensi-murid/rekap/export`, `GET /kelas/{id}/hari-sekolah` (SA, wali kelas dan guru pendamping kelas itu di TA aktif); `PUT /kelas/{id}/hari-sekolah`, `POST /kelas/{id}/libur`, `DELETE /kelas/{id}/libur/{libur_id}` (SA dan wali kelas) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; grup `profil`/`landing`/`beranda` izin lihat konten website, grup `keuangan` izin lihat keuangan), `PUT /pengaturan` (SA; izin kelola konten website hanya grup `profil`/`landing`/`beranda`), `POST /pengaturan/upload` (izin kelola konten website). Grup `absensi` berisi aturan absensi |
 | Galeri (izin konten website: lihat untuk GET, kelola untuk lainnya) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
@@ -104,12 +105,12 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 
 1. Pembayaran baru hanya tunai dan dicatat petugas: `POST /tagihan/{id}/pembayaran` menerima JSON `{ jumlah, tanggal_bayar }`, langsung `diterima`. Wali murid tidak bisa lagi mengirim pembayaran (403). Endpoint `terima` dan `tolak` dihapus.
 2. Cicilan tanpa status tagihan baru dan tanpa kolom baru di `tagihan`. `terbayar` dan `sisa` dihitung dari jumlah pembayaran `diterima` (`Tagihan::terbayar()`, `sisa()`, dan scope `denganTerbayar()` untuk daftar). Tagihan yang baru dicicil tetap `belum_bayar` atau `terlambat`.
-3. Yang boleh mencatat: petugas keuangan (Kepala Sekolah, guru berizin kelola keuangan) dan wali kelas untuk murid yang penempatannya aktif di kelasnya pada tahun ajaran aktif. Guru pendamping tidak (403), guru lain 404. Wali kelas tidak mendapat menu pembayaran (`GET /pembayaran` tetap 403), tetapi bisa membuka `GET /pembayaran/{id}` dan kwitansi pembayaran murid kelasnya. Guru pendamping ikut bisa membuka keduanya karena cakupannya sama dengan cakupan tagihan.
+3. Yang boleh mencatat: petugas keuangan (Kepala Sekolah, guru berizin kelola keuangan) dan wali kelas untuk murid yang penempatannya aktif di kelasnya pada tahun ajaran aktif. Guru pendamping tidak (403; keputusan final pemilik repo), guru lain 404. Wali kelas tidak mendapat menu pembayaran (`GET /pembayaran` tetap 403), tetapi bisa membuka `GET /pembayaran/{id}` dan kwitansi pembayaran murid kelasnya. Guru pendamping ikut bisa membuka keduanya karena cakupannya sama dengan cakupan tagihan.
 4. `diverifikasi_oleh` dan `diverifikasi_at` dipakai untuk petugas pencatat dan waktu pencatatan. Nama kolom tidak diganti supaya riwayat lama tidak perlu dipindah.
-5. `POST /pembayaran/{id}/batalkan` hanya untuk Kepala Sekolah, alasan wajib, hanya pembayaran `diterima` (termasuk transfer lama yang sudah diterima). Tidak ada notifikasi ke wali. Pembayaran yang dibatalkan tetap tampil di riwayat dan tidak punya kwitansi.
+5. `POST /pembayaran/{id}/batalkan` hanya untuk Kepala Sekolah, alasan wajib, hanya pembayaran `diterima` (termasuk transfer lama yang sudah diterima). Wali diberi notifikasi `pembayaran_dibatalkan` (diubah atas keputusan pemilik repo, lihat bagian keputusan R3–R6). Pembayaran yang dibatalkan tetap tampil di riwayat dan tidak punya kwitansi.
 6. Tagihan yang sudah punya pembayaran `diterima` tidak bisa dibatalkan; pembayarannya dibatalkan dulu. Potongan dibatasi `nominal - terbayar`, dan potongan yang menutup sisa membuat tagihan `lunas`.
 7. Migration `2026_11_13_100000_tambah_pembatalan_ke_pembayaran_table` berhenti dengan pesan kalau masih ada pembayaran `menunggu`. Periksa sebelum memasang: `SELECT COUNT(*) FROM pembayaran WHERE status = 'menunggu';`. Kalau ada, terima atau tolak dulu di versi sebelum R3. Database lokal yang berisi data demo lama perlu `migrate:fresh --seed` lalu `DemoSeeder`.
-8. Rekening sekolah: kunci `keuangan.rekening` tidak lagi dikirim `GET /pengaturan`, tidak bisa diubah lewat `PUT /pengaturan` (422 kunci tidak dikenal), dan tidak ada di detail tagihan. Barisnya di database lama tidak dihapus. Seeder tidak membuatnya lagi.
+8. Rekening sekolah: kunci `keuangan.rekening` tidak lagi dikirim `GET /pengaturan`, tidak bisa diubah lewat `PUT /pengaturan` (422 kunci tidak dikenal), dan tidak ada di detail tagihan. Seeder tidak membuatnya lagi. Barisnya di database lama dihapus migration `2026_11_14_100000_hapus_rekening_dari_pengaturan` (keputusan pemilik repo).
 9. `GET /pembayaran/{id}/bukti` tetap ada untuk riwayat transfer lama. Enum `menunggu_verifikasi`, `transfer`, `menunggu`, `ditolak`, dan jenis notifikasi `pembayaran_masuk`, `pembayaran_ditolak` tetap ada untuk data lama; tidak ada kode yang membuatnya lagi.
 10. Kwitansi dibuat per pembayaran: total tagihan, sudah dibayar sebelumnya (pembayaran `diterima` yang dicatat lebih dulu, urut id), dibayar kali ini, dan sisa. Kalau pembayaran yang lebih awal dibatalkan, kwitansi cicilan sesudahnya ikut berubah saat diunduh ulang.
 11. Notifikasi tagihan baru, pengingat, dan terlambat menyebut sisa yang belum dibayar, bukan total. Untuk tagihan yang belum dicicil angkanya sama.
@@ -123,7 +124,7 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 2. PDF rekap A4 landscape, kop dari pengaturan profil, kolom Nama 270 px dan Jabatan 140 px. `table-layout: fixed` tidak dipakai karena dompdf lalu membagi lebar kolom sama rata dan nama bergelar biasa ikut terbungkus.
 3. Lampiran koreksi: satu file JPG/PNG/WebP/PDF maks 5 MB di `PATCH /absensi/{id}/koreksi` dan `POST /absensi/koreksi` (multipart). Gambar dikompres seperti unggahan lain dan disimpan JPEG; PDF apa adanya. Lampiran baru menggantikan yang lama; koreksi tanpa lampiran tidak menghapus lampiran lama (tidak ada `hapus_lampiran`). Lampiran ikut masa simpan foto (`absensi.masa_simpan_foto_bulan`) dan dihapus `absensi:hapus-foto-lama`; pesan command menjadi "... foto dan lampiran absensi dihapus." dengan jumlah file.
 4. `lampiran.url` signed URL 30 menit dibuat di `AbsensiResource` untuk semua penerima resource itu (pemilik, Kepala Sekolah, pemegang izin laporan absensi); tidak ada endpoint yang mengirim absensi ke pengguna lain.
-5. Akses absen susulan hanya diberikan Kepala Sekolah (bukan pemegang izin kelola laporan absensi), satu akses per peserta, tanggal, dan jenis, sekali pakai, berlaku sampai 23:59 hari diberikan. Untuk Kepala Sekolah sendiri ditolak; ia mencatat absensinya di Rekap Absensi.
+5. Akses absen susulan hanya diberikan Kepala Sekolah (bukan pemegang izin kelola laporan absensi; keputusan final pemilik repo), satu akses per peserta, tanggal, dan jenis, sekali pakai, berlaku sampai 23:59 hari diberikan. Untuk Kepala Sekolah sendiri ditolak; ia mencatat absensinya di Rekap Absensi.
 6. Tanggal akses: hari ini atau hari kerja terakhir sebelum hari ini yang bukan tanggal libur dan tidak sebelum tanggal mulai, dicari mundur paling jauh 31 hari (cukup untuk libur panjang). `GET /absensi/harian` mengirim `bisa_beri_susulan` supaya FE tidak menghitung sendiri.
 7. Absen masuk susulan berstatus `hadir` (bukan `terlambat`, karena jam tidak diperiksa), `waktu` jam server saat dikirim walaupun tanggalnya kemarin, dan mengganti baris `tidak_hadir` buatan scheduler (id baris tetap). Baris itu tidak termasuk `scopeTidakHadirOtomatis` karena punya waktu, jadi tidak dihapus saat tanggalnya dijadikan libur.
 8. Absen pulang susulan hanya setelah absen masuk tanggal itu `hadir`/`terlambat`; `pulang_awal` selalu false.
@@ -135,7 +136,7 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 
 1. Tabel `absensi_murid` dan enum `StatusAbsensiMurid` (`hadir`, `izin`, `sakit`, `alpa`) sesuai rancangan R0. `kelas_id` disimpan per baris supaya rekap kelas tetap benar kalau murid pindah kelas; unique (murid_id, tanggal), jadi murid yang pindah di hari yang sama hanya punya satu baris (kelas terakhir yang menyimpan).
 2. Akses: Kepala Sekolah untuk kelas mana pun (termasuk tahun ajaran lama, dibatasi rentang tanggal tahun ajarannya), wali kelas dan guru pendamping hanya kelasnya di tahun ajaran aktif. Izin `data_murid` tidak membuka absensi murid (404).
-3. Hari kerja dan tanggal libur memakai pengaturan absensi guru (pertanyaan terbuka R0 nomor 6; dianggap sama). `absensi.tanggal_mulai` tidak dipakai; batas bawahnya awal tahun ajaran kelas.
+3. Hari kerja dan tanggal libur semula memakai pengaturan absensi guru; diganti hari sekolah dan libur per kelas (lihat bagian keputusan R3–R6). `absensi.tanggal_mulai` tidak dipakai; batas bawahnya awal tahun ajaran kelas.
 4. `PUT` wajib memuat semua murid aktif dan menolak murid lain, supaya isian satu kelas selalu lengkap. Penyimpanan bersamaan oleh wali kelas dan pendamping untuk tanggal yang sama ditolak `BUSINESS_RULE` (bukan 500).
 5. Daftar harian dan rekap ikut menampilkan murid yang penempatannya sudah tidak aktif tetapi punya absensi di kelas itu pada tanggal atau bulan tersebut.
 6. Tidak ada log aktivitas per penyimpanan; `dicatat_oleh` berisi pencatat terakhir. Tidak ada notifikasi. `DemoSeeder` belum diisi absensi murid.
@@ -158,6 +159,22 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 5. FE ikut di `deploy/compose.yaml` dengan jaringan host, karena `BE_API_URL` harus sama untuk browser dan server FE.
 6. `TRUSTED_PROXIES` perlu `172.16.0.0/12` karena request dari Nginx host masuk lewat gateway jaringan Docker.
 7. Backup DB lewat `mariadb-dump` di container dari crontab host. Langkah pindah, deploy berikutnya, dan rollback di `docs/docker.md`.
+
+### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
+
+1. Guru pendamping tidak mencatat pembayaran. Tidak ada perubahan kode (sudah begitu sejak R3).
+2. Wali murid diberi notifikasi `pembayaran_dibatalkan` (`PembayaranDibatalkanNotification`, turunan `NotifikasiTagihan`) setelah Kepala Sekolah membatalkan pembayaran: menyebut tagihan, nama panggilan anak, jumlah, alasan, dan sisa tagihan sesudah pembatalan; `url` detail tagihan. Dikirim ke semua wali murid tagihan itu, sama dengan `pembayaran_diterima`.
+3. Migration `2026_11_14_100000_hapus_rekening_dari_pengaturan` menghapus baris `keuangan.rekening` dan membuang cache pengaturan; `KUNCI_TIDAK_DIPAKAI` di `PengaturanService` dihapus. Migration ini tidak punya `down()` (isi rekening lama tidak dipulihkan).
+4. Akses absen susulan hanya Kepala Sekolah. Tidak ada perubahan kode.
+5. `TagihanSheet` dan `PembayaranSheet` memakai `WithStrictNullComparison`, sama dengan rekap absensi R4; angka 0 (potongan, sisa) tidak lagi menjadi sel kosong. Di data demo, 174 dari 180 baris tagihan berpotongan 0 dan sekarang tertulis 0.
+6. Hari sekolah dan libur per kelas untuk absensi murid:
+   - Kolom `kelas.hari_sekolah` (json nomor hari ISO, default database `[1,2,3,4,5,6]`). Migration `2026_11_14_110000_tambah_hari_sekolah_ke_kelas_table` menyalin `absensi.hari_kerja` ke semua kelas yang ada saat dijalankan, jadi tanggal yang bisa dicatat tidak berubah sampai diatur. Kelas baru lewat `POST /kelas` juga mulai dengan `absensi.hari_kerja` saat itu (`KelasService::buat()`); seeder dan factory memakai default.
+   - Tabel `libur_kelas` (kelas_id cascade, tanggal_mulai, tanggal_selesai, keterangan maks 100). Satu tanggal disimpan dengan mulai = selesai. Rentang harus di dalam tahun ajaran kelas dan tidak boleh bertumpuk dengan libur lain kelas itu (bersebelahan boleh); pemeriksaan bertumpuk di dalam transaksi yang mengunci baris kelas. Tidak ada fitur ubah libur: hapus lalu tambah lagi.
+   - Endpoint `GET/PUT /kelas/{id}/hari-sekolah`, `POST /kelas/{id}/libur` (201), `DELETE /kelas/{id}/libur/{libur_id}`; semuanya membalas `{ hari_sekolah, libur[], bisa_diatur }`. Lihat: Kepala Sekolah, wali kelas, guru pendamping (TA aktif). Ubah: Kepala Sekolah dan wali kelas; guru pendamping 403 `FORBIDDEN` dengan pesan khusus, guru lain 404, wali murid 403.
+   - `AbsensiMuridService::alasanTanggalDitolak()` memakai `Kelas::hariSekolah()` dan `Kelas::liburPada()`; pesannya "… bukan hari sekolah TK A1." dan "… termasuk libur TK A1: <keterangan>.". `AturanAbsensi` tidak dipakai lagi oleh absensi murid; absensi guru tidak berubah.
+   - Absensi yang sudah tercatat pada tanggal yang kemudian dijadikan libur atau dilepas dari hari sekolah tidak dihapus. `GET /kelas/{id}/absensi-murid` untuk tanggal itu tetap menampilkan statusnya (dengan `bisa_dicatat` false), tetapi rekap dan ekspor hanya menghitung baris yang tanggalnya menurut aturan kelas sekarang adalah hari sekolah dan bukan libur, termasuk `hari_tercatat`. Kalau libur dihapus atau harinya dikembalikan, baris itu dihitung lagi. Pesan `POST /kelas/{id}/libur` menyebut kalau di rentang itu sudah ada absensi tercatat.
+   - Tidak ada log aktivitas dan notifikasi untuk perubahan hari sekolah dan libur, sama dengan penyimpanan absensi murid.
+   - `POST /kelas/{id}/libur` didokumentasikan lewat atribut `#[Response(201, ...)]`: dengan `@response` di docblock, Scramble menulis 200.
 
 ## Keputusan yang sudah diterapkan
 
@@ -730,7 +747,7 @@ Middleware:
 
 ## Skema database
 
-- 37 tabel: 28 tabel domain A4 (termasuk `users`, `izin_guru`, dan `riwayat_status_murid`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
+- 40 tabel: 31 tabel domain A4 (termasuk `users`, `izin_guru`, `riwayat_status_murid`, `akses_absen_susulan`, `absensi_murid`, dan `libur_kelas`), bawaan Laravel (`cache`, `cache_locks`, `jobs`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `notifications`, `migrations`), dan `activity_log` (spatie). Satu migration per tabel; `job_batches` dan `sessions` bawaan tidak dibuat karena tidak dipakai.
 - Foreign key: tabel anak dan pivot `cascade` (`murid_wali`, `kelas_murid`, `pengumuman_kelas`, `pengumuman_murid`, `kegiatan_foto`, `rapor_detail`, `galeri_foto`, profil `guru`/`wali_murid` ke `users`); kolom pelaku (`dibuat_oleh`, `diverifikasi_oleh`, `disetujui_oleh`, `diproses_oleh`, `dibayar_oleh`) `null on delete`; `kelas.wali_kelas_id`, `kelas.guru_pendamping_id`, `pendaftaran.murid_id` `null on delete`; sisanya (data keuangan, rapor, kegiatan, tahun ajaran) `restrict`. `users`, `murid`, dan `pengumuman` memakai soft delete, jadi hapus fisik jarang terjadi.
 - Cascade di database tidak menjalankan observer Eloquent. Penghapusan data yang punya file (kegiatan, rapor, galeri) harus lewat Eloquent di service supaya file fisiknya ikut terhapus (B5).
 - Scope visibilitas (B4), dipakai semua endpoint terkait mulai Fase 3:
@@ -958,6 +975,21 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
+
+Bagian A (A2.5, A2.12, A2.13, A2.15, A3, A4, A6, A7) dan B4, B6.3, B6.18 diperbarui; Bagian A tetap identik dengan PROMPT FE. Keputusan di "Keputusan pemilik repo atas pertanyaan R3–R6".
+
+Baru:
+
+- `app/Notifications/PembayaranDibatalkanNotification.php`.
+- `database/migrations/2026_11_14_100000_hapus_rekening_dari_pengaturan.php`, `2026_11_14_110000_tambah_hari_sekolah_ke_kelas_table.php`, `2026_11_14_110001_create_libur_kelas_table.php`.
+- `app/Models/LiburKelas.php`, `app/Services/HariSekolahKelasService.php`, `app/Http/Controllers/Api/V1/AbsensiMurid/HariSekolahKelasController.php`, `app/Http/Requests/AbsensiMurid/UbahHariSekolahRequest.php`, `TambahLiburKelasRequest.php`.
+- Test: `tests/Feature/AbsensiMurid/HariSekolahKelasTest.php` (18 test), `tests/Feature/Database/HapusRekeningPengaturanTest.php`.
+
+Diubah: `JenisNotifikasi` (`pembayaran_dibatalkan`), `PembayaranService::batalkan()`, `PembayaranController`, `PengaturanService` (`KUNCI_TIDAK_DIPAKAI` dihapus), `TagihanSheet`, `PembayaranSheet`, `Kelas` (`hari_sekolah`, `hariSekolah()`, `liburPada()`, `libur()`), `KelasService::buat()`, `KelasFactory`, `AbsensiMuridService`, `AbsensiMuridController`, `IzinKurangException::khususWaliKelas()`, `routes/api.php`, `storage/api-docs/api.json`; test `PembayaranTest`, `LaporanKeuanganTest` (file .xlsx dibaca ulang), `AksesTagihanTest`, `AbsensiMuridTest`, `EnumKontrakTest`.
+
+Pengecekan: `php artisan test --compact` 1184 lolos di SQLite dan di MariaDB 13.0.2 (database `TK_TA8_uji`); Pint, PHPStan, `check:slop` bersih. Database uji: `migrate:fresh --seed`, `DemoSeeder`, lalu baris `keuangan.rekening` ditambahkan dan `absensi.hari_kerja` diubah ke Senin–Jumat, `migrate:rollback --step=3` dan `migrate`: rekening terhapus, keempat kelas mendapat `hari_sekolah` `[1,2,3,4,5]`, kolom `longtext NOT NULL` dengan default `[1,2,3,4,5,6]`. Endpoint diuji lewat HTTP kernel (`php artisan tinker` dengan skrip, tanpa `php artisan serve`) ke database uji dengan token Sanctum sungguhan; hasilnya di laporan `laporan-keputusan.md` repo FE. Token uji dihapus lagi.
 
 ### Revisi sekolah R7: Docker (branch `be/docker`)
 
