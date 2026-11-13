@@ -40,6 +40,8 @@ periksa 'Domain contoh (di luar test)' 'example\.(com|org|net)' "${SUMBER_TANPA_
 periksa 'Pembungkam checker' '@ts-ignore|@ts-expect-error|eslint-disable|@phpstan-ignore|\bas any\b|:\s*any\b' "${SUMBER[@]}"
 periksa 'Email faker berdomain nyata (pakai domain .test)' '->(free|safe|company)?(e|E)mail(Domain)?\(' database
 periksa 'Istilah "kata sandi" (pakai "password")' '(?i:kata\s*sandi)' "${KONTEN[@]}"
+periksa 'Pesan error generik C3' '(?i:terjadi kesalahan|something went wrong|\boops\b)' "${KONTEN[@]}"
+periksa 'Komentar banner C1' '(//|/\*|#)\s*[=-]{4,}' "${SUMBER_TANPA_TEST[@]}"
 periksa 'Kata terlarang C3' '(?i:seamless|revolusioner|solusi (terdepan|terbaik)|era digital|transformasi digital|memberdayakan|tingkatkan pengalaman|all-in-one|mudah, cepat, dan aman|canggih|inovatif|selamat datang di masa depan|mari bersama)|#1\b' "${KONTEN[@]}"
 
 if git rev-parse --git-dir > /dev/null 2>&1; then
