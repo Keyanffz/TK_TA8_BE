@@ -37,6 +37,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R2: PPDB tanpa unggah berkas, rapor tertutup untuk wali murid, contoh "uang pendidikan" (branch `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
 | Revisi sekolah R3: pembayaran tunai dengan cicilan, wali kelas ikut mencatat, pembatalan pembayaran (branch `be/pembayaran-tunai-cicilan`, di atas `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
 | Revisi sekolah R4: ekspor rekap absensi .xlsx dan PDF, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`, di atas `be/pembayaran-tunai-cicilan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang baru dan berubah |
+| Revisi sekolah R5: absensi murid per kelas oleh guru kelas (branch `be/absensi-murid`, di atas `be/absensi-ekspor-susulan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -67,6 +68,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik, JSON tanpa unggahan), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
 | Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; multipart dengan `lampiran` opsional; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, `format=xlsx|pdf`; izin lihat laporan absensi), `POST /absensi/susulan`, `DELETE /absensi/susulan/{id}` (SA), `POST /absensi/susulan/{id}/absen` (pemilik akses) |
+| Absensi murid | `GET/PUT /kelas/{id}/absensi-murid`, `GET /kelas/{id}/absensi-murid/rekap`, `GET /kelas/{id}/absensi-murid/rekap/export` (SA, wali kelas dan guru pendamping kelas itu di TA aktif) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; grup `profil`/`landing`/`beranda` izin lihat konten website, grup `keuangan` izin lihat keuangan), `PUT /pengaturan` (SA; izin kelola konten website hanya grup `profil`/`landing`/`beranda`), `POST /pengaturan/upload` (izin kelola konten website). Grup `absensi` berisi aturan absensi |
 | Galeri (izin konten website: lihat untuk GET, kelola untuk lainnya) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
@@ -126,6 +128,16 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 9. Akses yang sudah dipakai tidak bisa dicabut. Akses yang kedaluwarsa tidak dihapus otomatis; tetap tampil di `akses_susulan` absensi harian sebagai riwayat dan bisa dicabut.
 10. Pemakaian akses tidak dicatat di log aktivitas; jejaknya `dipakai_at` di akses dan `susulan` di absensi. Pemberian dan pencabutan dicatat (`absensi`/`susulan_diberikan`, `susulan_dicabut`).
 11. Jenis notifikasi baru `absensi_susulan_diberikan`. Notifikasi `absensi_tercatat` untuk absen susulan berjudul "Absen masuk susulan tercatat".
+
+### Revisi sekolah R5: absensi murid (branch `be/absensi-murid`)
+
+1. Tabel `absensi_murid` dan enum `StatusAbsensiMurid` (`hadir`, `izin`, `sakit`, `alpa`) sesuai rancangan R0. `kelas_id` disimpan per baris supaya rekap kelas tetap benar kalau murid pindah kelas; unique (murid_id, tanggal), jadi murid yang pindah di hari yang sama hanya punya satu baris (kelas terakhir yang menyimpan).
+2. Akses: Kepala Sekolah untuk kelas mana pun (termasuk tahun ajaran lama, dibatasi rentang tanggal tahun ajarannya), wali kelas dan guru pendamping hanya kelasnya di tahun ajaran aktif. Izin `data_murid` tidak membuka absensi murid (404).
+3. Hari kerja dan tanggal libur memakai pengaturan absensi guru (pertanyaan terbuka R0 nomor 6; dianggap sama). `absensi.tanggal_mulai` tidak dipakai; batas bawahnya awal tahun ajaran kelas.
+4. `PUT` wajib memuat semua murid aktif dan menolak murid lain, supaya isian satu kelas selalu lengkap. Penyimpanan bersamaan oleh wali kelas dan pendamping untuk tanggal yang sama ditolak `BUSINESS_RULE` (bukan 500).
+5. Daftar harian dan rekap ikut menampilkan murid yang penempatannya sudah tidak aktif tetapi punya absensi di kelas itu pada tanggal atau bulan tersebut.
+6. Tidak ada log aktivitas per penyimpanan; `dicatat_oleh` berisi pencatat terakhir. Tidak ada notifikasi. `DemoSeeder` belum diisi absensi murid.
+7. Pencarian baris lama memakai `whereDate`, bukan `updateOrCreate`: kolom date bercast tersimpan dengan jam di SQLite sehingga `updateOrCreate` membuat baris kedua dan melanggar unique (ditemukan oleh test).
 
 ## Keputusan yang sudah diterapkan
 
@@ -926,6 +938,21 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R5: absensi murid per kelas (branch `be/absensi-murid`)
+
+Diminta sekolah (revisi 10). Bagian A (A1, A2.15 baru, A3, A4, A5, A6, A7) dan B2, B4, B6.18 baru diperbarui; Bagian A tetap identik dengan PROMPT FE.
+
+Baru:
+
+- `database/migrations/2026_11_13_120000_create_absensi_murid_table.php`, `app/Enums/StatusAbsensiMurid.php`, `app/Models/AbsensiMurid.php`, `database/factories/AbsensiMuridFactory.php`.
+- `app/Services/AbsensiMuridService.php`, `app/Http/Controllers/Api/V1/AbsensiMurid/AbsensiMuridController.php`, `app/Http/Requests/AbsensiMurid/` (`HarianAbsensiMuridRequest`, `SimpanAbsensiMuridRequest`, `RekapAbsensiMuridRequest`).
+- `app/Exports/RekapAbsensiMuridExport.php`, `resources/views/pdf/rekap-absensi-murid.blade.php`.
+- Test: `tests/Feature/AbsensiMurid/AbsensiMuridTest.php` (14 test).
+
+Diubah: `routes/api.php`, `tests/Unit/EnumKontrakTest.php`, `storage/api-docs/api.json`.
+
+Pengecekan: `php artisan test --compact` 1157 lolos di SQLite dan di MariaDB 13.0.2 (database `TK_TA8_uji`); Pint, PHPStan, `check:slop` bersih. Database uji: `migrate:fresh --seed`, `DemoSeeder`, rollback satu langkah lalu migrate. Uji curl ke `php artisan serve` dengan database uji (Jumat 13 November): daftar harian TK A1 (15 murid, `bisa_dicatat` true), simpan semua murid sebagai wali kelas (200), wali kelas lain (404), tanggal besok (422), rekap November, ekspor .xlsx dan PDF (isi PDF dicek dengan `pdftotext`). Lewat proxy FE (`next start`): simpan absensi 12 November sebagai wali kelas dan kedua ekspor.
 
 ### Revisi sekolah R4: ekspor rekap absensi, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`)
 
