@@ -12,7 +12,7 @@ class RaporKelasPdfRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'semester' => ['required', 'integer', 'in:1,2'],
+            'semester' => ['required', 'integer', 'between:1,2'],
         ];
     }
 
