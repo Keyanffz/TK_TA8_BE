@@ -1,4 +1,4 @@
-{{-- Kop sekolah bersama untuk kwitansi dan rapor. Butuh $sekolah dari PengaturanService::kopSekolah(). --}}
+{{-- Kop sekolah bersama semua PDF. Butuh $sekolah dari PengaturanService::kopSekolah(). --}}
 <table class="kop">
     <tr>
         @if ($sekolah['logo'])

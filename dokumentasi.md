@@ -41,6 +41,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`, di atas `be/absensi-murid`) | Selesai, menunggu review; test SQLite, test rapor dan absensi murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru. Template kertas rapor menunggu contoh dari sekolah |
 | Revisi sekolah R7: Docker (branch `be/docker`, di atas `be/ekspor-rapor-kelas`) | Selesai, menunggu review; build image dan `docker compose up` diuji di laptop. Pindah ke VPS belum, uji dulu di VM `debian-lab` (`docs/docker.md`) |
 | Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`, di atas `be/docker`) | Selesai, menunggu review; test SQLite dan MariaDB uji, migration diuji di database uji |
+| Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`) | Selesai, menunggu review; test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, unduhan lewat proxy FE; lihat Changelog |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -70,7 +71,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/pengumuman/{slug}/lampiran`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik, JSON tanpa unggahan), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
-| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; multipart dengan `lampiran` opsional; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, `format=xlsx|pdf`; izin lihat laporan absensi), `POST /absensi/susulan`, `DELETE /absensi/susulan/{id}` (SA), `POST /absensi/susulan/{id}/absen` (pemilik akses) |
+| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; multipart dengan `lampiran` opsional; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, `format=xlsx|pdf`, berisi jumlah per peserta dan jam masuk/pulang per hari; izin lihat laporan absensi), `POST /absensi/susulan`, `DELETE /absensi/susulan/{id}` (SA), `POST /absensi/susulan/{id}/absen` (pemilik akses) |
 | Absensi murid | `GET/PUT /kelas/{id}/absensi-murid`, `GET /kelas/{id}/absensi-murid/rekap`, `GET /kelas/{id}/absensi-murid/rekap/export`, `GET /kelas/{id}/hari-sekolah` (SA, wali kelas dan guru pendamping kelas itu di TA aktif); `PUT /kelas/{id}/hari-sekolah`, `POST /kelas/{id}/libur`, `DELETE /kelas/{id}/libur/{libur_id}` (SA dan wali kelas) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; grup `profil`/`landing`/`beranda` izin lihat konten website, grup `keuangan` izin lihat keuangan), `PUT /pengaturan` (SA; izin kelola konten website hanya grup `profil`/`landing`/`beranda`), `POST /pengaturan/upload` (izin kelola konten website). Grup `absensi` berisi aturan absensi |
 | Galeri (izin konten website: lihat untuk GET, kelola untuk lainnya) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
@@ -80,7 +81,7 @@ K = petugas keuangan (Kepala Sekolah atau guru dengan izin `keuangan` `kelola`).
 
 Semua endpoint kecuali `GET /health` dan `GET /media/{token}` dibatasi 120 request per menit (per user kalau sudah login, per IP kalau belum). Akun wali yang masih memakai password awal (`wajib_ganti_password`) hanya bisa memakai `GET /auth/me`, `PUT /auth/password`, dan `POST /auth/logout`; endpoint login lain membalas 403 `PASSWORD_WAJIB_DIGANTI`.
 
-Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `absensi:tandai-tidak-hadir` (tiap 10 menit; hari ini setelah jam masuk tutup, ditambah susulan hari kerja 7 hari ke belakang), `absensi:hapus-foto-lama` (harian 01:00), `pengaturan:bersihkan-gambar` (harian 02:00; gambar `pengaturan/` yang tidak dipakai dan lebih dari sehari). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
+Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--periode=YYYY-MM]` (tanggal 1 pukul 00:10), `tagihan:tandai-terlambat` (harian 00:30), `tagihan:pengingat` (harian 07:00), `absensi:tandai-tidak-hadir` (tiap 10 menit; hari ini setelah jam masuk hari itu tutup, ditambah susulan hari kerja 7 hari ke belakang dengan jam tutup tanggal masing-masing), `absensi:hapus-foto-lama` (harian 01:00), `pengaturan:bersihkan-gambar` (harian 02:00; gambar `pengaturan/` yang tidak dipakai dan lebih dari sehari). Jam dalam WIB. `kode-tautan:bersihkan` dihapus bersama fitur kode tautan.
 
 ## Keputusan menunggu review
 
@@ -159,6 +160,24 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 5. FE ikut di `deploy/compose.yaml` dengan jaringan host, karena `BE_API_URL` harus sama untuk browser dan server FE.
 6. `TRUSTED_PROXIES` perlu `172.16.0.0/12` karena request dari Nginx host masuk lewat gateway jaringan Docker.
 7. Backup DB lewat `mariadb-dump` di container dari crontab host. Langkah pindah, deploy berikutnya, dan rollback di `docs/docker.md`.
+
+### Jam absensi per hari dan jam di ekspor rekap (branch `be/jam-absensi`)
+
+Diminta pemilik repo dengan rancangan yang sudah disetujui. Kontrak ditulis ke Bagian A (A2.12, A3, A4, A6, A7) dan B6.2, B6.14; Bagian A tetap identik dengan PROMPT FE. Yang di bawah ini diputuskan saat pengerjaan:
+
+1. Kunci baru `absensi.jam_khusus` berbentuk daftar `{ hari, jam_masuk: { buka, batas_terlambat, tutup }, jam_pulang: { buka, tutup } }[]`, bawaan `[]`, disimpan urut `hari`. Daftar dipilih, bukan objek berkunci nomor hari, karena objek kosong di PHP tersimpan dan terkirim sebagai `[]`, sehingga bentuknya di JSON tidak tetap; daftar juga sama dengan cara `absensi.hari_kerja` disimpan.
+2. Satu jam khusus selalu memuat jam masuk dan jam pulang. Hari yang hanya beda jam pulang tetap mengirim jam masuk; FE mengisinya dari jam bawaan saat Jam khusus dipilih.
+3. Validasi: urutan jam khusus sama dengan jam bawaan, dan `hari` harus ada di hari kerja gabungan nilai tersimpan dan nilai baru. Menyimpan hari kerja yang membuang hari berjam khusus ditolak di `absensi.jam_khusus.<n>.hari` ("Sabtu bukan hari kerja. Jam khusus hanya untuk hari kerja; tambahkan Sabtu ke hari kerja atau pakai jam bawaan."), jadi FE melepas jam khusus hari itu bersamaan. Nomor `<n>` adalah urutan setelah diurutkan per hari; FE mengirim daftar yang sudah urut sehingga nomornya sama. Pesan urutan jam bawaan dan jam khusus sekarang dikirim sekaligus; sebelumnya hanya pesan jam masuk yang muncul kalau jam masuk dan jam pulang sama-sama salah.
+4. Migration data `2026_11_15_100000_isi_jam_khusus_absensi` menambah kunci itu berisi `[]` di database yang sudah berjalan (tanpa menimpa). Database baru sudah mendapatkannya dari `isi_pengaturan_absensi`, karena migration itu menyalin `AturanAbsensi::BAWAAN`. `DatabaseSeeder` sekarang menulis 34 kunci.
+5. `AturanAbsensi`: jam bawaan disimpan di properti privat, jadi tidak ada pemanggil yang bisa membaca jam tanpa tanggal. `jamMasuk($tanggal)` dan `jamPulang($tanggal)` memilih jam khusus hari itu atau jam bawaan; `jendela()`, `jendelaTerbuka()`, `belumBuka()`, `terlambat()`, dan `jendelaSudahTutup()` memakainya. Pemanggilnya: `AbsensiService::absen()` (status, jam terbuka, pulang lebih awal, pesan penolakan), `AbsensiController::hariIni()`, `AbsensiService::tandaiTidakHadir()` (jam tutup hari ini dan jam tutup tiap tanggal susulan untuk menyaring akun yang dibuat setelah jam tutup), dan `RekapAbsensiService` (jam pulang tutup hari ini untuk `tidak_absen_pulang`; hari yang sudah lewat selalu dihitung, seperti sebelumnya).
+6. Jam khusus berlaku tetap setiap minggu dan dibaca dari pengaturan saat dipakai, seperti hari kerja dan tanggal libur; riwayatnya tidak disimpan. Mengubah jam khusus Jumat juga mengubah jam tutup yang dipakai scheduler untuk Jumat yang masih dalam 7 hari susulan.
+7. Tidak berubah: absensi murid (hari sekolah per kelas), absen susulan (jam tidak diperiksa), koreksi dan pencatatan Kepala Sekolah (jam tidak diperiksa). Bentuk `GET /absensi/hari-ini` tetap; `masuk` dan `pulang` sekarang berisi jam hari ini, tanpa penanda apakah itu jam khusus.
+8. Ekspor rekap Excel: sheet `Rekap Absensi` (sama dengan sebelumnya) dan sheet `Harian`. Ekspor PDF: tabel ringkasan, lalu satu bagian per peserta dengan kop sekolah, mulai halaman baru; judul kolom tabel harian diulang dompdf di setiap halaman lanjutan.
+9. Hari yang ditulis di bagian harian (diputuskan pemilik repo setelah review): semua hari kerja di rentang itu yang bukan tanggal libur dan tidak sebelum `absensi.tanggal_mulai`, menurut pengaturan sekarang, termasuk hari yang belum datang (berisi "-", seperti buku absen sebulan penuh). Hari sebelum tanggal mulai tidak ditulis karena absensinya belum ada. Peserta sama dengan rekap, termasuk hari sebelum akunnya dibuat (berisi "-").
+10. Isi sel: Tanggal di Excel berupa sel tanggal (bukan teks) berformat `dd/mm/yyyy`, jadi bisa disaring dan diurutkan sebagai tanggal (diputuskan pemilik repo); "Kamis, 1 Oktober 2026" di PDF. Jam: jam server `HH:MM`; "Tanpa jam" untuk absensi tanpa jam yang bukan tidak hadir (dicatat lewat `POST /absensi/koreksi`, atau tidak hadir otomatis yang dikoreksi menjadi hadir lewat `PATCH`), sama dengan aturan "Tanpa jam" di FE; "-" kalau absensinya tidak ada, termasuk absen masuk tidak hadir (juga absen sungguhan yang dikoreksi menjadi tidak hadir). Jam masuk izin dan sakit yang dicatat peserta berisi jamnya. Status = label status absen masuk, "-" kalau belum ada. Keterangan menggabungkan, dipisah titik koma: keterangan peserta di absen masuk (alasan izin atau sakit), "Absen masuk susulan", "Catatan koreksi: ...", "Pulang lebih awal: <alasan>" (atau "Keterangan pulang: ..." untuk keterangan absen pulang biasa), "Absen pulang susulan", dan "Catatan absen pulang: ...".
+11. Tanggal yang punya absensi peserta tetapi bukan hari absensi menurut pengaturan sekarang (dijadikan libur setelah ada absen sungguhan, dilepas dari hari kerja, atau sebelum tanggal mulai yang dimajukan) tetap ditulis untuk peserta itu, dengan Keterangan diawali "Tanggal libur", "Bukan hari kerja", atau "Sebelum tanggal mulai absensi". Ringkasan menghitung semua baris absensi di rentang, jadi tanpa baris ini jumlah di ringkasan bisa tidak cocok dengan bagian harian. Dipilih (pilihan b, disetujui pemilik repo) karena sama dengan tab Harian di web yang tetap menampilkan absensi di tanggal libur, tidak menyembunyikan absen sungguhan, dan tidak mengubah definisi rekap atau angka tab Bulanan.
+12. Ukuran: 8 peserta, 3 bulan (Agustus–Oktober 2026, Senin–Sabtu, 1.139 baris absensi di database dev MariaDB): PDF 25 halaman (1 ringkasan + 3 per peserta), 118 KB, dibuat dalam 2,2 detik; .xlsx 0,4 detik. Rancangan tidak diubah.
+13. Jam untuk tanggal tertentu (misalnya Ramadan) belum dibuat; usulannya di "Saran dari Claude".
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 
@@ -619,7 +638,7 @@ php artisan migrate --seed
 php artisan storage:link
 ```
 
-`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 25 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
+`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 34 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
 
 Data contoh untuk pengembangan lokal (ditolak di production dan di database yang sudah berisi tahun ajaran):
 
@@ -944,6 +963,7 @@ Diambil selama Fase 3:
 
 - Payment gateway (Midtrans), supaya wali bisa membayar tagihan tanpa mengunggah bukti transfer dan menunggu verifikasi manual; belum dibuat karena A2.5 menetapkannya sebagai pengembangan nanti, di luar desain saat ini.
 - Push notification lewat FCM, supaya notifikasi sampai ke HP tanpa membuka website; belum dibuat karena A2.11 menundanya sampai aplikasi Flutter dibuat.
+- Jam absensi untuk rentang tanggal tertentu (misalnya Ramadan): kunci baru `absensi.jam_tanggal` berisi `{ mulai, selesai, keterangan, jam_masuk, jam_pulang }[]` (rentang tidak bertumpuk, di dalam hari kerja), dengan urutan prioritas jam tanggal, lalu jam khusus per hari, lalu jam bawaan. Karena semua aturan sudah meminta jam lewat `AturanAbsensi::jamMasuk($tanggal)` dan `jamPulang($tanggal)`, cukup kedua method itu yang diubah; FE menambah daftar rentang di Pengaturan Absensi. Belum dibuat karena rancangan revisi `be/jam-absensi` menundanya.
 
 ## Akun seed
 
@@ -975,6 +995,24 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`)
+
+Diminta pemilik repo. Bagian A (A2.12, A3, A4, A6, A7) dan B6.2, B6.14 diperbarui; Bagian A tetap identik dengan PROMPT FE. Keputusan di "Jam absensi per hari dan jam di ekspor rekap".
+
+Baru:
+
+- `database/migrations/2026_11_15_100000_isi_jam_khusus_absensi.php`.
+- `app/Exports/RekapAbsensiSheet.php` (isi `RekapAbsensiExport` lama, sheet pertama), `app/Exports/HarianAbsensiSheet.php`.
+- Test: `tests/Feature/Absensi/JamKhususTest.php` (13 test), `tests/Feature/Absensi/EksporHarianTest.php` (5 test).
+
+Diubah:
+
+- `AturanAbsensi` (`absensi.jam_khusus` di `BAWAAN`, `jamMasuk()`, `jamPulang()`, jam bawaan privat, method jam menerima tanggal), `AbsensiService` (jam tutup per tanggal di `tandaiTidakHadirPadaHari()`, pesan jam memakai jam hari itu), `AbsensiController` (`hariIni()` jam hari ini, `export()` dengan baris harian), `PengaturanService` (aturan `absensi.jam_khusus.*`, `rapikan()`, `pastikanJamAbsensiUrut()` dan `pesanUrutanJam()`), `RekapAbsensiService` (`harianPerPeserta()`, `hariAbsensi()`, `barisHarian()`, `selJam()`, `keterangan()`, `dalamRentang()`; `isiPdf()` memuat `harian`), `RekapAbsensiExport` (dua sheet), `resources/views/pdf/rekap-absensi.blade.php` (bagian harian per peserta), komentar `pdf/bagian/kop.blade.php`.
+- Test: `PengaturanTest` (validasi jam khusus, 10 kunci grup absensi), `SeederTest` (34 kunci).
+- `storage/api-docs/api.json`: deskripsi `GET /absensi/hari-ini` dan `GET /absensi/rekap/export`; bentuk respons tidak berubah.
+
+Pengecekan: `php artisan test --compact` 1211 lolos di SQLite dan di MariaDB 10.11.14 (database terpisah `tk_ta8_uji`, container cloud dengan PHP 8.5.9 yang dibangun dari sumber); Pint, PHPStan, `check:slop` bersih. Test jam khusus diperiksa gagal (8 dari 13) saat `jamMasuk()` dan `jamPulang()` sementara dibuat selalu mengembalikan jam bawaan. Database dev MariaDB: `migrate:fresh --seed` dan `DemoSeeder`. Lewat FE (`next start`, Chromium 390 px, masuk sebagai Kepala Sekolah): jam khusus Jumat disimpan dan dibaca ulang, urutan jam salah ditolak di form, halaman Absensi hari Jumat 13 November menampilkan jam khusus, unduhan Excel (sheet Rekap Absensi dan Harian) dan PDF (25 halaman) untuk Agustus–Oktober. Belum diuji: HP sungguhan, Excel dan PDF dibuka di aplikasi kantor (isi dibaca dengan PhpSpreadsheet dan `pdftotext`).
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 

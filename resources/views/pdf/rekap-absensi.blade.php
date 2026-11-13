@@ -18,6 +18,9 @@
         .rekap td.teks { word-wrap: break-word; }
         .rekap .angka { text-align: center; }
         .kecil { font-size: 9px; color: #6b7280; }
+        .peserta { page-break-before: always; }
+        h2 { font-size: 13px; margin: 0; }
+        .jabatan { margin: 2px 0 8px; }
     </style>
 </head>
 <body>
@@ -60,5 +63,37 @@
     </table>
 
     <p class="kecil">Dicetak {{ now()->translatedFormat('j F Y H:i') }} WIB.</p>
+
+    {{-- Satu bagian per peserta, mulai halaman baru, supaya bisa dicetak dan diarsipkan per orang seperti buku absen. --}}
+    @foreach ($harian as $peserta)
+        <div class="peserta">
+            @include('pdf.bagian.kop')
+            <h2>{{ $peserta['user']['nama'] }}</h2>
+            <p class="jabatan">{{ collect([$peserta['user']['jabatan'], 'Absensi harian '.$rentang])->filter()->join(' · ') }}</p>
+
+            <table class="rekap">
+                <thead>
+                    <tr>
+                        <th style="width: 170px;">Tanggal</th>
+                        <th class="angka" style="width: 70px;">Jam Masuk</th>
+                        <th class="angka" style="width: 70px;">Jam Pulang</th>
+                        <th style="width: 80px;">Status</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($peserta['hari'] as $hari)
+                        <tr>
+                            <td>{{ $hari['tanggal']->translatedFormat('l, j F Y') }}</td>
+                            <td class="angka">{{ $hari['jam_masuk'] }}</td>
+                            <td class="angka">{{ $hari['jam_pulang'] }}</td>
+                            <td>{{ $hari['status'] }}</td>
+                            <td class="teks">{{ $hari['keterangan'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endforeach
 </body>
 </html>

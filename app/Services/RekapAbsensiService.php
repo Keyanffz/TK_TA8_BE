@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Support\AturanAbsensi;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DokumenPdf;
+use Carbon\CarbonInterface;
+use Carbon\CarbonPeriod;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -23,6 +25,12 @@ use Illuminate\Support\Collection;
  */
 class RekapAbsensiService
 {
+    /** Isi sel jam untuk absensi yang dicatat lewat koreksi, yang tidak punya jam server. */
+    public const TANPA_JAM = 'Tanpa jam';
+
+    /** Isi sel jam dan status kalau absensinya tidak ada. */
+    public const KOSONG = '-';
+
     public function __construct(private readonly PengaturanService $pengaturan) {}
 
     /**
@@ -34,7 +42,7 @@ class RekapAbsensiService
      */
     public function rekap(Carbon $awal, Carbon $akhir): array
     {
-        $dalamRentang = fn (Builder $absensi) => $absensi->whereDate('tanggal', '>=', $awal->toDateString())->whereDate('tanggal', '<=', $akhir->toDateString());
+        $dalamRentang = $this->dalamRentang($awal, $akhir);
 
         $absensi = Absensi::query()->tap($dalamRentang)->get()->groupBy('user_id');
 
@@ -81,6 +89,42 @@ class RekapAbsensiService
     }
 
     /**
+     * Absensi harian setiap peserta di rentang itu untuk ekspor, dengan isi sel yang sudah berupa teks. Hari yang
+     * ditulis: semua hari absensi di rentang itu (hari kerja yang bukan tanggal libur dan tidak sebelum tanggal mulai,
+     * menurut pengaturan sekarang), termasuk yang belum datang, ditambah tanggal lain yang punya absensi peserta itu,
+     * misalnya absen sungguhan pada tanggal yang kemudian dijadikan libur. Dengan begitu isinya selalu cocok dengan
+     * ringkasan, yang menghitung semua baris absensi di rentang itu. Peserta sama dengan rekap, urut nama.
+     *
+     * @return list<array{user: array{id: int, nama: string, jabatan: string|null}, hari: list<array{tanggal: CarbonInterface, jam_masuk: string, jam_pulang: string, status: string, keterangan: string}>}>
+     */
+    public function harianPerPeserta(Carbon $awal, Carbon $akhir): array
+    {
+        $aturan = AturanAbsensi::dari($this->pengaturan);
+        $hariAbsensi = collect($this->hariAbsensi($aturan, $awal, $akhir))->keyBy(fn (CarbonInterface $hari): string => $hari->toDateString());
+        $dalamRentang = $this->dalamRentang($awal, $akhir);
+        $absensi = Absensi::query()->tap($dalamRentang)->get()->groupBy('user_id');
+
+        if ($hariAbsensi->isEmpty() && $absensi->isEmpty()) {
+            return [];
+        }
+
+        return $this->peserta($dalamRentang)->map(function (User $user) use ($absensi, $hariAbsensi, $aturan): array {
+            /** @var Collection<string, Collection<int, Absensi>> $milik */
+            $milik = $absensi->get($user->id, collect())->groupBy(fn (Absensi $satu): string => $satu->tanggal->toDateString());
+            $tanggal = $hariAbsensi->union($milik->map(fn (Collection $baris): CarbonInterface => $baris->firstOrFail()->tanggal))->sortKeys();
+
+            return [
+                'user' => $this->ringkasan($user),
+                'hari' => $tanggal->map(fn (CarbonInterface $hari, string $kunci): array => $this->barisHarian(
+                    $hari,
+                    $milik->get($kunci, collect()),
+                    $hariAbsensi->has($kunci) ? null : $this->bukanHariAbsensi($aturan, $hari),
+                ))->values()->all(),
+            ];
+        })->values()->all();
+    }
+
+    /**
      * Rekap dalam PDF A4 landscape berkop sekolah. Kolom nama dan jabatan diberi lebar, jadi nama panjang dan
      * bergelar terbungkus di selnya sendiri, tidak mendorong kolom angka.
      */
@@ -92,7 +136,7 @@ class RekapAbsensiService
     }
 
     /**
-     * @return array{sekolah: array<string, string|null>, rentang: string, rekap: list<array<string, mixed>>}
+     * @return array{sekolah: array<string, string|null>, rentang: string, rekap: list<array<string, mixed>>, harian: list<array<string, mixed>>}
      */
     public function isiPdf(Carbon $awal, Carbon $akhir): array
     {
@@ -100,6 +144,7 @@ class RekapAbsensiService
             'sekolah' => $this->pengaturan->kopSekolah(),
             'rentang' => self::labelRentang($awal, $akhir),
             'rekap' => $this->rekap($awal, $akhir),
+            'harian' => $this->harianPerPeserta($awal, $akhir),
         ];
     }
 
@@ -117,6 +162,86 @@ class RekapAbsensiService
     public static function namaFile(Carbon $awal, Carbon $akhir): string
     {
         return 'rekap-absensi-'.($awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}");
+    }
+
+    /**
+     * @return Closure(Builder<Absensi>): Builder<Absensi>
+     */
+    private function dalamRentang(Carbon $awal, Carbon $akhir): Closure
+    {
+        return fn (Builder $absensi): Builder => $absensi->whereDate('tanggal', '>=', $awal->toDateString())->whereDate('tanggal', '<=', $akhir->toDateString());
+    }
+
+    /**
+     * @return list<CarbonInterface>
+     */
+    private function hariAbsensi(AturanAbsensi $aturan, Carbon $awal, Carbon $akhir): array
+    {
+        return array_values(array_filter(
+            CarbonPeriod::create($awal->copy()->startOfDay(), $akhir->copy()->startOfDay())->toArray(),
+            fn (CarbonInterface $hari): bool => $aturan->sudahMulai($hari) && $aturan->hariKerja($hari) && ! $aturan->tanggalLibur($hari),
+        ));
+    }
+
+    /**
+     * Sebab tanggal yang punya absensi tidak termasuk hari absensi menurut pengaturan sekarang.
+     */
+    private function bukanHariAbsensi(AturanAbsensi $aturan, CarbonInterface $tanggal): string
+    {
+        return match (true) {
+            ! $aturan->sudahMulai($tanggal) => 'Sebelum tanggal mulai absensi',
+            $aturan->tanggalLibur($tanggal) => 'Tanggal libur',
+            default => 'Bukan hari kerja',
+        };
+    }
+
+    /**
+     * @param  Collection<int, Absensi>  $absensi  absensi satu peserta di tanggal itu
+     * @param  string|null  $bukanHariAbsensi  sebab tanggal ini ditulis walau bukan hari absensi
+     * @return array{tanggal: CarbonInterface, jam_masuk: string, jam_pulang: string, status: string, keterangan: string}
+     */
+    private function barisHarian(CarbonInterface $tanggal, Collection $absensi, ?string $bukanHariAbsensi): array
+    {
+        $masuk = $absensi->firstWhere('jenis', JenisAbsensi::Masuk);
+        $pulang = $absensi->firstWhere('jenis', JenisAbsensi::Pulang);
+
+        return [
+            'tanggal' => $tanggal,
+            'jam_masuk' => $this->selJam($masuk),
+            'jam_pulang' => $this->selJam($pulang),
+            'status' => $masuk?->status?->label() ?? self::KOSONG,
+            'keterangan' => collect([$bukanHariAbsensi, $this->keterangan($masuk, $pulang)])->filter()->implode('; '),
+        ];
+    }
+
+    /**
+     * Jam server saat absen. Absensi yang dicatat lewat koreksi tidak punya jam; tanda tidak hadir dari scheduler juga
+     * tidak, tetapi itu berarti tidak ada absensinya.
+     */
+    private function selJam(?Absensi $absensi): string
+    {
+        return match (true) {
+            $absensi === null || $absensi->status === StatusAbsensi::TidakHadir => self::KOSONG,
+            $absensi->waktu !== null => $absensi->waktu->format('H:i'),
+            default => self::TANPA_JAM,
+        };
+    }
+
+    /**
+     * Alasan dari peserta (izin, sakit, pulang lebih awal), tanda susulan, dan catatan koreksi, dipisah titik koma.
+     */
+    private function keterangan(?Absensi $masuk, ?Absensi $pulang): string
+    {
+        $alasanPulang = $pulang?->keterangan === null ? null : ($pulang->pulang_awal ? 'Pulang lebih awal: ' : 'Keterangan pulang: ').$pulang->keterangan;
+
+        return collect([
+            $masuk?->keterangan,
+            $masuk?->susulan ? 'Absen masuk susulan' : null,
+            $masuk?->catatan_koreksi === null ? null : "Catatan koreksi: {$masuk->catatan_koreksi}",
+            $alasanPulang,
+            $pulang?->susulan ? 'Absen pulang susulan' : null,
+            $pulang?->catatan_koreksi === null ? null : "Catatan absen pulang: {$pulang->catatan_koreksi}",
+        ])->filter()->implode('; ');
     }
 
     /**
