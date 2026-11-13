@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AbsensiMurid\HarianAbsensiMuridRequest;
 use App\Http\Requests\AbsensiMurid\RekapAbsensiMuridRequest;
 use App\Http\Requests\AbsensiMurid\SimpanAbsensiMuridRequest;
+use App\Models\Kelas;
 use App\Models\User;
 use App\Services\AbsensiMuridService;
 use App\Support\ApiResponse;
@@ -44,7 +45,7 @@ class AbsensiMuridController extends Controller
      */
     public function index(HarianAbsensiMuridRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        return ApiResponse::success($this->absensi->harian($this->absensi->kelasUntuk($id, $user), $request->tanggal()));
+        return ApiResponse::success($this->absensi->harian(Kelas::untukPengampu($id, $user), $request->tanggal()));
     }
 
     /**
@@ -66,7 +67,7 @@ class AbsensiMuridController extends Controller
      */
     public function update(SimpanAbsensiMuridRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        $kelas = $this->absensi->kelasUntuk($id, $user);
+        $kelas = Kelas::untukPengampu($id, $user);
         $this->absensi->simpan($kelas, $request->tanggal(), $request->absensi(), $user);
 
         return ApiResponse::success(
@@ -92,7 +93,7 @@ class AbsensiMuridController extends Controller
      */
     public function rekap(RekapAbsensiMuridRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        return ApiResponse::success($this->absensi->rekap($this->absensi->kelasUntuk($id, $user), $request->bulan()));
+        return ApiResponse::success($this->absensi->rekap(Kelas::untukPengampu($id, $user), $request->bulan()));
     }
 
     /**
@@ -103,7 +104,7 @@ class AbsensiMuridController extends Controller
     #[Response(200, 'Rekap absensi murid (.pdf)', mediaType: 'application/pdf', type: 'string', format: 'binary')]
     public function export(RekapAbsensiMuridRequest $request, int $id, #[CurrentUser] User $user): HttpResponse|BinaryFileResponse
     {
-        $kelas = $this->absensi->kelasUntuk($id, $user);
+        $kelas = Kelas::untukPengampu($id, $user);
         $bulan = $request->bulan();
         $namaFile = $this->absensi->namaFile($kelas, $bulan).'.'.$request->formatFile();
 

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\Role;
 use App\Enums\StatusAbsensiMurid;
 use App\Enums\StatusKelasMurid;
 use App\Exceptions\BusinessRuleException;
@@ -18,7 +17,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Absensi harian murid per kelas (A2.15), dicatat wali kelas, guru pendamping kelas itu di tahun ajaran aktif, atau
@@ -27,21 +25,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class AbsensiMuridService
 {
     public function __construct(private readonly PengaturanService $pengaturan) {}
-
-    /**
-     * Guru lain, termasuk pemegang izin data murid, dibalas 404 seperti kelas di luar jangkauannya.
-     *
-     * @throws NotFoundHttpException
-     */
-    public function kelasUntuk(int $kelasId, User $user): Kelas
-    {
-        $query = Kelas::query()->with('tahunAjaran');
-        if ($user->role !== Role::SuperAdmin) {
-            $query->diampuOleh($user);
-        }
-
-        return $query->find($kelasId) ?? throw new NotFoundHttpException;
-    }
 
     /**
      * Sebab tanggal itu tidak bisa dicatat, atau null kalau bisa.

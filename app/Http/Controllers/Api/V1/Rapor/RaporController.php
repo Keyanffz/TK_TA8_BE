@@ -8,8 +8,10 @@ use App\Http\Requests\Rapor\CatatanRevisiRequest;
 use App\Http\Requests\Rapor\DaftarRaporRequest;
 use App\Http\Requests\Rapor\FotoRaporRequest;
 use App\Http\Requests\Rapor\IsiRaporRequest;
+use App\Http\Requests\Rapor\RaporKelasPdfRequest;
 use App\Http\Resources\RaporDetailResource;
 use App\Http\Resources\RaporResource;
+use App\Models\Kelas;
 use App\Models\Rapor;
 use App\Models\User;
 use App\Services\RaporPdfService;
@@ -162,6 +164,20 @@ class RaporController extends Controller
         Jangkauan::pastikanTerlihat($rapor);
 
         return $raporPdf->buat($rapor)->download($raporPdf->namaFile($rapor));
+    }
+
+    /**
+     * Satu PDF berisi semua rapor `terbit` satu kelas dan semester (tahun ajaran kelas itu), urut nama murid, tiap
+     * murid mulai di halaman baru, untuk dicetak. Kepala Sekolah untuk kelas mana pun; guru hanya kelas yang ia ampu
+     * sebagai wali kelas atau guru pendamping di tahun ajaran aktif (kelas lain → 404). Belum ada rapor terbit → 422
+     * `BUSINESS_RULE`.
+     */
+    #[Response(200, 'Rapor satu kelas (PDF)', mediaType: 'application/pdf', type: 'string', format: 'binary')]
+    public function pdfKelas(RaporKelasPdfRequest $request, int $id, #[CurrentUser] User $user, RaporPdfService $raporPdf): HttpResponse
+    {
+        $kelas = Kelas::untukPengampu($id, $user);
+
+        return $raporPdf->buatKelas($kelas, $request->semester())->download($raporPdf->namaFileKelas($kelas, $request->semester()));
     }
 
     private function cariYangBolehDiubah(int $id): Rapor
