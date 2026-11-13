@@ -5,17 +5,22 @@ namespace App\Http\Controllers\Api\V1\Absensi;
 use App\Enums\JenisAbsensi;
 use App\Enums\LevelIzin;
 use App\Enums\ModulIzin;
+use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Absensi\AbsenRequest;
 use App\Http\Requests\Absensi\BulanAbsensiRequest;
+use App\Http\Requests\Absensi\EksporRekapAbsensiRequest;
 use App\Http\Requests\Absensi\HarianAbsensiRequest;
 use App\Http\Requests\Absensi\KoreksiAbsensiBaruRequest;
 use App\Http\Requests\Absensi\KoreksiAbsensiRequest;
 use App\Http\Requests\Absensi\RiwayatAbsensiRequest;
 use App\Http\Resources\AbsensiResource;
+use App\Http\Resources\AksesAbsenSusulanResource;
 use App\Models\Absensi;
+use App\Models\AksesAbsenSusulan;
 use App\Models\User;
 use App\Services\AbsensiService;
+use App\Services\AbsenSusulanService;
 use App\Services\MediaService;
 use App\Services\RekapAbsensiService;
 use App\Support\ApiResponse;
@@ -24,6 +29,8 @@ use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response as HttpResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AbsensiController extends Controller
@@ -36,7 +43,8 @@ class AbsensiController extends Controller
      * menampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.
      * Sebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang
      * akan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam
-     * pulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang.
+     * pulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang. `susulan` berisi akses
+     * absen susulan milik pengguna yang belum dipakai dan belum kedaluwarsa, urut tanggal.
      *
      * @response array{
      *     success: true,
@@ -51,7 +59,8 @@ class AbsensiController extends Controller
      *         radius_meter: int,
      *         batas_akurasi_meter: int,
      *         masuk: array{buka: string, batas_terlambat: string, tutup: string, terbuka: bool, absensi: AbsensiResource|null},
-     *         pulang: array{buka: string, tutup: string, terbuka: bool, absensi: AbsensiResource|null, boleh_lebih_awal: bool}
+     *         pulang: array{buka: string, tutup: string, terbuka: bool, absensi: AbsensiResource|null, boleh_lebih_awal: bool},
+     *         susulan: list<AksesAbsenSusulanResource>
      *     },
      *     meta: null
      * }
@@ -86,6 +95,9 @@ class AbsensiController extends Controller
                     && $tercatat->get(JenisAbsensi::Masuk->value)?->status?->perluAbsenPulang() === true
                     && ! $tercatat->has(JenisAbsensi::Pulang->value),
             ],
+            'susulan' => AksesAbsenSusulanResource::collection(
+                AksesAbsenSusulan::query()->aktif()->with('pemberi')->where('user_id', $user->id)->orderBy('tanggal')->orderBy('jenis')->get(),
+            ),
         ]);
     }
 
@@ -156,19 +168,21 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Mengoreksi status absen masuk dengan catatan wajib. Pengoreksi dan waktunya tersimpan di absensi itu. Pemegang
-     * izin kelola laporan absensi tidak bisa mengoreksi absensinya sendiri (422 `BUSINESS_RULE`).
+     * Mengoreksi status absen masuk dengan catatan wajib dan lampiran opsional (foto atau PDF, multipart). Lampiran
+     * baru menggantikan lampiran lama. Pengoreksi dan waktunya tersimpan di absensi itu. Pemegang izin kelola laporan
+     * absensi tidak bisa mengoreksi absensinya sendiri (422 `BUSINESS_RULE`).
      */
     public function koreksi(KoreksiAbsensiRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {
-        $absensi = $this->absensiService->koreksi(Absensi::query()->findOrFail($id), $request->status(), $request->catatan(), $user);
+        $absensi = $this->absensiService->koreksi(Absensi::query()->findOrFail($id), $request->status(), $request->catatan(), $user, $request->lampiran());
 
         return ApiResponse::success(new AbsensiResource($absensi), "Status absensi dikoreksi menjadi {$request->status()->label()}.");
     }
 
     /**
      * Mencatat absen masuk atau pulang (`jenis`, bawaan `masuk`) untuk peserta yang belum punya absen jenis itu pada
-     * tanggal tersebut, misalnya guru lupa absen padahal masuk atau lupa absen pulang. Catatan wajib; `status` wajib
+     * tanggal tersebut, misalnya guru lupa absen padahal masuk atau lupa absen pulang. Catatan wajib, lampiran (foto
+     * atau PDF, multipart) opsional; `status` wajib
      * untuk absen masuk dan tidak boleh dikirim untuk absen pulang; waktu, lokasi, dan foto kosong. Ditolak 422
      * `BUSINESS_RULE` kalau akun bukan peserta absensi, tanggal setelah hari ini atau sebelum tanggal mulai absensi,
      * bukan hari kerja, tanggal libur, absen jenis itu sudah ada (absen masuk dikoreksi lewat
@@ -177,7 +191,7 @@ class AbsensiController extends Controller
      */
     public function koreksiBaru(KoreksiAbsensiBaruRequest $request, #[CurrentUser] User $user): JsonResponse
     {
-        $absensi = $this->absensiService->koreksiBaru($request->integer('user_id'), $request->tanggal(), $request->jenis(), $request->status(), $request->catatan(), $user);
+        $absensi = $this->absensiService->koreksiBaru($request->integer('user_id'), $request->tanggal(), $request->jenis(), $request->status(), $request->catatan(), $user, $request->lampiran());
 
         return ApiResponse::success(
             new AbsensiResource($absensi),
@@ -190,6 +204,9 @@ class AbsensiController extends Controller
      * Absen masuk dan pulang semua peserta pada satu tanggal (bawaan hari ini), urut nama. Pesertanya sama dengan
      * rekap: guru dan Kepala Sekolah yang aktif, ditambah akun nonaktif yang punya absensi di tanggal itu.
      * `hari_kerja`, `tanggal_libur`, dan `tanggal_mulai` sama artinya dengan di `GET /absensi/hari-ini`.
+     * `akses_susulan` berisi akses absen susulan peserta untuk tanggal itu, termasuk yang sudah dipakai atau kedaluwarsa.
+     * `bisa_beri_susulan` true kalau tanggal itu hari ini atau hari kerja terakhir sebelumnya dan bukan hari libur, yaitu
+     * tanggal yang bisa diberi akses absen susulan.
      *
      * @response array{
      *     success: true,
@@ -199,16 +216,18 @@ class AbsensiController extends Controller
      *         hari_kerja: bool,
      *         tanggal_libur: bool,
      *         tanggal_mulai: string|null,
+     *         bisa_beri_susulan: bool,
      *         peserta: list<array{
      *             user: array{id: int, nama: string, jabatan: string|null},
      *             masuk: AbsensiResource|null,
-     *             pulang: AbsensiResource|null
+     *             pulang: AbsensiResource|null,
+     *             akses_susulan: list<AksesAbsenSusulanResource>
      *         }>
      *     },
      *     meta: null
      * }
      */
-    public function harian(HarianAbsensiRequest $request, RekapAbsensiService $rekap): JsonResponse
+    public function harian(HarianAbsensiRequest $request, RekapAbsensiService $rekap, AbsenSusulanService $susulan): JsonResponse
     {
         $tanggal = $request->tanggal();
         $aturan = $this->absensiService->aturan();
@@ -220,10 +239,12 @@ class AbsensiController extends Controller
             'hari_kerja' => $aturan->hariKerja($tanggal) && ! $libur,
             'tanggal_libur' => $libur,
             'tanggal_mulai' => $aturan->tanggalMulai,
+            'bisa_beri_susulan' => $susulan->tanggalBisaDiberikan($tanggal),
             'peserta' => array_map(fn (array $baris): array => [
                 'user' => $baris['user'],
                 'masuk' => $resource($baris['masuk']),
                 'pulang' => $resource($baris['pulang']),
+                'akses_susulan' => AksesAbsenSusulanResource::collection($baris['akses_susulan']),
             ], $rekap->harian($tanggal)),
         ]);
     }
@@ -248,18 +269,19 @@ class AbsensiController extends Controller
     }
 
     /**
-     * File CSV berisi rekap yang sama dengan `GET /absensi/rekap`. Nama file menyebut bulannya, misalnya
-     * `rekap-absensi-2026-10.csv` atau `rekap-absensi-2026-08-sampai-2026-10.csv`.
+     * Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah
+     * (`format=pdf`). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau
+     * `rekap-absensi-2026-08-sampai-2026-10.pdf`.
      */
-    #[Response(200, 'Rekap absensi (.csv)', mediaType: 'text/csv', type: 'string', format: 'binary')]
-    public function export(BulanAbsensiRequest $request, RekapAbsensiService $rekap): HttpResponse
+    #[Response(200, 'Rekap absensi (.xlsx)', mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', type: 'string', format: 'binary')]
+    #[Response(200, 'Rekap absensi (.pdf)', mediaType: 'application/pdf', type: 'string', format: 'binary')]
+    public function export(EksporRekapAbsensiRequest $request, RekapAbsensiService $rekap): HttpResponse|BinaryFileResponse
     {
         [$awal, $akhir] = $request->rentang();
-        $bulanFile = $awal->isSameMonth($akhir) ? $akhir->format('Y-m') : "{$awal->format('Y-m')}-sampai-{$akhir->format('Y-m')}";
+        $namaFile = RekapAbsensiService::namaFile($awal, $akhir).'.'.$request->formatFile();
 
-        return response($rekap->csv($awal, $akhir), 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"rekap-absensi-{$bulanFile}.csv\"",
-        ]);
+        return $request->formatFile() === 'pdf'
+            ? $rekap->pdf($awal, $akhir)->download($namaFile)
+            : Excel::download(new RekapAbsensiExport($rekap->rekap($awal, $akhir)), $namaFile);
     }
 }

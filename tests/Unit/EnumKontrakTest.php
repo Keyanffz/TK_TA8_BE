@@ -49,6 +49,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
         'pembayaran_diterima', 'pembayaran_ditolak', 'rapor_diajukan', 'rapor_revisi', 'rapor_terbit',
         'pengumuman_baru', 'pendaftaran_baru', 'pendaftaran_diproses', 'anak_tertaut', 'absensi_tercatat',
         'absensi_dikoreksi',
+        'absensi_susulan_diberikan',
     ]],
     'KodeError' => [KodeError::class, [
         'UNAUTHENTICATED', 'FORBIDDEN', 'ACCOUNT_INACTIVE',

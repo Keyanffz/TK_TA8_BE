@@ -122,13 +122,14 @@ it('mendokumentasikan respons file hanya dengan tipe file, dan 403 hanya untuk b
         '/laporan/keuangan/export' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         '/media/{token}' => 'application/octet-stream',
         '/absensi/{id}/foto' => 'image/jpeg',
-        '/absensi/rekap/export' => 'text/csv',
         '/public/pengumuman/{slug}/lampiran' => 'application/octet-stream',
     ];
 
     foreach ($tipeFile as $path => $tipe) {
         expect(array_keys($dokumen['paths'][$path]['get']['responses'][200]['content']))->toBe([$tipe]);
     }
+    expect(array_keys($dokumen['paths']['/absensi/rekap/export']['get']['responses'][200]['content']))
+        ->toBe(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/pdf']);
     expect(kodeErrorTerdokumentasi($dokumen['paths']['/pembayaran/{id}/bukti']['get'], 403))->toContain('FORBIDDEN');
     foreach (['/pembayaran/{id}', '/pembayaran/{id}/kwitansi'] as $path) {
         expect(kodeErrorTerdokumentasi($dokumen['paths'][$path]['get'], 403))->not->toContain('FORBIDDEN');

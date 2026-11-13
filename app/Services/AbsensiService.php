@@ -12,6 +12,7 @@ use App\Notifications\AbsensiDikoreksiNotification;
 use App\Notifications\AbsensiTercatatNotification;
 use App\Support\AturanAbsensi;
 use App\Support\Jarak;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -28,6 +29,8 @@ use Throwable;
 class AbsensiService
 {
     public const FOLDER_FOTO = 'absensi';
+
+    public const FOLDER_LAMPIRAN = 'absensi/lampiran';
 
     private const UKURAN_CHUNK = 100;
 
@@ -49,7 +52,7 @@ class AbsensiService
      *
      * @return Collection<string, Absensi>
      */
-    public function absensiTanggal(User $user, Carbon $tanggal): Collection
+    public function absensiTanggal(User $user, CarbonInterface $tanggal): Collection
     {
         return Absensi::query()->with('pengoreksi')
             ->where('user_id', $user->id)
@@ -105,11 +108,12 @@ class AbsensiService
 
     /**
      * Koreksi status absen masuk oleh Kepala Sekolah atau pemegang izin kelola laporan absensi. Pengoreksi dan
-     * waktunya disimpan di baris absensi dan di log aktivitas (status sebelum dan sesudah).
+     * waktunya disimpan di baris absensi dan di log aktivitas (status sebelum dan sesudah). Lampiran baru
+     * menggantikan lampiran lama; tanpa lampiran, lampiran lama tetap.
      *
      * @throws BusinessRuleException
      */
-    public function koreksi(Absensi $absensi, StatusAbsensi $status, string $catatan, User $pelaku): Absensi
+    public function koreksi(Absensi $absensi, StatusAbsensi $status, string $catatan, User $pelaku, ?UploadedFile $lampiran = null): Absensi
     {
         $this->pastikanBukanAbsensiSendiri($absensi->user_id, $pelaku);
 
@@ -121,13 +125,20 @@ class AbsensiService
         }
 
         $sebelum = $absensi->status;
-        $absensi->update([
-            'status' => $status,
-            'catatan_koreksi' => $catatan,
-            'dikoreksi_oleh' => $pelaku->id,
-            'dikoreksi_at' => now(),
-        ]);
-        $this->catatKoreksi($absensi, $sebelum, $pelaku);
+        $lampiranLama = $absensi->lampiran_path;
+        $this->denganLampiran($lampiran, function (?string $path) use ($absensi, $status, $catatan, $pelaku, $sebelum): void {
+            $absensi->update([
+                'status' => $status,
+                'catatan_koreksi' => $catatan,
+                'dikoreksi_oleh' => $pelaku->id,
+                'dikoreksi_at' => now(),
+                ...($path === null ? [] : ['lampiran_path' => $path]),
+            ]);
+            $this->catatKoreksi($absensi, $sebelum, $pelaku);
+        });
+        if ($absensi->lampiran_path !== $lampiranLama) {
+            $this->media->hapus($lampiranLama, MediaService::DISK_PRIVAT);
+        }
 
         return $absensi->load('pengoreksi');
     }
@@ -142,7 +153,7 @@ class AbsensiService
      *
      * @throws BusinessRuleException
      */
-    public function koreksiBaru(int $userId, Carbon $tanggal, JenisAbsensi $jenis, ?StatusAbsensi $status, string $catatan, User $pelaku): Absensi
+    public function koreksiBaru(int $userId, Carbon $tanggal, JenisAbsensi $jenis, ?StatusAbsensi $status, string $catatan, User $pelaku, ?UploadedFile $lampiran = null): Absensi
     {
         $this->pastikanBukanAbsensiSendiri($userId, $pelaku);
         $peserta = User::query()->pesertaAbsensi()->find($userId)
@@ -156,12 +167,13 @@ class AbsensiService
         $this->pastikanBelumTercatat($peserta, $tanggal, $jenis, $sudahAda);
 
         try {
-            return DB::transaction(function () use ($peserta, $tanggal, $jenis, $status, $catatan, $pelaku): Absensi {
+            return $this->denganLampiran($lampiran, function (?string $path) use ($peserta, $tanggal, $jenis, $status, $catatan, $pelaku): Absensi {
                 $absensi = Absensi::query()->create([
                     'user_id' => $peserta->id,
                     'tanggal' => $tanggal->toDateString(),
                     'jenis' => $jenis,
                     'status' => $jenis === JenisAbsensi::Masuk ? $status : null,
+                    'lampiran_path' => $path,
                     'catatan_koreksi' => $catatan,
                     'dikoreksi_oleh' => $pelaku->id,
                     'dikoreksi_at' => now(),
@@ -231,30 +243,56 @@ class AbsensiService
     }
 
     /**
-     * Menghapus file foto yang tanggal absensinya sudah melewati `absensi.masa_simpan_foto_bulan`. Baris
-     * absensinya tetap ada dengan `foto_path` kosong.
+     * Menghapus file foto dan lampiran yang tanggal absensinya sudah melewati `absensi.masa_simpan_foto_bulan`.
+     * Baris absensinya tetap ada dengan `foto_path` dan `lampiran_path` kosong.
      *
-     * @return int jumlah foto yang dihapus (atau akan dihapus, saat simulasi)
+     * @return int jumlah file yang dihapus (atau akan dihapus, saat simulasi)
      */
     public function hapusFotoLama(Carbon $hariIni, bool $simulasi = false): int
     {
         $batas = $hariIni->copy()->subMonthsNoOverflow($this->aturan()->masaSimpanFotoBulan)->toDateString();
-        $query = Absensi::query()->whereNotNull('foto_path')->whereDate('tanggal', '<', $batas);
+        $query = Absensi::query()->whereDate('tanggal', '<', $batas)
+            ->where(fn (Builder $berkas) => $berkas->whereNotNull('foto_path')->orWhereNotNull('lampiran_path'));
 
         if ($simulasi) {
-            return $query->count();
+            return (clone $query)->whereNotNull('foto_path')->count() + (clone $query)->whereNotNull('lampiran_path')->count();
         }
 
         $jumlah = 0;
         $query->chunkById(self::UKURAN_CHUNK, function (Collection $absensi) use (&$jumlah): void {
             foreach ($absensi as $satu) {
-                $this->media->hapus($satu->foto_path, MediaService::DISK_PRIVAT);
-                $satu->update(['foto_path' => null]);
-                $jumlah++;
+                $berkas = array_filter([$satu->foto_path, $satu->lampiran_path]);
+                foreach ($berkas as $path) {
+                    $this->media->hapus($path, MediaService::DISK_PRIVAT);
+                }
+                $satu->update(['foto_path' => null, 'lampiran_path' => null]);
+                $jumlah += count($berkas);
             }
         });
 
         return $jumlah;
+    }
+
+    /**
+     * Lampiran disimpan sebelum `$simpan` berjalan di dalam transaksi, lalu dihapus lagi kalau penyimpanan gagal,
+     * supaya tidak ada file tanpa absensi.
+     *
+     * @template T
+     *
+     * @param  callable(string|null): T  $simpan  menerima path lampiran baru, atau null tanpa lampiran
+     * @return T
+     */
+    private function denganLampiran(?UploadedFile $lampiran, callable $simpan): mixed
+    {
+        $path = $lampiran === null ? null : $this->media->simpanDokumen($lampiran, MediaService::DISK_PRIVAT, self::FOLDER_LAMPIRAN);
+
+        try {
+            return DB::transaction(fn () => $simpan($path));
+        } catch (Throwable $e) {
+            $this->media->hapus($path, MediaService::DISK_PRIVAT);
+
+            throw $e;
+        }
     }
 
     /**
@@ -345,7 +383,7 @@ class AbsensiService
      *
      * @throws BusinessRuleException
      */
-    private function pastikanTanggalAbsensi(Carbon $tanggal): void
+    public function pastikanTanggalAbsensi(CarbonInterface $tanggal): void
     {
         $aturan = $this->aturan();
         $teks = $tanggal->translatedFormat('j F Y');

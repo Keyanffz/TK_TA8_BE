@@ -36,6 +36,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R1: NISN murid yang dihapus bisa dipakai lagi (branch `be/perbaikan-tambah-murid`) | Selesai, menunggu review; test SQLite, test murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop` |
 | Revisi sekolah R2: PPDB tanpa unggah berkas, rapor tertutup untuk wali murid, contoh "uang pendidikan" (branch `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
 | Revisi sekolah R3: pembayaran tunai dengan cicilan, wali kelas ikut mencatat, pembatalan pembayaran (branch `be/pembayaran-tunai-cicilan`, di atas `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
+| Revisi sekolah R4: ekspor rekap absensi .xlsx dan PDF, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`, di atas `be/pembayaran-tunai-cicilan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang baru dan berubah |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -65,7 +66,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Publik (tanpa login) | `GET /public/profil`, `GET /public/pengumuman`, `GET /public/pengumuman/{slug}`, `GET /public/pengumuman/{slug}/lampiran`, `GET /public/agenda`, `GET /public/galeri`, `GET /public/galeri/{slug}`, `GET /public/guru`, `GET /public/ppdb`, `POST /public/pendaftaran`, `GET /public/pendaftaran/status` |
 | Dashboard | `GET /dashboard` (payload per role, W boleh `?murid_id=`) |
 | PPDB | `GET /pendaftaran`, `GET /pendaftaran/{id}` (SA semua, W miliknya), `POST /pendaftaran` (W, kakak/adik, JSON tanpa unggahan), `POST /pendaftaran/{id}/verifikasi`, `POST /pendaftaran/{id}/terima`, `POST /pendaftaran/{id}/tolak` (SA) |
-| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan; izin lihat laporan absensi) |
+| Absensi | `GET /absensi/hari-ini`, `POST /absensi` (multipart, 10/menit per user; juga izin, sakit, dan pulang lebih awal), `GET /absensi` (riwayat 1–3 bulan; G miliknya, SA boleh `user_id`), `GET /absensi/{id}/foto` (pemilik, SA) untuk SA dan G; `PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi` (absen masuk atau pulang untuk tanggal tanpa baris jenis itu; multipart dengan `lampiran` opsional; izin kelola laporan absensi, tidak untuk absensi sendiri), `GET /absensi/harian`, `GET /absensi/rekap`, `GET /absensi/rekap/export` (1–3 bulan, `format=xlsx|pdf`; izin lihat laporan absensi), `POST /absensi/susulan`, `DELETE /absensi/susulan/{id}` (SA), `POST /absensi/susulan/{id}/absen` (pemilik akses) |
 | Pengaturan | `GET /pengaturan?grup=` (SA; grup `profil`/`landing`/`beranda` izin lihat konten website, grup `keuangan` izin lihat keuangan), `PUT /pengaturan` (SA; izin kelola konten website hanya grup `profil`/`landing`/`beranda`), `POST /pengaturan/upload` (izin kelola konten website). Grup `absensi` berisi aturan absensi |
 | Galeri (izin konten website: lihat untuk GET, kelola untuk lainnya) | `GET/POST /galeri-album`, `GET/PUT/DELETE /galeri-album/{id}`, `POST /galeri-album/{id}/foto`, `PUT/DELETE /galeri-foto/{id}` |
 | Log aktivitas (SA) | `GET /log-aktivitas` |
@@ -111,6 +112,20 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 12. Laporan: `terbayar` menjumlahkan pembayaran `diterima` tiap tagihan; tunggakan menjumlahkan sisa dan tiap tagihan di daftar tunggakan mendapat field `sisa`. Ekspor Excel mendapat kolom Terbayar dan Sisa; kolom "Diverifikasi Oleh" menjadi "Petugas".
 13. Dashboard: `tertunda.pembayaran_menunggu` (Kepala Sekolah) dan `pembayaran_menunggu` (guru) dihapus; `total_belum_bayar` wali menjumlahkan sisa.
 14. `DemoSeeder`: semua pembayaran tunai; ada tagihan lunas lewat dua cicilan dan tagihan terlambat yang baru dicicil separuh. Tidak ada lagi pembayaran menunggu atau ditolak.
+
+### Revisi sekolah R4: ekspor rekap absensi, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`)
+
+1. Ekspor rekap CSV diganti .xlsx (bawaan) dan PDF (`format=pdf`). CSV tidak dipertahankan. `RekapAbsensiExport` memakai `WithStrictNullComparison`; tanpa itu maatwebsite/excel menulis angka 0 sebagai sel kosong.
+2. PDF rekap A4 landscape, kop dari pengaturan profil, kolom Nama 270 px dan Jabatan 140 px. `table-layout: fixed` tidak dipakai karena dompdf lalu membagi lebar kolom sama rata dan nama bergelar biasa ikut terbungkus.
+3. Lampiran koreksi: satu file JPG/PNG/WebP/PDF maks 5 MB di `PATCH /absensi/{id}/koreksi` dan `POST /absensi/koreksi` (multipart). Gambar dikompres seperti unggahan lain dan disimpan JPEG; PDF apa adanya. Lampiran baru menggantikan yang lama; koreksi tanpa lampiran tidak menghapus lampiran lama (tidak ada `hapus_lampiran`). Lampiran ikut masa simpan foto (`absensi.masa_simpan_foto_bulan`) dan dihapus `absensi:hapus-foto-lama`; pesan command menjadi "... foto dan lampiran absensi dihapus." dengan jumlah file.
+4. `lampiran.url` signed URL 30 menit dibuat di `AbsensiResource` untuk semua penerima resource itu (pemilik, Kepala Sekolah, pemegang izin laporan absensi); tidak ada endpoint yang mengirim absensi ke pengguna lain.
+5. Akses absen susulan hanya diberikan Kepala Sekolah (bukan pemegang izin kelola laporan absensi), satu akses per peserta, tanggal, dan jenis, sekali pakai, berlaku sampai 23:59 hari diberikan. Untuk Kepala Sekolah sendiri ditolak; ia mencatat absensinya di Rekap Absensi.
+6. Tanggal akses: hari ini atau hari kerja terakhir sebelum hari ini yang bukan tanggal libur dan tidak sebelum tanggal mulai, dicari mundur paling jauh 31 hari (cukup untuk libur panjang). `GET /absensi/harian` mengirim `bisa_beri_susulan` supaya FE tidak menghitung sendiri.
+7. Absen masuk susulan berstatus `hadir` (bukan `terlambat`, karena jam tidak diperiksa), `waktu` jam server saat dikirim walaupun tanggalnya kemarin, dan mengganti baris `tidak_hadir` buatan scheduler (id baris tetap). Baris itu tidak termasuk `scopeTidakHadirOtomatis` karena punya waktu, jadi tidak dihapus saat tanggalnya dijadikan libur.
+8. Absen pulang susulan hanya setelah absen masuk tanggal itu `hadir`/`terlambat`; `pulang_awal` selalu false.
+9. Akses yang sudah dipakai tidak bisa dicabut. Akses yang kedaluwarsa tidak dihapus otomatis; tetap tampil di `akses_susulan` absensi harian sebagai riwayat dan bisa dicabut.
+10. Pemakaian akses tidak dicatat di log aktivitas; jejaknya `dipakai_at` di akses dan `susulan` di absensi. Pemberian dan pencabutan dicatat (`absensi`/`susulan_diberikan`, `susulan_dicabut`).
+11. Jenis notifikasi baru `absensi_susulan_diberikan`. Notifikasi `absensi_tercatat` untuk absen susulan berjudul "Absen masuk susulan tercatat".
 
 ## Keputusan yang sudah diterapkan
 
@@ -911,6 +926,32 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R4: ekspor rekap absensi, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`)
+
+Diminta sekolah (revisi 7 dan 8): ekspor rekap yang terbuka benar di Excel dan PDF, lampiran foto atau dokumen pada koreksi, dan akses absen susulan. Bagian A (A2.12, A3, A4, A6, A7) dan B2, B1, B4, B5, B6.14, B7 diperbarui; Bagian A tetap identik dengan PROMPT FE.
+
+Baru:
+
+- `database/migrations/2026_11_13_110000_tambah_lampiran_dan_susulan_ke_absensi_table.php` (`lampiran_path`, `susulan`), `2026_11_13_110001_create_akses_absen_susulan_table.php`.
+- `app/Models/AksesAbsenSusulan.php`, `database/factories/AksesAbsenSusulanFactory.php`, `app/Services/AbsenSusulanService.php`, `app/Http/Controllers/Api/V1/Absensi/AbsenSusulanController.php`, `app/Http/Requests/Absensi/BeriAksesSusulanRequest.php`, `AbsenSusulanRequest.php`, `EksporRekapAbsensiRequest.php`, `app/Http/Resources/AksesAbsenSusulanResource.php`, `app/Notifications/AbsensiSusulanDiberikanNotification.php`.
+- `app/Exports/RekapAbsensiExport.php`, `resources/views/pdf/rekap-absensi.blade.php`.
+- Test: `tests/Feature/Absensi/AbsenSusulanTest.php`, `LampiranKoreksiTest.php`.
+
+Dihapus:
+
+- `RekapAbsensiService::csv()`.
+
+Diubah:
+
+- `AbsensiService`: lampiran di `koreksi()` dan `koreksiBaru()` (`denganLampiran()`), `hapusFotoLama()` menghapus lampiran, `pastikanTanggalAbsensi()` public, `absensiTanggal()` dan `pastikanTanggalAbsensi()` menerima `CarbonInterface`.
+- `RekapAbsensiService`: `pdf()`, `isiPdf()`, `labelRentang()`, `namaFile()`; `harian()` memuat `akses_susulan`.
+- `AbsensiController`: ekspor .xlsx/PDF, lampiran, `susulan` di `hariIni`, `akses_susulan` dan `bisa_beri_susulan` di `harian`.
+- `Absensi` (`lampiran_path`, `susulan`, `namaAbsen()` menyebut susulan), `AbsensiResource` (`susulan`, `lampiran`), `KoreksiAbsensiRequest`, `KoreksiAbsensiBaruRequest`, `JenisNotifikasi`, `HapusFotoAbsensiLamaCommand`, `routes/api.php`.
+- Test: `KoreksiDanRekapTest`, `IzinSakitTest` (ekspor .xlsx dan PDF), `AbsenTest`, `SchedulerAbsensiTest`, `DokumentasiApiTest`, `EnumKontrakTest`.
+- `storage/api-docs/api.json` diekspor ulang dari database uji yang sudah dimigrasi. Ikut berubah: `alasan_pembatalan` dan `dibatalkan_at` di `PembayaranResource`/`RiwayatPembayaranResource` sekarang nullable (ekspor R3 dibuat sebelum kolomnya ada di database dev, jadi tipenya kurang tepat).
+
+Pengecekan: `php artisan test --compact` 1141 lolos di SQLite dan di MariaDB 13.0.2 (database `TK_TA8_uji`); Pint, PHPStan, `check:slop` bersih. Di database uji: `migrate:fresh --seed`, `DemoSeeder`, `migrate:rollback --step=2` lalu `migrate` jalan. Uji curl ke `php artisan serve` dengan database uji (Jumat 13 November 2026 pukul 06.27): ekspor .xlsx dan PDF (nama file, tipe), `format=csv` 422, isi PDF lewat `pdftotext -layout` dengan nama "Dra. Hj. Siti Nurhasanah Kusumawardhani Prameswari, S.Pd., M.Pd." (terbungkus di sel Nama, 1 halaman A4 landscape); beri akses (201), akses kedua yang sama (422), guru memberi akses (403), `susulan` di status hari ini, absen susulan multipart (201, `hadir`, `susulan` true, tanpa koordinat), pakai ulang (422), `akses_susulan` di harian, akses dua hari kerja lalu (422), cabut (200); `PATCH /absensi/{id}/koreksi` multipart dengan PDF (lampiran tersimpan, signed URL membalas `application/pdf`), `POST /absensi/koreksi` absen pulang dengan foto. Lewat proxy FE (`next start`): beri akses, absen pulang susulan, dan `PATCH` multipart yang mengganti lampiran PDF dengan foto (file lama terhapus). File dan token uji dihapus lagi.
 
 ### Revisi sekolah R3: pembayaran tunai dengan cicilan (branch `be/pembayaran-tunai-cicilan`)
 
