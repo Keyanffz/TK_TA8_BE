@@ -90,29 +90,38 @@ class RekapAbsensiService
 
     /**
      * Absensi harian setiap peserta di rentang itu untuk ekspor, dengan isi sel yang sudah berupa teks. Hari yang
-     * ditulis hanya hari absensi: hari kerja yang bukan tanggal libur, tidak sebelum tanggal mulai, dan tidak setelah
-     * hari ini (hari kerja dan libur menurut pengaturan sekarang). Peserta sama dengan rekap, urut nama.
+     * ditulis: semua hari absensi di rentang itu (hari kerja yang bukan tanggal libur dan tidak sebelum tanggal mulai,
+     * menurut pengaturan sekarang), termasuk yang belum datang, ditambah tanggal lain yang punya absensi peserta itu,
+     * misalnya absen sungguhan pada tanggal yang kemudian dijadikan libur. Dengan begitu isinya selalu cocok dengan
+     * ringkasan, yang menghitung semua baris absensi di rentang itu. Peserta sama dengan rekap, urut nama.
      *
      * @return list<array{user: array{id: int, nama: string, jabatan: string|null}, hari: list<array{tanggal: CarbonInterface, jam_masuk: string, jam_pulang: string, status: string, keterangan: string}>}>
      */
     public function harianPerPeserta(Carbon $awal, Carbon $akhir): array
     {
-        $tanggal = $this->hariAbsensi($awal, $akhir);
-        if ($tanggal === []) {
+        $aturan = AturanAbsensi::dari($this->pengaturan);
+        $hariAbsensi = collect($this->hariAbsensi($aturan, $awal, $akhir))->keyBy(fn (CarbonInterface $hari): string => $hari->toDateString());
+        $dalamRentang = $this->dalamRentang($awal, $akhir);
+        $absensi = Absensi::query()->tap($dalamRentang)->get()->groupBy('user_id');
+
+        if ($hariAbsensi->isEmpty() && $absensi->isEmpty()) {
             return [];
         }
 
-        $dalamRentang = $this->dalamRentang($awal, $akhir);
-        $absensi = Absensi::query()->tap($dalamRentang)->get()
-            ->groupBy(fn (Absensi $satu): string => "{$satu->user_id} {$satu->tanggal->toDateString()}");
+        return $this->peserta($dalamRentang)->map(function (User $user) use ($absensi, $hariAbsensi, $aturan): array {
+            /** @var Collection<string, Collection<int, Absensi>> $milik */
+            $milik = $absensi->get($user->id, collect())->groupBy(fn (Absensi $satu): string => $satu->tanggal->toDateString());
+            $tanggal = $hariAbsensi->union($milik->map(fn (Collection $baris): CarbonInterface => $baris->firstOrFail()->tanggal))->sortKeys();
 
-        return $this->peserta($dalamRentang)->map(fn (User $user): array => [
-            'user' => $this->ringkasan($user),
-            'hari' => array_map(
-                fn (CarbonInterface $hari): array => $this->barisHarian($hari, $absensi->get("{$user->id} {$hari->toDateString()}", collect())),
-                $tanggal,
-            ),
-        ])->values()->all();
+            return [
+                'user' => $this->ringkasan($user),
+                'hari' => $tanggal->map(fn (CarbonInterface $hari, string $kunci): array => $this->barisHarian(
+                    $hari,
+                    $milik->get($kunci, collect()),
+                    $hariAbsensi->has($kunci) ? null : $this->bukanHariAbsensi($aturan, $hari),
+                ))->values()->all(),
+            ];
+        })->values()->all();
     }
 
     /**
@@ -166,22 +175,32 @@ class RekapAbsensiService
     /**
      * @return list<CarbonInterface>
      */
-    private function hariAbsensi(Carbon $awal, Carbon $akhir): array
+    private function hariAbsensi(AturanAbsensi $aturan, Carbon $awal, Carbon $akhir): array
     {
-        $aturan = AturanAbsensi::dari($this->pengaturan);
-        $sampai = $akhir->isAfter(today()) ? today() : $akhir;
-
         return array_values(array_filter(
-            CarbonPeriod::create($awal->copy()->startOfDay(), $sampai)->toArray(),
+            CarbonPeriod::create($awal->copy()->startOfDay(), $akhir->copy()->startOfDay())->toArray(),
             fn (CarbonInterface $hari): bool => $aturan->sudahMulai($hari) && $aturan->hariKerja($hari) && ! $aturan->tanggalLibur($hari),
         ));
     }
 
     /**
+     * Sebab tanggal yang punya absensi tidak termasuk hari absensi menurut pengaturan sekarang.
+     */
+    private function bukanHariAbsensi(AturanAbsensi $aturan, CarbonInterface $tanggal): string
+    {
+        return match (true) {
+            ! $aturan->sudahMulai($tanggal) => 'Sebelum tanggal mulai absensi',
+            $aturan->tanggalLibur($tanggal) => 'Tanggal libur',
+            default => 'Bukan hari kerja',
+        };
+    }
+
+    /**
      * @param  Collection<int, Absensi>  $absensi  absensi satu peserta di tanggal itu
+     * @param  string|null  $bukanHariAbsensi  sebab tanggal ini ditulis walau bukan hari absensi
      * @return array{tanggal: CarbonInterface, jam_masuk: string, jam_pulang: string, status: string, keterangan: string}
      */
-    private function barisHarian(CarbonInterface $tanggal, Collection $absensi): array
+    private function barisHarian(CarbonInterface $tanggal, Collection $absensi, ?string $bukanHariAbsensi): array
     {
         $masuk = $absensi->firstWhere('jenis', JenisAbsensi::Masuk);
         $pulang = $absensi->firstWhere('jenis', JenisAbsensi::Pulang);
@@ -191,7 +210,7 @@ class RekapAbsensiService
             'jam_masuk' => $this->selJam($masuk),
             'jam_pulang' => $this->selJam($pulang),
             'status' => $masuk?->status?->label() ?? self::KOSONG,
-            'keterangan' => $this->keterangan($masuk, $pulang),
+            'keterangan' => collect([$bukanHariAbsensi, $this->keterangan($masuk, $pulang)])->filter()->implode('; '),
         ];
     }
 

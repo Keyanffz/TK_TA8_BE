@@ -5,13 +5,16 @@ namespace App\Exports;
 use Carbon\CarbonInterface;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Shared\Date as TanggalExcel;
 
 /**
- * Sheet Harian ekspor rekap absensi: satu baris per peserta per hari absensi, urut tanggal lalu nama.
+ * Sheet Harian ekspor rekap absensi: satu baris per peserta per hari, urut tanggal lalu nama. Tanggal ditulis sebagai
+ * tanggal Excel (bukan teks) supaya bisa disaring dan diurutkan, tampil hari/bulan/tahun.
  */
-class HarianAbsensiSheet implements FromArray, ShouldAutoSize, WithHeadings, WithTitle
+class HarianAbsensiSheet implements FromArray, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithTitle
 {
     public const JUDUL_KOLOM = ['Tanggal', 'Hari', 'Nama', 'Jabatan', 'Jam Masuk', 'Jam Pulang', 'Status', 'Keterangan'];
 
@@ -23,13 +26,13 @@ class HarianAbsensiSheet implements FromArray, ShouldAutoSize, WithHeadings, Wit
     /**
      * Peserta sudah urut nama, dan pengurutan PHP stabil, jadi baris bertanggal sama tetap urut nama.
      *
-     * @return list<list<string>>
+     * @return list<list<string|float>>
      */
     public function array(): array
     {
         return collect($this->harian)
             ->flatMap(fn (array $peserta): array => array_map(fn (array $hari): array => [
-                $hari['tanggal']->toDateString(),
+                TanggalExcel::dateTimeToExcel($hari['tanggal']),
                 $hari['tanggal']->translatedFormat('l'),
                 $peserta['user']['nama'],
                 $peserta['user']['jabatan'] ?? '',
@@ -41,6 +44,14 @@ class HarianAbsensiSheet implements FromArray, ShouldAutoSize, WithHeadings, Wit
             ->sortBy(0)
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function columnFormats(): array
+    {
+        return ['A' => 'dd/mm/yyyy'];
     }
 
     /**
