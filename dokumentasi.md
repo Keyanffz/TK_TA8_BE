@@ -42,6 +42,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R7: Docker (branch `be/docker`, di atas `be/ekspor-rapor-kelas`) | Selesai, menunggu review; build image dan `docker compose up` diuji di laptop. Pindah ke VPS belum, uji dulu di VM `debian-lab` (`docs/docker.md`) |
 | Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`, di atas `be/docker`) | Selesai, menunggu review; test SQLite dan MariaDB uji, migration diuji di database uji |
 | Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`) | Selesai, menunggu review; test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, unduhan lewat proxy FE; lihat Changelog |
+| Jam absensi per rentang tanggal, misalnya Ramadan (branch `be/jam-tanggal`, di atas `be/jam-absensi`) | Selesai, menunggu review; test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`; lihat Changelog |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -161,6 +162,18 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 6. `TRUSTED_PROXIES` perlu `172.16.0.0/12` karena request dari Nginx host masuk lewat gateway jaringan Docker.
 7. Backup DB lewat `mariadb-dump` di container dari crontab host. Langkah pindah, deploy berikutnya, dan rollback di `docs/docker.md`.
 
+### Jam absensi per rentang tanggal (branch `be/jam-tanggal`)
+
+Usulan di laporan `be/jam-absensi`, disetujui pemilik repo. Kontrak ditulis ke A2.12, A3, A4, A7, dan B6.2, B6.14; Bagian A tetap identik dengan PROMPT FE. Yang diputuskan saat pengerjaan:
+
+1. Kunci `absensi.jam_tanggal`: daftar `{ mulai, selesai, keterangan, jam_masuk, jam_pulang }`, bawaan `[]`, disimpan urut `mulai`, paling banyak 50 rentang. `keterangan` wajib (maks 100, spasi di tepi dibuang) supaya pesan error dan daftar di FE bisa menyebut rentangnya ("Ramadan", "Pekan ujian").
+2. Urutan pemilihan jam suatu tanggal: rentang jam per tanggal yang mencakupnya, lalu jam khusus harinya, lalu jam bawaan. Satu rentang memakai satu jam untuk semua hari di dalamnya; kalau Jumat di bulan Ramadan perlu jam lain, rentangnya dipecah.
+3. Jam per tanggal tidak mengubah hari kerja dan tanggal libur: hari Minggu di dalam rentang tetap bukan hari kerja.
+4. Validasi: tanggal `Y-m-d`, selesai tidak sebelum mulai, jam berurutan seperti jam bawaan, dan rentang tidak boleh bertumpuk (bersebelahan boleh). Pemeriksaan bertumpuk dilakukan setelah daftar diurutkan per `mulai`, jadi nomor di kunci error `absensi.jam_tanggal.<n>` adalah urutan per tanggal mulai; FE mengirim daftar yang sudah urut.
+5. Rentang yang sudah lewat tidak dihapus otomatis; Kepala Sekolah menghapusnya sendiri di Pengaturan Absensi. Rentang yang sudah lewat masih dipakai scheduler untuk susulan 7 hari ke belakang dan untuk jam tutup di rekap.
+6. `GET /absensi/hari-ini` tidak mendapat field baru (misalnya keterangan rentang); `masuk` dan `pulang` berisi jam hari itu seperti sebelumnya.
+7. Migration data `2026_11_15_100001_isi_jam_tanggal_absensi` menambah kunci berisi `[]` di database yang sudah berjalan; database baru mendapatkannya dari `isi_pengaturan_absensi`. `DatabaseSeeder` sekarang menulis 35 kunci.
+
 ### Jam absensi per hari dan jam di ekspor rekap (branch `be/jam-absensi`)
 
 Diminta pemilik repo dengan rancangan yang sudah disetujui. Kontrak ditulis ke Bagian A (A2.12, A3, A4, A6, A7) dan B6.2, B6.14; Bagian A tetap identik dengan PROMPT FE. Yang di bawah ini diputuskan saat pengerjaan:
@@ -177,7 +190,7 @@ Diminta pemilik repo dengan rancangan yang sudah disetujui. Kontrak ditulis ke B
 10. Isi sel: Tanggal di Excel berupa sel tanggal (bukan teks) berformat `dd/mm/yyyy`, jadi bisa disaring dan diurutkan sebagai tanggal (diputuskan pemilik repo); "Kamis, 1 Oktober 2026" di PDF. Jam: jam server `HH:MM`; "Tanpa jam" untuk absensi tanpa jam yang bukan tidak hadir (dicatat lewat `POST /absensi/koreksi`, atau tidak hadir otomatis yang dikoreksi menjadi hadir lewat `PATCH`), sama dengan aturan "Tanpa jam" di FE; "-" kalau absensinya tidak ada, termasuk absen masuk tidak hadir (juga absen sungguhan yang dikoreksi menjadi tidak hadir). Jam masuk izin dan sakit yang dicatat peserta berisi jamnya. Status = label status absen masuk, "-" kalau belum ada. Keterangan menggabungkan, dipisah titik koma: keterangan peserta di absen masuk (alasan izin atau sakit), "Absen masuk susulan", "Catatan koreksi: ...", "Pulang lebih awal: <alasan>" (atau "Keterangan pulang: ..." untuk keterangan absen pulang biasa), "Absen pulang susulan", dan "Catatan absen pulang: ...".
 11. Tanggal yang punya absensi peserta tetapi bukan hari absensi menurut pengaturan sekarang (dijadikan libur setelah ada absen sungguhan, dilepas dari hari kerja, atau sebelum tanggal mulai yang dimajukan) tetap ditulis untuk peserta itu, dengan Keterangan diawali "Tanggal libur", "Bukan hari kerja", atau "Sebelum tanggal mulai absensi". Ringkasan menghitung semua baris absensi di rentang, jadi tanpa baris ini jumlah di ringkasan bisa tidak cocok dengan bagian harian. Dipilih (pilihan b, disetujui pemilik repo) karena sama dengan tab Harian di web yang tetap menampilkan absensi di tanggal libur, tidak menyembunyikan absen sungguhan, dan tidak mengubah definisi rekap atau angka tab Bulanan.
 12. Ukuran: 8 peserta, 3 bulan (Agustus–Oktober 2026, Senin–Sabtu, 1.139 baris absensi di database dev MariaDB): PDF 25 halaman (1 ringkasan + 3 per peserta), 118 KB, dibuat dalam 2,2 detik; .xlsx 0,4 detik. Rancangan tidak diubah.
-13. Jam untuk tanggal tertentu (misalnya Ramadan) belum dibuat; usulannya di "Saran dari Claude".
+13. Jam untuk rentang tanggal tertentu (misalnya Ramadan) dikerjakan di `be/jam-tanggal`.
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 
@@ -638,7 +651,7 @@ php artisan migrate --seed
 php artisan storage:link
 ```
 
-`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 34 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
+`migrate --seed` menjalankan `DatabaseSeeder`: akun Kepala Sekolah + profil gurunya, tiga elemen penilaian, dan 35 kunci pengaturan. Seeder ini aman dijalankan ulang (data yang sudah ada tidak ditimpa, termasuk password Kepala Sekolah).
 
 Data contoh untuk pengembangan lokal (ditolak di production dan di database yang sudah berisi tahun ajaran):
 
@@ -963,7 +976,6 @@ Diambil selama Fase 3:
 
 - Payment gateway (Midtrans), supaya wali bisa membayar tagihan tanpa mengunggah bukti transfer dan menunggu verifikasi manual; belum dibuat karena A2.5 menetapkannya sebagai pengembangan nanti, di luar desain saat ini.
 - Push notification lewat FCM, supaya notifikasi sampai ke HP tanpa membuka website; belum dibuat karena A2.11 menundanya sampai aplikasi Flutter dibuat.
-- Jam absensi untuk rentang tanggal tertentu (misalnya Ramadan): kunci baru `absensi.jam_tanggal` berisi `{ mulai, selesai, keterangan, jam_masuk, jam_pulang }[]` (rentang tidak bertumpuk, di dalam hari kerja), dengan urutan prioritas jam tanggal, lalu jam khusus per hari, lalu jam bawaan. Karena semua aturan sudah meminta jam lewat `AturanAbsensi::jamMasuk($tanggal)` dan `jamPulang($tanggal)`, cukup kedua method itu yang diubah; FE menambah daftar rentang di Pengaturan Absensi. Belum dibuat karena rancangan revisi `be/jam-absensi` menundanya.
 
 ## Akun seed
 
@@ -995,6 +1007,16 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Jam absensi per rentang tanggal (branch `be/jam-tanggal`)
+
+Disetujui pemilik repo. Bagian A (A2.12, A3, A4, A7) dan B6.2, B6.14 diperbarui; Bagian A tetap identik dengan PROMPT FE. Keputusan di "Jam absensi per rentang tanggal".
+
+Baru: `database/migrations/2026_11_15_100001_isi_jam_tanggal_absensi.php`, `tests/Feature/Absensi/JamTanggalTest.php` (15 test).
+
+Diubah: `AturanAbsensi` (`absensi.jam_tanggal` di `BAWAAN`, `rentangPada()`, prioritas di `jamMasuk()` dan `jamPulang()`), `PengaturanService` (aturan `absensi.jam_tanggal.*`, `rapikan()`, `pastikanJamAbsensiUrut()` dipecah ke `pesanJamKhusus()` dan `pesanJamTanggal()`); test `PengaturanTest` (11 kunci grup absensi, 36 kunci), `SeederTest` (35 kunci).
+
+Pengecekan: `php artisan test --compact` 1226 lolos di SQLite dan di MariaDB 10.11.14 (database terpisah); Pint, PHPStan, `check:slop` bersih; `php artisan migrate` di database dev MariaDB. Empat test jam per tanggal gagal saat `jamMasuk()` dan `jamPulang()` sementara mengabaikan `rentangPada()`. Lewat FE (`fe/jam-tanggal`), lihat dokumentasi FE.
 
 ### Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`)
 
