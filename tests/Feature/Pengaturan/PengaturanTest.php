@@ -29,7 +29,7 @@ function unggahGambarPengaturan(object $test): string
 it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan url gambar', function () {
     $data = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(34)
+    expect($data)->toHaveCount(35)
         ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyatul Athfal 8')
         ->and($data)->toHaveKey('profil.logo', null)
         ->and($data)->toHaveKey('profil.logo_url', null)
@@ -110,7 +110,52 @@ it('memvalidasi nilai per kunci dan menolak kunci yang tidak dikenal', function 
     'masa simpan foto nol' => [['absensi.masa_simpan_foto_bulan' => 0], 'absensi.masa_simpan_foto_bulan'],
     'tanggal mulai absensi kosong' => [['absensi.tanggal_mulai' => null], 'absensi.tanggal_mulai'],
     'tanggal mulai absensi bukan tanggal' => [['absensi.tanggal_mulai' => '1 Oktober'], 'absensi.tanggal_mulai'],
+    'jam khusus hari Minggu, bukan hari kerja' => [['absensi.jam_khusus' => [jamKhusus(7)]], 'absensi.jam_khusus.0.hari'],
+    'jam khusus hari 8' => [['absensi.jam_khusus' => [jamKhusus(8)]], 'absensi.jam_khusus.0.hari'],
+    'jam khusus hari dobel' => [['absensi.jam_khusus' => [jamKhusus(5), jamKhusus(5)]], 'absensi.jam_khusus.0.hari'],
+    'jam masuk khusus tidak berurutan' => [['absensi.jam_khusus' => [jamKhusus(5, masuk: ['buka' => '06:30', 'batas_terlambat' => '08:30', 'tutup' => '08:00'])]], 'absensi.jam_khusus.0.jam_masuk'],
+    'jam pulang khusus tutup sebelum buka' => [['absensi.jam_khusus' => [jamKhusus(5, pulang: ['buka' => '11:00', 'tutup' => '10:00'])]], 'absensi.jam_khusus.0.jam_pulang'],
+    'jam khusus bukan HH:MM' => [['absensi.jam_khusus' => [jamKhusus(5, masuk: ['buka' => '6.30', 'batas_terlambat' => '07:00', 'tutup' => '08:00'])]], 'absensi.jam_khusus.0.jam_masuk.buka'],
+    'jam khusus tanpa jam pulang' => [['absensi.jam_khusus' => [['hari' => 5, 'jam_masuk' => ['buka' => '06:30', 'batas_terlambat' => '07:00', 'tutup' => '08:00']]]], 'absensi.jam_khusus.0.jam_pulang'],
 ]);
+
+/**
+ * Jam khusus satu hari; tanpa `$masuk` dan `$pulang`, jam Jumat yang lebih pendek dari jam bawaan.
+ *
+ * @param  array{buka: string, batas_terlambat: string, tutup: string}|null  $masuk
+ * @param  array{buka: string, tutup: string}|null  $pulang
+ * @return array<string, mixed>
+ */
+function jamKhusus(int $hari, ?array $masuk = null, ?array $pulang = null): array
+{
+    return [
+        'hari' => $hari,
+        'jam_masuk' => $masuk ?? ['buka' => '06:30', 'batas_terlambat' => '07:00', 'tutup' => '08:00'],
+        'jam_pulang' => $pulang ?? ['buka' => '10:00', 'tutup' => '11:30'],
+    ];
+}
+
+it('menyimpan jam khusus per hari kerja urut nomor hari', function () {
+    $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
+        'absensi.jam_khusus' => [jamKhusus(5), [...jamKhusus(1, pulang: ['buka' => '12:00', 'tutup' => '16:00']), 'hari' => '1']],
+    ]])->assertOk();
+
+    expect($this->getJson('/api/v1/pengaturan?grup=absensi')->json('data')['absensi.jam_khusus'])
+        ->toBe([jamKhusus(1, pulang: ['buka' => '12:00', 'tutup' => '16:00']), jamKhusus(5)]);
+});
+
+it('menolak hari kerja baru yang membuang hari yang masih punya jam khusus', function () {
+    $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => ['absensi.jam_khusus' => [jamKhusus(6)]]])->assertOk();
+
+    $galat = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => ['absensi.hari_kerja' => [1, 2, 3, 4, 5]]])
+        ->assertStatus(422)
+        ->json('errors');
+    expect($galat['absensi.jam_khusus.0.hari'])
+        ->toBe(['Sabtu bukan hari kerja. Jam khusus hanya untuk hari kerja; tambahkan Sabtu ke hari kerja atau pakai jam bawaan.']);
+
+    $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => ['absensi.hari_kerja' => [1, 2, 3, 4, 5], 'absensi.jam_khusus' => []]])
+        ->assertOk();
+});
 
 it('menyimpan pengaturan absensi dan menampilkannya di grup absensi', function () {
     $data = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
@@ -129,10 +174,11 @@ it('menyimpan pengaturan absensi dan menampilkannya di grup absensi', function (
 
     $this->getJson('/api/v1/pengaturan?grup=absensi')
         ->assertOk()
-        ->assertJsonCount(9, 'data')
+        ->assertJsonCount(10, 'data')
         ->assertJsonPath('data', [
             'absensi.batas_akurasi_meter' => 100,
             'absensi.hari_kerja' => [1, 2, 3, 4, 5],
+            'absensi.jam_khusus' => [],
             'absensi.jam_masuk' => ['buka' => '06:45', 'batas_terlambat' => '07:30', 'tutup' => '08:30'],
             'absensi.jam_pulang' => ['buka' => '11:00', 'tutup' => '15:00'],
             'absensi.lokasi' => ['latitude' => -6.9903, 'longitude' => 110.4229],

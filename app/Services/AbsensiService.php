@@ -196,7 +196,8 @@ class AbsensiService
      * Tanggal sebelum `absensi.tanggal_mulai` tidak pernah ditandai.
      *
      * Hari kerja, tanggal libur, dan jam tutup dibaca dari pengaturan saat command berjalan, begitu juga status
-     * akun: riwayat keduanya tidak disimpan. Akun yang dibuat setelah jam masuk tutup hari itu tidak ditandai.
+     * akun: riwayat keduanya tidak disimpan. Jam tutup diambil per tanggal, jadi hari yang punya jam khusus memakai
+     * jam tutup khususnya, juga saat diisi susulan. Akun yang dibuat setelah jam masuk tutup hari itu tidak ditandai.
      *
      * @return int jumlah absensi tidak hadir yang dibuat (atau akan dibuat, saat simulasi)
      */
@@ -222,7 +223,7 @@ class AbsensiService
     private function tandaiTidakHadirPadaHari(Carbon $hari, AturanAbsensi $aturan, bool $simulasi): int
     {
         $tanggal = $hari->toDateString();
-        $tutup = $hari->copy()->setTimeFromTimeString($aturan->jamMasuk['tutup'])->endOfMinute();
+        $tutup = $hari->copy()->setTimeFromTimeString($aturan->jamMasuk($hari)['tutup'])->endOfMinute();
         $peserta = User::query()->pesertaAbsensi()
             ->where('created_at', '<=', $tutup)
             ->whereDoesntHave('absensi', fn (Builder $absensi) => $absensi->whereDate('tanggal', $tanggal)->where('jenis', JenisAbsensi::Masuk))
@@ -424,13 +425,13 @@ class AbsensiService
         }
         if ($jenis === JenisAbsensi::Pulang && $aturan->belumBuka($jenis, $sekarang)) {
             if ($keterangan === null) {
-                throw new BusinessRuleException("Absen pulang baru bisa mulai pukul {$aturan->jamPulang['buka']}. Kalau perlu pulang lebih awal, tulis alasannya di keterangan.");
+                throw new BusinessRuleException("Absen pulang baru bisa mulai pukul {$aturan->jamPulang($sekarang)['buka']}. Kalau perlu pulang lebih awal, tulis alasannya di keterangan.");
             }
 
             return true;
         }
         if (! $aturan->jendelaTerbuka($jenis, $sekarang)) {
-            $jendela = $aturan->jendela($jenis);
+            $jendela = $aturan->jendela($jenis, $sekarang);
 
             throw new BusinessRuleException("Absen {$jenis->value} hanya bisa pukul {$jendela['buka']}–{$jendela['tutup']}. Sekarang pukul {$sekarang->format('H:i')}.");
         }
