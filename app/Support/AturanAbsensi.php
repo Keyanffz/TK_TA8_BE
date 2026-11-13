@@ -10,9 +10,9 @@ use Carbon\CarbonInterface;
  * Aturan absensi dari grup pengaturan `absensi` (A4 "Kunci pengaturan"). Jam disimpan sebagai teks `HH:MM`
  * dan dibandingkan per menit dengan jam server, jadi batas "07:15" masih berlaku sampai 07:15:59.
  *
- * Jam masuk dan jam pulang bisa berbeda per hari (`absensi.jam_khusus`); hari tanpa jam khusus memakai jam
- * bawaan. Semua aturan yang memakai jam meminta jam lewat `jamMasuk()` dan `jamPulang()` dengan tanggalnya, jadi
- * pemilihan jam per tanggal hanya ada di kelas ini.
+ * Jam masuk dan jam pulang suatu tanggal dipilih berurutan: jam per rentang tanggal (`absensi.jam_tanggal`, misalnya
+ * Ramadan), lalu jam khusus harinya (`absensi.jam_khusus`), lalu jam bawaan. Semua aturan yang memakai jam meminta
+ * jam lewat `jamMasuk()` dan `jamPulang()` dengan tanggalnya, jadi pemilihan jam per tanggal hanya ada di kelas ini.
  */
 final readonly class AturanAbsensi
 {
@@ -29,6 +29,7 @@ final readonly class AturanAbsensi
         'absensi.jam_masuk' => ['buka' => '06:30', 'batas_terlambat' => '07:15', 'tutup' => '09:00'],
         'absensi.jam_pulang' => ['buka' => '11:00', 'tutup' => '15:00'],
         'absensi.jam_khusus' => [],
+        'absensi.jam_tanggal' => [],
         'absensi.hari_kerja' => [1, 2, 3, 4, 5, 6],
         'absensi.tanggal_libur' => [],
         'absensi.masa_simpan_foto_bulan' => 6,
@@ -39,6 +40,7 @@ final readonly class AturanAbsensi
      * @param  array{buka: string, batas_terlambat: string, tutup: string}  $jamMasukBawaan
      * @param  array{buka: string, tutup: string}  $jamPulangBawaan
      * @param  array<int, array{hari: int, jam_masuk: array{buka: string, batas_terlambat: string, tutup: string}, jam_pulang: array{buka: string, tutup: string}}>  $jamKhusus  berkunci nomor hari ISO
+     * @param  list<array{mulai: string, selesai: string, keterangan: string, jam_masuk: array{buka: string, batas_terlambat: string, tutup: string}, jam_pulang: array{buka: string, tutup: string}}>  $jamTanggal  rentang tidak bertumpuk
      * @param  list<int>  $hariKerja
      * @param  list<string>  $tanggalLibur
      */
@@ -49,6 +51,7 @@ final readonly class AturanAbsensi
         private array $jamMasukBawaan,
         private array $jamPulangBawaan,
         private array $jamKhusus,
+        private array $jamTanggal,
         public array $hariKerja,
         public array $tanggalLibur,
         public int $masaSimpanFotoBulan,
@@ -68,6 +71,7 @@ final readonly class AturanAbsensi
             jamMasukBawaan: $nilai('jam_masuk'),
             jamPulangBawaan: $nilai('jam_pulang'),
             jamKhusus: array_column($nilai('jam_khusus'), null, 'hari'),
+            jamTanggal: $nilai('jam_tanggal'),
             hariKerja: array_map(intval(...), $nilai('hari_kerja')),
             tanggalLibur: $nilai('tanggal_libur'),
             masaSimpanFotoBulan: (int) $nilai('masa_simpan_foto_bulan'),
@@ -98,7 +102,7 @@ final readonly class AturanAbsensi
      */
     public function jamMasuk(CarbonInterface $tanggal): array
     {
-        return $this->jamKhusus[$tanggal->dayOfWeekIso]['jam_masuk'] ?? $this->jamMasukBawaan;
+        return $this->rentangPada($tanggal)['jam_masuk'] ?? $this->jamKhusus[$tanggal->dayOfWeekIso]['jam_masuk'] ?? $this->jamMasukBawaan;
     }
 
     /**
@@ -106,7 +110,23 @@ final readonly class AturanAbsensi
      */
     public function jamPulang(CarbonInterface $tanggal): array
     {
-        return $this->jamKhusus[$tanggal->dayOfWeekIso]['jam_pulang'] ?? $this->jamPulangBawaan;
+        return $this->rentangPada($tanggal)['jam_pulang'] ?? $this->jamKhusus[$tanggal->dayOfWeekIso]['jam_pulang'] ?? $this->jamPulangBawaan;
+    }
+
+    /**
+     * @return array{mulai: string, selesai: string, keterangan: string, jam_masuk: array{buka: string, batas_terlambat: string, tutup: string}, jam_pulang: array{buka: string, tutup: string}}|null
+     */
+    private function rentangPada(CarbonInterface $tanggal): ?array
+    {
+        $hari = $tanggal->toDateString();
+
+        foreach ($this->jamTanggal as $rentang) {
+            if ($hari >= $rentang['mulai'] && $hari <= $rentang['selesai']) {
+                return $rentang;
+            }
+        }
+
+        return null;
     }
 
     /**

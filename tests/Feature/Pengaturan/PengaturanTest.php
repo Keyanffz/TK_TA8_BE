@@ -29,7 +29,7 @@ function unggahGambarPengaturan(object $test): string
 it('menampilkan pengaturan sebagai objek datar berkunci lengkap dengan pasangan url gambar', function () {
     $data = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(35)
+    expect($data)->toHaveCount(36)
         ->and($data['profil.nama_sekolah'])->toBe('TK Tarbiyatul Athfal 8')
         ->and($data)->toHaveKey('profil.logo', null)
         ->and($data)->toHaveKey('profil.logo_url', null)
@@ -174,13 +174,14 @@ it('menyimpan pengaturan absensi dan menampilkannya di grup absensi', function (
 
     $this->getJson('/api/v1/pengaturan?grup=absensi')
         ->assertOk()
-        ->assertJsonCount(10, 'data')
+        ->assertJsonCount(11, 'data')
         ->assertJsonPath('data', [
             'absensi.batas_akurasi_meter' => 100,
             'absensi.hari_kerja' => [1, 2, 3, 4, 5],
             'absensi.jam_khusus' => [],
             'absensi.jam_masuk' => ['buka' => '06:45', 'batas_terlambat' => '07:30', 'tutup' => '08:30'],
             'absensi.jam_pulang' => ['buka' => '11:00', 'tutup' => '15:00'],
+            'absensi.jam_tanggal' => [],
             'absensi.lokasi' => ['latitude' => -6.9903, 'longitude' => 110.4229],
             'absensi.masa_simpan_foto_bulan' => 6,
             'absensi.radius_meter' => 150,
