@@ -72,14 +72,6 @@ class Pendaftaran extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
-     */
-    public function pemroses(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'diproses_oleh');
-    }
-
-    /**
      * @return BelongsTo<Murid, $this>
      */
     public function murid(): BelongsTo
