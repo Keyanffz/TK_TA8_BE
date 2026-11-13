@@ -32,3 +32,5 @@ php artisan scramble:export --path=storage/api-docs/api.json
 ```
 
 Di server produksi jalankan worker `php artisan queue:work` dan cron `* * * * * cd /path/ke/app && php artisan schedule:run`, dan isi `TRUSTED_PROXIES` kalau aplikasi berada di balik reverse proxy.
+
+Deploy dengan Docker (container BE, FE, queue, scheduler, MariaDB di balik Nginx host): lihat `docs/docker.md`.

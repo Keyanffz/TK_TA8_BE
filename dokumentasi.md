@@ -39,6 +39,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R4: ekspor rekap absensi .xlsx dan PDF, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`, di atas `be/pembayaran-tunai-cicilan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang baru dan berubah |
 | Revisi sekolah R5: absensi murid per kelas oleh guru kelas (branch `be/absensi-murid`, di atas `be/absensi-ekspor-susulan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru |
 | Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`, di atas `be/absensi-murid`) | Selesai, menunggu review; test SQLite, test rapor dan absensi murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru. Template kertas rapor menunggu contoh dari sekolah |
+| Revisi sekolah R7: Docker (branch `be/docker`, di atas `be/ekspor-rapor-kelas`) | Selesai, menunggu review; build image dan `docker compose up` diuji di laptop. Pindah ke VPS belum, uji dulu di VM `debian-lab` (`docs/docker.md`) |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -147,6 +148,16 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 3. Akses sama dengan absensi murid (`Kelas::untukPengampu()`): Kepala Sekolah kelas mana pun, wali kelas dan guru pendamping hanya kelasnya di tahun ajaran aktif. Guru pendamping ikut boleh (asumsi A7 R0).
 4. Nama file memakai tahun ajaran dengan tanda hubung (`rapor-tk-a1-2026-2027-semester-1.pdf`). PDF per murid yang sudah ada tetap `...-20262027-...` (tidak diubah di fase ini).
 5. PDF dibuat sekaligus dalam satu request. Untuk satu kelas (sekitar 20 murid) dengan foto per elemen, waktu dan memori dompdf belum diukur dengan data sebesar itu; data demo hanya 4 rapor terbit tanpa foto.
+
+### Revisi sekolah R7: Docker (branch `be/docker`)
+
+1. Satu image `tkta8-be` berbasis FrankenPHP (PHP 8.5) untuk tiga service: `app`, `queue` (`queue:work`), `scheduler` (`schedule:work`). FrankenPHP dipilih supaya tidak ada Nginx kedua di dalam container; Nginx host tetap memegang TLS dan meneruskan ke `127.0.0.1:8000`.
+2. MariaDB 11.8 (sama dengan VPS) sebagai service dengan volume `tkta8_db`; `storage/` satu volume `tkta8_storage` untuk ketiga service BE.
+3. Satu `deploy/.env` dipakai Laravel dan compose. Database dan user MariaDB dibuat dari `DB_*` saat volume pertama kali dibuat.
+4. Migration tidak otomatis; entrypoint hanya `php artisan optimize`. Migration dijalankan manual setelah backup.
+5. FE ikut di `deploy/compose.yaml` dengan jaringan host, karena `BE_API_URL` harus sama untuk browser dan server FE.
+6. `TRUSTED_PROXIES` perlu `172.16.0.0/12` karena request dari Nginx host masuk lewat gateway jaringan Docker.
+7. Backup DB lewat `mariadb-dump` di container dari crontab host. Langkah pindah, deploy berikutnya, dan rollback di `docs/docker.md`.
 
 ## Keputusan yang sudah diterapkan
 
@@ -947,6 +958,14 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R7: Docker (branch `be/docker`)
+
+Diminta sekolah (revisi 2). Bagian A tidak berubah.
+
+Baru: `Dockerfile`, `.dockerignore`, `docker/php.ini`, `docker/entrypoint.sh`, `deploy/compose.yaml`, `deploy/.env.example`, `docs/docker.md`. Pasangan FE: `Dockerfile` dan `.dockerignore` di `fe/docker`.
+
+Pengecekan: `php artisan test --compact`, Pint, PHPStan, `check:slop` (kode aplikasi tidak berubah). Di laptop: build kedua image, `docker compose up`, migration dan seeder di container, health dan halaman publik FE 200, login Kepala Sekolah lewat BFF FE, unggah gambar sampai volume dan tersaji di `/storage`, notifikasi diproses `queue`, `scheduler` menjalankan `absensi:tandai-tidak-hadir`, data tetap ada setelah `down` dan `up`, dump dan impor lewat container, salin storage dengan `docker compose cp`. Nginx host, TLS, dan pindah data production belum diuji.
 
 ### Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`)
 
