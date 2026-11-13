@@ -112,6 +112,14 @@ it('memvalidasi nilai per kunci dan menolak kunci yang tidak dikenal', function 
     'tanggal mulai absensi bukan tanggal' => [['absensi.tanggal_mulai' => '1 Oktober'], 'absensi.tanggal_mulai'],
 ]);
 
+it('menyebut nama field item di pesan validasi daftar, bukan nama daftarnya', function () {
+    $galat = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
+        'landing.program' => [['deskripsi' => 'Belajar sambil bermain.', 'ikon' => 'blocks']],
+    ]])->assertStatus(422)->json('errors');
+
+    expect($galat['landing.program.0.judul'])->toBe(['Judul wajib diisi.']);
+});
+
 it('menyimpan pengaturan absensi dan menampilkannya di grup absensi', function () {
     $data = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
         'absensi.lokasi' => ['latitude' => '-6.9903', 'longitude' => 110.4229],

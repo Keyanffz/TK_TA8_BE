@@ -364,7 +364,7 @@ class PengaturanService
     private function namaAtribut(array $pola): array
     {
         return collect($pola)->mapWithKeys(fn (string $satu): array => [
-            $satu => str_replace('_', ' ', Str::afterLast(Str::beforeLast($satu, '.*'), '.')),
+            $satu => str_replace('_', ' ', Str::afterLast(Str::replaceEnd('.*', '', $satu), '.')),
         ])->all();
     }
 
