@@ -1,0 +1,74 @@
+# Jalankan dari folder deploy/: docker compose up -d --build. Langkah pindah dan rollback ada di docs/docker.md.
+# Semua nilai dibaca dari deploy/.env (salin dari .env.example di folder ini). File yang sama dipakai Laravel
+# lewat env_file dan dipakai compose untuk mengisi variabel MariaDB, jadi kredensial database cukup ditulis sekali.
+
+# Nama tetap supaya nama volume (tkta8_db, tkta8_storage) tidak bergantung pada nama folder.
+name: tkta8
+
+# Image dibuat sekali oleh service app; queue dan scheduler memakai image yang sama tanpa build atau pull.
+x-be: &be
+  image: tkta8-be
+  pull_policy: never
+  env_file: .env
+  volumes:
+    - storage:/app/storage
+  depends_on:
+    db:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  app:
+    <<: *be
+    build:
+      context: ..
+    # Hanya loopback: Nginx host yang memegang TLS meneruskan ke sini.
+    ports:
+      - "127.0.0.1:${BE_PORT:-8000}:8080"
+
+  queue:
+    <<: *be
+    command: ["php", "artisan", "queue:work"]
+    # Healthcheck bawaan image FrankenPHP mengecek server HTTP, yang tidak berjalan di service ini.
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *be
+    command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      disable: true
+
+  db:
+    image: mariadb:11.8
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      retries: 10
+    restart: unless-stopped
+
+  fe:
+    build:
+      context: ${FE_DIR:-../../TK_TA8_FE}
+      args:
+        BE_API_URL: ${BE_API_URL}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    image: tkta8-fe
+    environment:
+      BE_API_URL: ${BE_API_URL}
+    # Jaringan host: FE memanggil BE lewat BE_API_URL yang sama dengan yang dibuka browser (signed URL file
+    # private dibentuk dari host request), dan alamat itu juga harus terjangkau dari dalam container.
+    # Server tetap hanya mendengar 127.0.0.1:3000 (HOSTNAME dan PORT di image).
+    network_mode: host
+    restart: unless-stopped
+
+volumes:
+  storage:
+  db:
