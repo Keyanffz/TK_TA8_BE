@@ -49,12 +49,6 @@ class PengaturanService
         'absensi.radius_meter', 'absensi.batas_akurasi_meter', 'absensi.masa_simpan_foto_bulan',
     ];
 
-    /**
-     * Kunci yang barisnya masih ada di database lama tetapi tidak dipakai lagi: rekening sekolah, sejak
-     * pembayaran hanya tunai. Tidak dikirim di respons dan tidak bisa diubah.
-     */
-    private const KUNCI_TIDAK_DIPAKAI = ['keuangan.rekening'];
-
     private const MAKSIMAL_TANGGAL_LIBUR = 366;
 
     private const MAKSIMAL_ITEM_DAFTAR = 20;
@@ -87,9 +81,7 @@ class PengaturanService
         $hasil = [];
 
         foreach ($this->semua() as $kunci => $nilai) {
-            $diLuarGrup = $grup !== null && ! in_array(strstr($kunci, '.', true), $grup, true);
-
-            if ($diLuarGrup || in_array($kunci, self::KUNCI_TIDAK_DIPAKAI, true)) {
+            if ($grup !== null && ! in_array(strstr($kunci, '.', true), $grup, true)) {
                 continue;
             }
 

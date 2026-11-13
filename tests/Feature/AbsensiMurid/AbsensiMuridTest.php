@@ -14,7 +14,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * Senin, 5 Oktober 2026. TK A1: wali kelas Bu Aini, guru pendamping Bu Rina, murid Aisyah dan Bima (aktif) serta
- * Citra (sudah keluar dari kelas). Bu Dewi wali kelas TK B1. Hari kerja Senin–Sabtu.
+ * Citra (sudah keluar dari kelas). Bu Dewi wali kelas TK B1. Hari sekolah kedua kelas Senin–Sabtu.
  */
 beforeEach(function () {
     Carbon::setTestNow('2026-10-05 08:00:00');
@@ -69,8 +69,8 @@ it('menolak guru kelas lain, termasuk yang berizin data murid, dengan 404 dan wa
     expect(AbsensiMurid::query()->count())->toBe(0);
 });
 
-it('menolak tanggal yang belum tiba, bukan hari kerja, libur, atau di luar tahun ajaran', function (string $tanggal, string $pesan) {
-    aturAbsensi(['tanggal_libur' => ['2026-10-02']]);
+it('menolak tanggal yang belum tiba, bukan hari sekolah, libur kelas, atau di luar tahun ajaran', function (string $tanggal, string $pesan) {
+    $this->kelas->libur()->create(['tanggal_mulai' => '2026-10-01', 'tanggal_selesai' => '2026-10-02', 'keterangan' => 'Rapat guru se-kecamatan']);
 
     $this->actingAs($this->buAini->user)->putJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid", isiKelas(['tanggal' => $tanggal]))
         ->assertStatus(422)
@@ -81,10 +81,22 @@ it('menolak tanggal yang belum tiba, bukan hari kerja, libur, atau di luar tahun
         ->assertJsonPath('data.alasan', $pesan);
 })->with([
     'besok' => ['2026-10-06', 'Selasa, 6 Oktober 2026 belum tiba. Absensi murid hanya untuk hari ini atau sebelumnya.'],
-    'Minggu' => ['2026-10-04', 'Minggu, 4 Oktober 2026 bukan hari kerja.'],
-    'libur' => ['2026-10-02', 'Jumat, 2 Oktober 2026 termasuk tanggal libur.'],
+    'Minggu' => ['2026-10-04', 'Minggu, 4 Oktober 2026 bukan hari sekolah TK A1.'],
+    'hari terakhir rentang libur' => ['2026-10-02', 'Jumat, 2 Oktober 2026 termasuk libur TK A1: Rapat guru se-kecamatan.'],
     'sebelum tahun ajaran' => ['2026-07-10', 'Jumat, 10 Juli 2026 di luar tahun ajaran 2026/2027.'],
 ]);
+
+it('mengikuti hari sekolah dan libur kelas, bukan hari kerja dan tanggal libur absensi guru', function () {
+    aturAbsensi(['hari_kerja' => [1, 2, 3, 4, 5], 'tanggal_libur' => ['2026-10-05']]);
+
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid", isiKelas())->assertOk();
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid", isiKelas(['tanggal' => '2026-10-03']))->assertOk();
+
+    $this->kelas->update(['hari_sekolah' => [1, 2, 3, 4, 5]]);
+    $this->actingAs($this->buAini->user)->putJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid", isiKelas(['tanggal' => '2026-10-03']))
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Sabtu, 3 Oktober 2026 bukan hari sekolah TK A1.');
+});
 
 it('menyimpan satu kelas dalam satu transaksi dan menolak kalau ada murid aktif yang terlewat', function () {
     $this->actingAs($this->buAini->user)->putJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid", isiKelas(['absensi' => [
@@ -157,6 +169,33 @@ it('merekap satu bulan per murid, termasuk murid yang sudah keluar tetapi punya 
             'Bima Saputra' => [0, 0, 1, 0],
             'Citra Lestari' => [0, 1, 0, 0],
         ]);
+});
+
+it('tidak menghitung absensi pada tanggal yang kemudian dijadikan libur atau dilepas dari hari sekolah, tanpa menghapusnya', function () {
+    $catat = fn (string $tanggal, StatusAbsensiMurid $status) => AbsensiMurid::factory()->create([
+        'murid_id' => $this->aisyah->id, 'kelas_id' => $this->kelas->id, 'tanggal' => $tanggal, 'status' => $status, 'dicatat_oleh' => $this->buAini->user_id,
+    ]);
+    $catat('2026-10-01', StatusAbsensiMurid::Hadir);
+    $catat('2026-10-02', StatusAbsensiMurid::Alpa);
+    $catat('2026-10-03', StatusAbsensiMurid::Sakit);
+    $rekap = fn () => $this->actingAs($this->buAini->user)->getJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid/rekap?bulan=2026-10")->assertOk()->json('data');
+
+    $libur = $this->actingAs($this->buAini->user)->postJson("/api/v1/kelas/{$this->kelas->id}/libur", ['tanggal_mulai' => '2026-10-02', 'keterangan' => 'Banjir'])
+        ->assertCreated()
+        ->assertJsonPath('message', 'Libur 2 Oktober 2026 ditambahkan. Absensi murid yang sudah tercatat pada tanggal itu tetap tersimpan, tetapi tidak dihitung di rekap.')
+        ->json('data.libur.0.id');
+    $this->kelas->update(['hari_sekolah' => [1, 2, 3, 4, 5]]);
+
+    expect($rekap()['hari_tercatat'])->toBe(1)
+        ->and(array_slice($rekap()['murid'][0], 1))->toBe(['hadir' => 1, 'izin' => 0, 'sakit' => 0, 'alpa' => 0])
+        ->and(AbsensiMurid::query()->count())->toBe(3);
+    $this->actingAs($this->buAini->user)->getJson("/api/v1/kelas/{$this->kelas->id}/absensi-murid?tanggal=2026-10-02")
+        ->assertJsonPath('data.bisa_dicatat', false)
+        ->assertJsonPath('data.murid.0.status', 'alpa');
+
+    $this->actingAs($this->buAini->user)->deleteJson("/api/v1/kelas/{$this->kelas->id}/libur/{$libur}")->assertOk();
+    expect($rekap()['hari_tercatat'])->toBe(2)
+        ->and($rekap()['murid'][0]['alpa'])->toBe(1);
 });
 
 it('mengekspor rekap bulanan sebagai Excel dan PDF', function () {

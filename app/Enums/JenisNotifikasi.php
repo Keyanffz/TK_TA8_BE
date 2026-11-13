@@ -14,6 +14,7 @@ enum JenisNotifikasi: string
     case PembayaranMasuk = 'pembayaran_masuk';
     case PembayaranDiterima = 'pembayaran_diterima';
     case PembayaranDitolak = 'pembayaran_ditolak';
+    case PembayaranDibatalkan = 'pembayaran_dibatalkan';
     case RaporDiajukan = 'rapor_diajukan';
     case RaporRevisi = 'rapor_revisi';
     /** Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. */
@@ -36,6 +37,7 @@ enum JenisNotifikasi: string
             self::PembayaranMasuk => 'Pembayaran masuk',
             self::PembayaranDiterima => 'Pembayaran diterima',
             self::PembayaranDitolak => 'Pembayaran ditolak',
+            self::PembayaranDibatalkan => 'Pembayaran dibatalkan',
             self::RaporDiajukan => 'Rapor diajukan',
             self::RaporRevisi => 'Rapor perlu revisi',
             self::RaporTerbit => 'Rapor terbit',

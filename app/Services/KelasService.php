@@ -8,6 +8,7 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Kelas;
 use App\Models\KelasMurid;
 use App\Models\Murid;
+use App\Support\AturanAbsensi;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,12 +19,20 @@ use Illuminate\Support\Facades\DB;
  */
 class KelasService
 {
+    public function __construct(private readonly PengaturanService $pengaturan) {}
+
     /**
+     * Kelas baru mulai dengan hari kerja absensi guru sebagai hari sekolah; setelah itu diatur sendiri per kelas.
+     *
      * @param  array<string, mixed>  $data
      */
     public function buat(array $data): Kelas
     {
-        return Kelas::query()->create(['kapasitas' => Kelas::KAPASITAS_BAWAAN, ...$data]);
+        return Kelas::query()->create([
+            'kapasitas' => Kelas::KAPASITAS_BAWAAN,
+            'hari_sekolah' => AturanAbsensi::dari($this->pengaturan)->hariKerja,
+            ...$data,
+        ]);
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use App\Models\User;
+use App\Notifications\PembayaranDibatalkanNotification;
 use App\Notifications\PembayaranDiterimaNotification;
 use App\Support\NomorUrut;
 use App\Support\Rupiah;
@@ -87,7 +88,8 @@ class PembayaranService
 
     /**
      * Membatalkan pembayaran yang salah catat. Sisa tagihan dihitung ulang: tagihan yang tadinya lunas kembali
-     * `terlambat` kalau sudah lewat jatuh tempo, selain itu `belum_bayar`. Wali tidak diberi notifikasi.
+     * `terlambat` kalau sudah lewat jatuh tempo, selain itu `belum_bayar`. Wali diberi notifikasi yang menyebut alasan
+     * dan sisa tagihan sesudah pembatalan.
      *
      * @throws BusinessRuleException
      */
@@ -119,6 +121,9 @@ class PembayaranService
         });
 
         $this->catatLog($pembayaran, $kepalaSekolah, 'dibatalkan', "Membatalkan pembayaran {$pembayaran->kode}", ['alasan' => $alasan]);
+
+        $tagihan = Tagihan::query()->with(['jenisTagihan', 'murid.waliMurid.user'])->findOrFail($pembayaran->tagihan_id);
+        Notification::send($tagihan->murid->waliMurid->pluck('user'), new PembayaranDibatalkanNotification($tagihan, $pembayaran->jumlah, $alasan));
 
         return $pembayaran;
     }

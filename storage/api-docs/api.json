@@ -2779,7 +2779,7 @@
         "/kelas/{id}/absensi-murid": {
             "get": {
                 "operationId": "absensiMurid.index",
-                "summary": "Murid aktif kelas itu beserta status pada tanggal yang dipilih (bawaan hari ini). `status` null kalau belum\ndicatat. `bisa_dicatat` false dengan `alasan` untuk tanggal yang belum tiba, bukan hari kerja, tanggal libur,\natau di luar tahun ajaran kelas",
+                "summary": "Murid aktif kelas itu beserta status pada tanggal yang dipilih (bawaan hari ini). `status` null kalau belum\ndicatat. `bisa_dicatat` false dengan `alasan` untuk tanggal yang belum tiba, bukan hari sekolah kelas itu, termasuk\nlibur kelas itu, atau di luar tahun ajaran kelas",
                 "tags": [
                     "AbsensiMurid"
                 ],
@@ -3399,7 +3399,7 @@
         "/kelas/{id}/absensi-murid/rekap": {
             "get": {
                 "operationId": "absensiMurid.rekap",
-                "summary": "Jumlah hadir, izin, sakit, dan alpa per murid dalam satu bulan (bawaan bulan berjalan), dan jumlah hari yang\nsudah dicatat",
+                "summary": "Jumlah hadir, izin, sakit, dan alpa per murid dalam satu bulan (bawaan bulan berjalan), dan jumlah hari yang\nsudah dicatat. Absensi pada tanggal yang sekarang libur kelas atau bukan hari sekolah kelas tidak dihitung",
                 "tags": [
                     "AbsensiMurid"
                 ],
@@ -10455,6 +10455,1055 @@
                                             "type": "string",
                                             "enum": [
                                                 "BUSINESS_RULE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/kelas/{id}/hari-sekolah": {
+            "get": {
+                "operationId": "hariSekolahKelas.show",
+                "summary": "`hari_sekolah` nomor hari ISO (1 = Senin). `libur` urut tanggal mulai; libur satu hari punya tanggal mulai dan\nselesai yang sama. `bisa_diatur` true untuk Kepala Sekolah dan wali kelas",
+                "tags": [
+                    "HariSekolahKelas"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "hari_sekolah": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "libur": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "tanggal_mulai": {
+                                                                "type": "string"
+                                                            },
+                                                            "tanggal_selesai": {
+                                                                "type": "string"
+                                                            },
+                                                            "keterangan": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "tanggal_mulai",
+                                                            "tanggal_selesai",
+                                                            "keterangan"
+                                                        ]
+                                                    }
+                                                },
+                                                "bisa_diatur": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "hari_sekolah",
+                                                "libur",
+                                                "bisa_diatur"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "operationId": "hariSekolahKelas.ubahHari",
+                "summary": "Mengganti hari sekolah mingguan. Absensi yang sudah tercatat di hari yang dilepas tetap tersimpan tetapi tidak\ndihitung di rekap",
+                "tags": [
+                    "HariSekolahKelas"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UbahHariSekolahRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "hari_sekolah": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "libur": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "tanggal_mulai": {
+                                                                "type": "string"
+                                                            },
+                                                            "tanggal_selesai": {
+                                                                "type": "string"
+                                                            },
+                                                            "keterangan": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "tanggal_mulai",
+                                                            "tanggal_selesai",
+                                                            "keterangan"
+                                                        ]
+                                                    }
+                                                },
+                                                "bisa_diatur": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "hari_sekolah",
+                                                "libur",
+                                                "bisa_diatur"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/kelas/{id}/libur": {
+            "post": {
+                "operationId": "hariSekolahKelas.tambahLibur",
+                "summary": "Menambah libur satu tanggal atau rentang di dalam tahun ajaran kelas. Ditolak 422 `BUSINESS_RULE` kalau di\nluar tahun ajaran atau bertumpuk dengan libur lain. Absensi yang sudah tercatat di rentang itu tidak dihapus",
+                "tags": [
+                    "HariSekolahKelas"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TambahLiburKelasRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Libur ditambahkan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "hari_sekolah": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "libur": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "tanggal_mulai": {
+                                                                "type": "string"
+                                                            },
+                                                            "tanggal_selesai": {
+                                                                "type": "string"
+                                                            },
+                                                            "keterangan": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "tanggal_mulai",
+                                                            "tanggal_selesai",
+                                                            "keterangan"
+                                                        ]
+                                                    }
+                                                },
+                                                "bisa_diatur": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "hari_sekolah",
+                                                "libur",
+                                                "bisa_diatur"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/kelas/{id}/libur/{libur_id}": {
+            "delete": {
+                "operationId": "hariSekolahKelas.hapusLibur",
+                "summary": "Libur kelas lain \u2192 404",
+                "tags": [
+                    "HariSekolahKelas"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "libur_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "hari_sekolah": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "libur": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "tanggal_mulai": {
+                                                                "type": "string"
+                                                            },
+                                                            "tanggal_selesai": {
+                                                                "type": "string"
+                                                            },
+                                                            "keterangan": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "tanggal_mulai",
+                                                            "tanggal_selesai",
+                                                            "keterangan"
+                                                        ]
+                                                    }
+                                                },
+                                                "bisa_diatur": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "hari_sekolah",
+                                                "libur",
+                                                "bisa_diatur"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
                                             ]
                                         },
                                         "errors": {
@@ -20793,7 +21842,7 @@
         "/pembayaran/{id}/batalkan": {
             "post": {
                 "operationId": "pembayaran.batalkan",
-                "summary": "Membatalkan pembayaran yang salah catat, dengan alasan. Hanya pembayaran yang diterima. Sisa tagihan\ndihitung ulang: tagihan yang tadinya lunas kembali belum bayar, atau terlambat kalau sudah lewat jatuh\ntempo. Setelah itu petugas bisa mencatat ulang jumlah yang benar",
+                "summary": "Membatalkan pembayaran yang salah catat, dengan alasan. Hanya pembayaran yang diterima. Sisa tagihan\ndihitung ulang: tagihan yang tadinya lunas kembali belum bayar, atau terlambat kalau sudah lewat jatuh\ntempo. Wali mendapat notifikasi `pembayaran_dibatalkan` dengan alasan dan sisa tagihan sekarang. Setelah itu\npetugas bisa mencatat ulang jumlah yang benar",
                 "tags": [
                     "Pembayaran"
                 ],
@@ -36803,7 +37852,7 @@
             },
             "JenisNotifikasi": {
                 "type": "string",
-                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |\n| `absensi_susulan_diberikan` <br/>  |",
+                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `pembayaran_dibatalkan` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |\n| `absensi_susulan_diberikan` <br/>  |",
                 "enum": [
                     "tagihan_baru",
                     "tagihan_tertunda",
@@ -36812,6 +37861,7 @@
                     "pembayaran_masuk",
                     "pembayaran_diterima",
                     "pembayaran_ditolak",
+                    "pembayaran_dibatalkan",
                     "rapor_diajukan",
                     "rapor_revisi",
                     "rapor_terbit",
@@ -40811,6 +41861,34 @@
                 ],
                 "title": "TambahFotoKegiatanRequest"
             },
+            "TambahLiburKelasRequest": {
+                "type": "object",
+                "properties": {
+                    "tanggal_mulai": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "`YYYY-MM-DD`."
+                    },
+                    "tanggal_selesai": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "description": "`YYYY-MM-DD`, kosong untuk libur satu hari."
+                    },
+                    "keterangan": {
+                        "type": "string",
+                        "description": "Misalnya \"Libur semester ganjil\".",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "tanggal_mulai",
+                    "keterangan"
+                ],
+                "title": "TambahLiburKelasRequest"
+            },
             "TargetPengumuman": {
                 "type": "string",
                 "enum": [
@@ -40878,6 +41956,27 @@
                     "nominal"
                 ],
                 "title": "TipeKeringanan"
+            },
+            "UbahHariSekolahRequest": {
+                "type": "object",
+                "properties": {
+                    "hari_sekolah": {
+                        "type": "array",
+                        "description": "Nomor hari ISO, 1 = Senin sampai 7 = Minggu; minimal satu hari.",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 7
+                        },
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "hari_sekolah"
+                ],
+                "title": "UbahHariSekolahRequest"
             },
             "UbahStatusAkunRequest": {
                 "type": "object",

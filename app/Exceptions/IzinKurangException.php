@@ -21,4 +21,9 @@ class IzinKurangException extends RuntimeException
     {
         return new self('Bagian ini khusus Kepala Sekolah.');
     }
+
+    public static function khususWaliKelas(): self
+    {
+        return new self('Hari sekolah dan tanggal libur kelas hanya bisa diubah wali kelas dan Kepala Sekolah.');
+    }
 }

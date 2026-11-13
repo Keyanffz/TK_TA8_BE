@@ -8,7 +8,6 @@ use App\Models\JenisTagihan;
 use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pembayaran;
-use App\Models\Pengaturan;
 use App\Models\Tagihan;
 use App\Models\TahunAjaran;
 use App\Models\WaliMurid;
@@ -78,11 +77,6 @@ it('membalas 404 saat wali murid membuka tagihan anak orang lain', function () {
 });
 
 it('menampilkan detail tagihan ke wali dengan sisa dan riwayat pembayaran, tanpa rekening sekolah', function () {
-    Pengaturan::query()->create([
-        'kunci' => 'keuangan.rekening',
-        'nilai' => [['bank' => 'Bank Jateng', 'nomor' => '2012345678', 'atas_nama' => 'TK Tarbiyatul Athfal 8']],
-        'grup' => 'keuangan',
-    ]);
     Pembayaran::factory()->for($this->tagihanAisyah)->transferLama(StatusPembayaran::Ditolak)->create(['bukti_path' => 'bukti-bayar/aisyah.jpg']);
     Pembayaran::factory()->for($this->tagihanAisyah)->create(['jumlah' => 60000]);
 
@@ -95,8 +89,6 @@ it('menampilkan detail tagihan ke wali dengan sisa dan riwayat pembayaran, tanpa
         ->assertJsonPath('data.pembayaran.0.metode', 'tunai');
 
     expect($response->json('data.pembayaran.1.bukti_url'))->toContain('/api/v1/media/');
-    $pengaturan = $this->actingAs($this->kepsek)->getJson('/api/v1/pengaturan?grup=keuangan')->assertOk()->json('data');
-    expect(array_keys($pengaturan))->not->toContain('keuangan.rekening');
 });
 
 it('menyembunyikan foto bukti transfer dari guru tanpa izin keuangan', function () {

@@ -28,8 +28,8 @@ class AbsensiMuridController extends Controller
 
     /**
      * Murid aktif kelas itu beserta status pada tanggal yang dipilih (bawaan hari ini). `status` null kalau belum
-     * dicatat. `bisa_dicatat` false dengan `alasan` untuk tanggal yang belum tiba, bukan hari kerja, tanggal libur,
-     * atau di luar tahun ajaran kelas.
+     * dicatat. `bisa_dicatat` false dengan `alasan` untuk tanggal yang belum tiba, bukan hari sekolah kelas itu, termasuk
+     * libur kelas itu, atau di luar tahun ajaran kelas.
      *
      * @response array{
      *     success: true,
@@ -78,7 +78,7 @@ class AbsensiMuridController extends Controller
 
     /**
      * Jumlah hadir, izin, sakit, dan alpa per murid dalam satu bulan (bawaan bulan berjalan), dan jumlah hari yang
-     * sudah dicatat.
+     * sudah dicatat. Absensi pada tanggal yang sekarang libur kelas atau bukan hari sekolah kelas tidak dihitung.
      *
      * @response array{
      *     success: true,

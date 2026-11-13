@@ -95,7 +95,8 @@ class PembayaranController extends Controller
     /**
      * Membatalkan pembayaran yang salah catat, dengan alasan. Hanya pembayaran yang diterima. Sisa tagihan
      * dihitung ulang: tagihan yang tadinya lunas kembali belum bayar, atau terlambat kalau sudah lewat jatuh
-     * tempo. Setelah itu petugas bisa mencatat ulang jumlah yang benar.
+     * tempo. Wali mendapat notifikasi `pembayaran_dibatalkan` dengan alasan dan sisa tagihan sekarang. Setelah itu
+     * petugas bisa mencatat ulang jumlah yang benar.
      */
     public function batalkan(AlasanRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
     {

@@ -7,9 +7,9 @@ use App\Enums\StatusKelasMurid;
 use App\Exceptions\BusinessRuleException;
 use App\Models\AbsensiMurid;
 use App\Models\Kelas;
+use App\Models\LiburKelas;
 use App\Models\Murid;
 use App\Models\User;
-use App\Support\AturanAbsensi;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DokumenPdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Absensi harian murid per kelas (A2.15), dicatat wali kelas, guru pendamping kelas itu di tahun ajaran aktif, atau
- * Kepala Sekolah. Hari kerja dan tanggal libur memakai pengaturan absensi guru.
+ * Kepala Sekolah. Tanggal yang bisa dicatat mengikuti hari sekolah dan libur kelas itu, bukan pengaturan absensi guru.
  */
 class AbsensiMuridService
 {
@@ -31,14 +31,14 @@ class AbsensiMuridService
      */
     public function alasanTanggalDitolak(Kelas $kelas, Carbon $tanggal): ?string
     {
-        $aturan = AturanAbsensi::dari($this->pengaturan);
         $teks = $tanggal->translatedFormat('l, j F Y');
         $tahunAjaran = $kelas->tahunAjaran;
+        $libur = $kelas->liburPada($tanggal);
 
         return match (true) {
             $tanggal->isAfter(today()) => "{$teks} belum tiba. Absensi murid hanya untuk hari ini atau sebelumnya.",
-            ! $aturan->hariKerja($tanggal) => "{$teks} bukan hari kerja.",
-            $aturan->tanggalLibur($tanggal) => "{$teks} termasuk tanggal libur.",
+            ! $kelas->hariSekolah($tanggal) => "{$teks} bukan hari sekolah {$kelas->nama}.",
+            $libur !== null => "{$teks} termasuk libur {$kelas->nama}: {$libur->keterangan}.",
             $tanggal->isBefore($tahunAjaran->tanggal_mulai) || $tanggal->isAfter($tahunAjaran->tanggal_selesai) => "{$teks} di luar tahun ajaran {$tahunAjaran->nama}.",
             default => null,
         };
@@ -123,16 +123,23 @@ class AbsensiMuridService
     }
 
     /**
-     * Jumlah per status per murid dalam satu bulan, dan jumlah hari yang sudah dicatat.
+     * Jumlah per status per murid dalam satu bulan, dan jumlah hari yang sudah dicatat. Hanya tanggal yang menurut
+     * aturan kelas sekarang adalah hari sekolah dan bukan libur yang dihitung: baris pada tanggal yang kemudian
+     * dijadikan libur atau dilepas dari hari sekolah tetap tersimpan, dan ikut dihitung lagi kalau aturannya dikembalikan.
      *
      * @return array{bulan: string, hari_tercatat: int, murid: list<array{murid: array{id: int, nis: string, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>}
      */
     public function rekap(Kelas $kelas, Carbon $bulan): array
     {
+        $awal = $bulan->copy()->startOfMonth()->toDateString();
+        $akhir = $bulan->copy()->endOfMonth()->toDateString();
+        $libur = $kelas->libur()->whereDate('tanggal_mulai', '<=', $akhir)->whereDate('tanggal_selesai', '>=', $awal)->get();
         $absensi = AbsensiMurid::query()->where('kelas_id', $kelas->id)
-            ->whereDate('tanggal', '>=', $bulan->copy()->startOfMonth()->toDateString())
-            ->whereDate('tanggal', '<=', $bulan->copy()->endOfMonth()->toDateString())
-            ->get();
+            ->whereDate('tanggal', '>=', $awal)
+            ->whereDate('tanggal', '<=', $akhir)
+            ->get()
+            ->filter(fn (AbsensiMurid $satu): bool => $kelas->hariSekolah($satu->tanggal)
+                && ! $libur->contains(fn (LiburKelas $hariLibur): bool => $hariLibur->mencakup($satu->tanggal)));
         $perMurid = $absensi->groupBy('murid_id');
 
         return [

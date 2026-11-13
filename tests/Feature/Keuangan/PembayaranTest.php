@@ -14,6 +14,7 @@ use App\Models\Tagihan;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
+use App\Notifications\PembayaranDibatalkanNotification;
 use App\Notifications\PembayaranDiterimaNotification;
 use App\Services\KwitansiService;
 use Illuminate\Support\Carbon;
@@ -190,6 +191,12 @@ it('membatalkan pembayaran salah catat: tagihan lunas kembali belum bayar dan bi
         ->and($tagihan?->lunas_at)->toBeNull()
         ->and($log->causer_id)->toBe($this->kepsek->id)
         ->and($log->properties['alasan'])->toBe('Seharusnya Rp 100.000, salah ketik.');
+    Notification::assertSentTo([$this->ibu->user, $this->ayah->user], PembayaranDibatalkanNotification::class, fn ($notifikasi, $channels, $penerima) => $notifikasi->toDatabase($penerima) === [
+        'jenis' => 'pembayaran_dibatalkan',
+        'judul' => 'Pembayaran dibatalkan',
+        'pesan' => 'Pembayaran SPP Oktober 2026 untuk Aisyah sebesar Rp 150.000 dibatalkan sekolah. Alasan: Seharusnya Rp 100.000, salah ketik. Sisa tagihan sekarang Rp 150.000.',
+        'url' => "/dashboard/tagihan/{$this->tagihan->id}",
+    ]);
 
     catatTunai($this, $this->buAini->user, $this->tagihan, 100000, '2026-10-05')
         ->assertCreated()
@@ -217,6 +224,7 @@ it('membiarkan status tagihan yang belum lunas saat salah satu cicilannya dibata
         ->assertOk()
         ->assertJsonPath('data.tagihan.terbayar', 30000)
         ->assertJsonPath('data.tagihan.sisa', 120000);
+    Notification::assertSentTo($this->ibu->user, PembayaranDibatalkanNotification::class, fn ($notifikasi, $channels, $penerima) => str_ends_with($notifikasi->toDatabase($penerima)['pesan'], 'sebesar Rp 50.000 dibatalkan sekolah. Alasan: Tercatat dua kali. Sisa tagihan sekarang Rp 120.000.'));
 });
 
 it('hanya mengizinkan Kepala Sekolah membatalkan pembayaran, dengan alasan', function () {
