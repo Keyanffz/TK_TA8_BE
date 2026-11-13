@@ -40,12 +40,12 @@ class AbsensiController extends Controller
     /**
      * Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen hari ini (jam khusus
      * hari itu kalau ada, selain itu jam bawaan) dan apakah sedang terbuka menurut jam server, absensi yang sudah
-     * tercatat, serta lokasi dan radius sekolah untuk
-     * menampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.
-     * Sebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang
-     * akan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam
-     * pulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang. `susulan` berisi akses
-     * absen susulan milik pengguna yang belum dipakai dan belum kedaluwarsa, urut tanggal.
+     * tercatat, serta lokasi dan radius sekolah untuk menampilkan jarak di FE. `hari_kerja` false kalau hari itu di
+     * luar hari kerja atau termasuk tanggal libur. Sebelum `tanggal_mulai`, `terbuka` selalu false.
+     * `pulang.boleh_lebih_awal` true kalau absen pulang sekarang akan diterima sebagai pulang lebih awal (dengan
+     * keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam pulang hari ini belum buka, absen masuk hari ini
+     * hadir atau terlambat, dan belum absen pulang. `susulan` berisi akses absen susulan milik pengguna yang belum
+     * dipakai dan belum kedaluwarsa, urut tanggal.
      *
      * @response array{
      *     success: true,

@@ -956,7 +956,7 @@
         "/absensi/rekap/export": {
             "get": {
                 "operationId": "absensi.export",
-                "summary": "Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah\n(`format=pdf`). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau\n`rekap-absensi-2026-08-sampai-2026-10.pdf`",
+                "summary": "Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah\n(`format=pdf`), ditambah absensi harian: jam masuk, jam pulang, status, dan keterangan setiap peserta per hari\nkerja yang bukan tanggal libur, sampai hari ini (Excel: sheet Harian; PDF: satu bagian per peserta, mulai\nhalaman baru). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau\n`rekap-absensi-2026-08-sampai-2026-10.pdf`",
                 "tags": [
                     "Absensi"
                 ],
@@ -1901,7 +1901,7 @@
         "/absensi/hari-ini": {
             "get": {
                 "operationId": "absensi.hariIni",
-                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen dan apakah\nsedang terbuka menurut jam server, absensi yang sudah tercatat, serta lokasi dan radius sekolah untuk\nmenampilkan jarak di FE. `hari_kerja` false kalau hari itu di luar hari kerja atau termasuk tanggal libur.\nSebelum `tanggal_mulai`, `terbuka` selalu false. `pulang.boleh_lebih_awal` true kalau absen pulang sekarang\nakan diterima sebagai pulang lebih awal (dengan keterangan): hari kerja, tidak sebelum `tanggal_mulai`, jam\npulang belum buka, absen masuk hari ini hadir atau terlambat, dan belum absen pulang. `susulan` berisi akses\nabsen susulan milik pengguna yang belum dipakai dan belum kedaluwarsa, urut tanggal",
+                "summary": "Status absensi hari ini untuk pengguna yang login: apakah hari kerja, jam tiap jenis absen hari ini (jam khusus\nhari itu kalau ada, selain itu jam bawaan) dan apakah sedang terbuka menurut jam server, absensi yang sudah\ntercatat, serta lokasi dan radius sekolah untuk menampilkan jarak di FE. `hari_kerja` false kalau hari itu di\nluar hari kerja atau termasuk tanggal libur. Sebelum `tanggal_mulai`, `terbuka` selalu false.\n`pulang.boleh_lebih_awal` true kalau absen pulang sekarang akan diterima sebagai pulang lebih awal (dengan\nketerangan): hari kerja, tidak sebelum `tanggal_mulai`, jam pulang hari ini belum buka, absen masuk hari ini\nhadir atau terlambat, dan belum absen pulang. `susulan` berisi akses absen susulan milik pengguna yang belum\ndipakai dan belum kedaluwarsa, urut tanggal",
                 "tags": [
                     "Absensi"
                 ],
