@@ -272,8 +272,8 @@ class AbsensiController extends Controller
     /**
      * Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah
      * (`format=pdf`), ditambah absensi harian: jam masuk, jam pulang, status, dan keterangan setiap peserta per hari
-     * kerja yang bukan tanggal libur, sampai hari ini (Excel: sheet Harian; PDF: satu bagian per peserta, mulai
-     * halaman baru). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau
+     * kerja yang bukan tanggal libur, termasuk yang belum datang, ditambah tanggal lain yang punya absensinya (Excel:
+     * sheet Harian; PDF: satu bagian per peserta, mulai halaman baru). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau
      * `rekap-absensi-2026-08-sampai-2026-10.pdf`.
      */
     #[Response(200, 'Rekap absensi (.xlsx)', mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', type: 'string', format: 'binary')]

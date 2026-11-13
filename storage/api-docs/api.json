@@ -956,7 +956,7 @@
         "/absensi/rekap/export": {
             "get": {
                 "operationId": "absensi.export",
-                "summary": "Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah\n(`format=pdf`), ditambah absensi harian: jam masuk, jam pulang, status, dan keterangan setiap peserta per hari\nkerja yang bukan tanggal libur, sampai hari ini (Excel: sheet Harian; PDF: satu bagian per peserta, mulai\nhalaman baru). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau\n`rekap-absensi-2026-08-sampai-2026-10.pdf`",
+                "summary": "Rekap yang sama dengan `GET /absensi/rekap` sebagai file Excel (`format=xlsx`, bawaan) atau PDF berkop sekolah\n(`format=pdf`), ditambah absensi harian: jam masuk, jam pulang, status, dan keterangan setiap peserta per hari\nkerja yang bukan tanggal libur, termasuk yang belum datang, ditambah tanggal lain yang punya absensinya (Excel:\nsheet Harian; PDF: satu bagian per peserta, mulai halaman baru). Nama file menyebut bulannya, misalnya `rekap-absensi-2026-10.xlsx` atau\n`rekap-absensi-2026-08-sampai-2026-10.pdf`",
                 "tags": [
                     "Absensi"
                 ],
