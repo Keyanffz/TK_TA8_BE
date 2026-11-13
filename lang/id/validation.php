@@ -168,7 +168,6 @@ return [
         'avatar' => 'foto profil',
         'foto' => 'foto',
         'foto.*' => 'foto ke-:position',
-        'lainnya.*' => 'dokumen lain ke-:position',
         'nik' => 'NIK',
         'nip' => 'NIP',
         'nuptk' => 'NUPTK',

@@ -204,6 +204,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/kegiatan-foto/{id}', [KegiatanKelasController::class, 'perbaruiFoto']);
         Route::delete('/kegiatan-foto/{id}', [KegiatanKelasController::class, 'hapusFoto']);
 
+        Route::get('/rapor', [RaporController::class, 'index']);
+        Route::get('/rapor/{id}', [RaporController::class, 'show']);
+        Route::get('/rapor/{id}/pdf', [RaporController::class, 'pdf']);
         Route::post('/rapor', [RaporController::class, 'store']);
         Route::put('/rapor/{id}', [RaporController::class, 'update']);
         Route::post('/rapor/{id}/detail/{detail_id}/foto', [RaporController::class, 'foto']);
@@ -235,10 +238,6 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
 
     Route::get('/kegiatan', [KegiatanKelasController::class, 'index']);
     Route::get('/kegiatan/{id}', [KegiatanKelasController::class, 'show']);
-
-    Route::get('/rapor', [RaporController::class, 'index']);
-    Route::get('/rapor/{id}', [RaporController::class, 'show']);
-    Route::get('/rapor/{id}/pdf', [RaporController::class, 'pdf']);
 
     Route::get('/pengumuman', [PengumumanController::class, 'index']);
     Route::get('/pengumuman/{id}', [PengumumanController::class, 'show']);

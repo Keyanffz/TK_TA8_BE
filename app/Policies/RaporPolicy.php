@@ -8,9 +8,9 @@ use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
 /**
- * Rapor di luar jangkauan pengguna dibalas 404 (wali hanya melihat rapor terbit anaknya). Isi rapor diubah
- * dan diajukan oleh guru pembuatnya (Kepala Sekolah juga boleh memperbaiki isinya saat diajukan); guru lain
- * di kelas yang sama ditolak 403.
+ * Rapor di luar jangkauan pengguna dibalas 404; wali murid tidak membuka rapor di aplikasi (ditolak di route).
+ * Isi rapor diubah dan diajukan oleh guru pembuatnya (Kepala Sekolah juga boleh memperbaiki isinya saat
+ * diajukan); guru lain di kelas yang sama ditolak 403.
  */
 class RaporPolicy
 {

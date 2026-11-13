@@ -13,9 +13,9 @@ use App\Models\WaliMurid;
 use App\Notifications\PendaftaranBaruNotification;
 use App\Notifications\PendaftaranDiprosesNotification;
 use Database\Seeders\PengaturanSeeder;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 
@@ -62,16 +62,13 @@ function dataPendaftaran(array $timpa = []): array
         'nama_ibu' => 'Sari Wulandari',
         'pekerjaan_ibu' => 'Guru',
         'no_hp' => '081234567890',
-        'akta_kelahiran' => UploadedFile::fake()->create('akta.pdf', 300, 'application/pdf'),
-        'kartu_keluarga' => UploadedFile::fake()->image('kk.jpg', 1200, 900),
-        'pas_foto' => UploadedFile::fake()->image('pasfoto.jpg', 300, 400),
         ...$timpa,
     ];
 }
 
 function daftarPpdb(object $test, WaliMurid $wali, array $timpa = []): Pendaftaran
 {
-    $id = $test->actingAs($wali->user)->post('/api/v1/pendaftaran', dataPendaftaran($timpa))->assertCreated()->json('data.id');
+    $id = $test->actingAs($wali->user)->postJson('/api/v1/pendaftaran', dataPendaftaran($timpa))->assertCreated()->json('data.id');
 
     return Pendaftaran::query()->findOrFail($id);
 }
@@ -96,31 +93,28 @@ it('menganggap PPDB tutup di luar tanggal buka-tutup walau dibuka di pengaturan'
     Carbon::setTestNow('2027-04-01 08:00:00');
 
     $this->getJson('/api/v1/public/ppdb')->assertJsonPath('data.dibuka', false);
-    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
+    $this->actingAs($this->ibuSari->user)->postJson('/api/v1/pendaftaran', dataPendaftaran())
         ->assertStatus(422)
         ->assertJsonPath('code', 'BUSINESS_RULE')
         ->assertJsonPath('message', 'PPDB sedang ditutup. Lihat jadwal pendaftaran di halaman PPDB.');
 });
 
-it('menerima pendaftaran dari wali, menyimpan dokumen, dan memberi tahu Kepala Sekolah', function () {
-    $response = $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
+it('menerima pendaftaran dari wali tanpa berkas dan memberi tahu Kepala Sekolah', function () {
+    $response = $this->actingAs($this->ibuSari->user)->postJson('/api/v1/pendaftaran', dataPendaftaran())
         ->assertCreated()
         ->assertJsonPath('message', 'Pendaftaran Nadia terkirim dengan kode PPDB-2027-0001. Pantau statusnya di menu PPDB.')
         ->assertJsonPath('data.status', 'diajukan')
         ->assertJsonPath('data.tahun_ajaran.nama', '2027/2028')
         ->assertJsonPath('data.hubungan', 'ibu')
-        ->assertJsonCount(3, 'data.dokumen');
+        ->assertJsonMissingPath('data.dokumen');
 
-    $pendaftaran = Pendaftaran::query()->with('dokumen')->findOrFail($response->json('data.id'));
-    $akta = $pendaftaran->dokumen->firstWhere('jenis.value', 'akta_kelahiran');
-    expect($akta?->path)->toStartWith('ppdb/')->toEndWith('.pdf')
-        ->and($pendaftaran->dokumen->firstWhere('jenis.value', 'pas_foto')?->path)->toEndWith('.jpg');
-    Storage::disk('local')->assertExists($pendaftaran->dokumen->pluck('path')->all());
+    $pendaftaran = Pendaftaran::query()->findOrFail($response->json('data.id'));
+    expect(Schema::hasTable('pendaftaran_dokumen'))->toBeFalse();
 
     Notification::assertSentTo($this->kepsek, PendaftaranBaruNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->kepsek) === [
         'jenis' => 'pendaftaran_baru',
         'judul' => 'Pendaftar PPDB baru',
-        'pesan' => 'Nadia Putri Rahma didaftarkan ke Kelompok A (PPDB-2027-0001). Periksa dokumennya.',
+        'pesan' => 'Nadia Putri Rahma didaftarkan ke Kelompok A (PPDB-2027-0001). Berkasnya dibawa pendaftar ke sekolah.',
         'url' => "/mudarris/ppdb/{$pendaftaran->id}",
     ]);
 });
@@ -130,18 +124,17 @@ it('menolak pendaftaran saat kuota penuh, tanpa menghitung pendaftaran yang dito
     Pendaftaran::factory()->for($this->tujuan)->create(['status' => StatusPendaftaran::Ditolak]);
     daftarPpdb($this, $this->ibuSari);
 
-    $this->actingAs(WaliMurid::factory()->create()->user)->post('/api/v1/pendaftaran', dataPendaftaran(['nik' => '3374015402230002']))
+    $this->actingAs(WaliMurid::factory()->create()->user)->postJson('/api/v1/pendaftaran', dataPendaftaran(['nik' => '3374015402230002']))
         ->assertStatus(422)
         ->assertJsonPath('message', 'Kuota PPDB tahun ajaran 2027/2028 sudah penuh.');
 
-    expect(Storage::disk('local')->allFiles('ppdb'))->toHaveCount(3);
     $this->getJson('/api/v1/public/ppdb')->assertJsonPath('data.sisa_kuota', 0);
 });
 
 it('menolak anak dengan NIK yang punya pendaftaran selain ditolak, di tahun ajaran mana pun', function (StatusPendaftaran $status) {
     Pendaftaran::factory()->create(['nik' => '3374015402230001', 'status' => $status]);
 
-    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
+    $this->actingAs($this->ibuSari->user)->postJson('/api/v1/pendaftaran', dataPendaftaran())
         ->assertStatus(422)
         ->assertJsonPath('message', 'Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
 })->with([StatusPendaftaran::Diajukan, StatusPendaftaran::Diverifikasi, StatusPendaftaran::Diterima]);
@@ -149,7 +142,7 @@ it('menolak anak dengan NIK yang punya pendaftaran selain ditolak, di tahun ajar
 it('menolak anak yang NIK-nya sudah terdaftar sebagai murid', function () {
     Murid::factory()->create(['nik' => '3374015402230001']);
 
-    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())
+    $this->actingAs($this->ibuSari->user)->postJson('/api/v1/pendaftaran', dataPendaftaran())
         ->assertStatus(422)
         ->assertJsonPath('message', 'Anak dengan NIK ini sudah terdaftar sebagai murid. Wali yang sudah punya akun bisa menambahkannya lewat menu Tambah Anak; kalau belum, minta kartu akun ke sekolah.');
 });
@@ -157,23 +150,20 @@ it('menolak anak yang NIK-nya sudah terdaftar sebagai murid', function () {
 it('membolehkan pendaftar yang pernah ditolak mendaftar ulang', function () {
     Pendaftaran::factory()->for($this->tujuan)->create(['nik' => '3374015402230001', 'status' => StatusPendaftaran::Ditolak]);
 
-    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran())->assertCreated();
+    $this->actingAs($this->ibuSari->user)->postJson('/api/v1/pendaftaran', dataPendaftaran())->assertCreated();
 });
 
-it('memvalidasi data dan dokumen pendaftaran', function (array $timpa, string $field) {
-    $this->actingAs($this->ibuSari->user)->post('/api/v1/pendaftaran', dataPendaftaran($timpa))
+it('memvalidasi data pendaftaran', function (array $timpa, string $field) {
+    $this->actingAs($this->ibuSari->user)->postJson('/api/v1/pendaftaran', dataPendaftaran($timpa))
         ->assertStatus(422)
         ->assertJsonValidationErrors([$field]);
 })->with([
-    'tanpa akta' => [['akta_kelahiran' => null], 'akta_kelahiran'],
-    'pas foto PDF' => [['pas_foto' => UploadedFile::fake()->create('foto.pdf', 100, 'application/pdf')], 'pas_foto'],
-    'dokumen berformat doc' => [['kartu_keluarga' => UploadedFile::fake()->create('kk.docx', 100)], 'kartu_keluarga'],
     'NIK 15 digit' => [['nik' => '337401540223000'], 'nik'],
     'hubungan tidak dikenal' => [['hubungan' => 'kakek'], 'hubungan'],
     'nomor HP salah' => [['no_hp' => '6281234'], 'no_hp'],
 ]);
 
-it('menjalankan alur verifikasi lalu terima: membuat murid, menautkan wali, menyalin foto, dan menempatkan di kelas', function () {
+it('menjalankan alur verifikasi lalu terima: membuat murid tanpa foto, menautkan wali, dan menempatkan di kelas', function () {
     $pendaftaran = daftarPpdb($this, $this->ibuSari);
     $kelas = Kelas::factory()->for($this->tujuan)->create(['nama' => 'TK A1']);
 
@@ -181,7 +171,7 @@ it('menjalankan alur verifikasi lalu terima: membuat murid, menautkan wali, meny
         ->assertOk()
         ->assertJsonPath('data.status', 'diverifikasi');
     Notification::assertSentTo($this->ibuSari->user, PendaftaranDiprosesNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibuSari->user)['pesan']
-        === 'Dokumen pendaftaran Nadia (PPDB-2027-0001) sudah diverifikasi. Tunggu keputusan akhir dari sekolah.');
+        === 'Berkas pendaftaran Nadia (PPDB-2027-0001) sudah diterima dan dicek sekolah. Tunggu keputusan akhir dari sekolah.');
 
     $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima", ['kelas_id' => $kelas->id])
         ->assertOk()
@@ -194,14 +184,14 @@ it('menjalankan alur verifikasi lalu terima: membuat murid, menautkan wali, meny
         ->and($murid->status)->toBe(StatusMurid::Aktif)
         ->and($murid->tanggal_masuk->toDateString())->toBe('2027-07-12')
         ->and($murid->nik)->toBe('3374015402230001')
-        ->and($murid->foto_path)->toStartWith('murid/')
+        ->and($murid->foto_path)->toBeNull()
         ->and($murid->waliMurid->sole()->id)->toBe($this->ibuSari->id)
         ->and($murid->waliMurid->sole()->pivot->hubungan->value)->toBe('ibu')
         ->and($murid->waliMurid->sole()->pivot->is_kontak_utama)->toBeTrue()
         ->and($murid->kelas->sole()->id)->toBe($kelas->id)
         ->and($murid->kelas->sole()->pivot->status)->toBe(StatusKelasMurid::Aktif)
         ->and(User::query()->where('username', 'TA20270001')->exists())->toBeFalse();
-    Storage::disk('local')->assertExists((string) $murid->foto_path);
+    expect(Storage::disk('local')->allFiles())->toBe([]);
 
     Notification::assertSentTo($this->ibuSari->user, PendaftaranDiprosesNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibuSari->user)['pesan']
         === 'Nadia (PPDB-2027-0001) diterima di TK A1 dan sudah tertaut ke akun Anda.');
@@ -233,8 +223,7 @@ it('membatalkan penerimaan seluruhnya kalau kelas tujuan penuh', function () {
         ->assertJsonPath('code', 'BUSINESS_RULE');
 
     expect(Murid::query()->count())->toBe(1)
-        ->and($pendaftaran->fresh()?->status)->toBe(StatusPendaftaran::Diverifikasi)
-        ->and(Storage::disk('local')->allFiles('murid'))->toBe([]);
+        ->and($pendaftaran->fresh()?->status)->toBe(StatusPendaftaran::Diverifikasi);
 });
 
 it('menolak pendaftaran dengan alasan dan memberi tahu wali', function () {
@@ -268,7 +257,7 @@ it('menampilkan pendaftaran milik wali sendiri dan semua pendaftaran ke Kepala S
 
     $this->actingAs($this->ibuSari->user)->getJson('/api/v1/pendaftaran')->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $milikSari->id);
     $this->actingAs($this->ibuSari->user)->getJson("/api/v1/pendaftaran/{$lain->id}")->assertNotFound();
-    $this->actingAs($this->ibuSari->user)->getJson("/api/v1/pendaftaran/{$milikSari->id}")->assertOk()->assertJsonCount(3, 'data.dokumen');
+    $this->actingAs($this->ibuSari->user)->getJson("/api/v1/pendaftaran/{$milikSari->id}")->assertOk()->assertJsonMissingPath('data.dokumen');
 
     $this->actingAs($this->kepsek)->getJson('/api/v1/pendaftaran?filter[status]=diajukan')->assertJsonPath('meta.total', 2);
     $this->actingAs($this->kepsek)->getJson('/api/v1/pendaftaran?search=Nadia')->assertJsonPath('meta.total', 1);
@@ -279,20 +268,20 @@ it('menutup PPDB untuk guru dan menolak wali memproses pendaftaran', function ()
     $guru = buatGuru()->user;
 
     $this->actingAs($guru)->getJson('/api/v1/pendaftaran')->assertForbidden();
-    $this->actingAs($guru)->post('/api/v1/pendaftaran', dataPendaftaran())->assertForbidden();
+    $this->actingAs($guru)->postJson('/api/v1/pendaftaran', dataPendaftaran())->assertForbidden();
     $this->actingAs($this->ibuSari->user)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertForbidden();
-    $this->actingAs(User::factory()->superAdmin()->create())->post('/api/v1/pendaftaran', dataPendaftaran())->assertForbidden();
+    $this->actingAs(User::factory()->superAdmin()->create())->postJson('/api/v1/pendaftaran', dataPendaftaran())->assertForbidden();
 });
 
 function daftarPpdbPublik(object $test, array $timpa = []): Pendaftaran
 {
-    $kode = $test->post('/api/v1/public/pendaftaran', dataPendaftaran($timpa))->assertCreated()->json('data.kode');
+    $kode = $test->postJson('/api/v1/public/pendaftaran', dataPendaftaran($timpa))->assertCreated()->json('data.kode');
 
     return Pendaftaran::query()->where('kode', $kode)->sole();
 }
 
 it('menerima pendaftaran tanpa login dan membalas kode pendaftaran', function () {
-    $this->post('/api/v1/public/pendaftaran', dataPendaftaran())
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran())
         ->assertCreated()
         ->assertJsonPath('message', 'Pendaftaran Nadia terkirim dengan kode PPDB-2027-0001. Simpan kode ini untuk mengecek status pendaftaran.')
         ->assertJsonPath('data', [
@@ -306,10 +295,9 @@ it('menerima pendaftaran tanpa login dan membalas kode pendaftaran', function ()
             'created_at' => '2026-10-05T10:00:00+07:00',
         ]);
 
-    $pendaftaran = Pendaftaran::query()->with('dokumen')->sole();
+    $pendaftaran = Pendaftaran::query()->sole();
     expect($pendaftaran->wali_murid_id)->toBeNull()
-        ->and($pendaftaran->hubungan->value)->toBe('ibu')
-        ->and($pendaftaran->dokumen)->toHaveCount(3);
+        ->and($pendaftaran->hubungan->value)->toBe('ibu');
     Notification::assertSentTo($this->kepsek, PendaftaranBaruNotification::class);
 
     $this->actingAs($this->kepsek)->getJson("/api/v1/pendaftaran/{$pendaftaran->id}")
@@ -320,13 +308,13 @@ it('menerima pendaftaran tanpa login dan membalas kode pendaftaran', function ()
 it('menerapkan aturan jadwal, kuota, dan NIK dobel pada pendaftaran tanpa login', function () {
     daftarPpdbPublik($this);
 
-    $this->post('/api/v1/public/pendaftaran', dataPendaftaran())
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran())
         ->assertStatus(422)
         ->assertJsonPath('code', 'BUSINESS_RULE')
         ->assertJsonPath('message', 'Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
 
     aturPpdb(['ppdb.dibuka' => false]);
-    $this->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230002']))
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230002']))
         ->assertStatus(422)
         ->assertJsonPath('message', 'PPDB sedang ditutup. Lihat jadwal pendaftaran di halaman PPDB.');
 });
@@ -335,15 +323,15 @@ it('membatasi pendaftaran tanpa login 3 kali per jam per IP', function () {
     aturPpdb(['ppdb.kuota' => 10]);
 
     foreach (['3374015402230001', '3374015402230002', '3374015402230003'] as $nik) {
-        $this->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => $nik]))->assertCreated();
+        $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => $nik]))->assertCreated();
     }
 
-    $this->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230004']))
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230004']))
         ->assertTooManyRequests()
         ->assertJsonPath('code', 'TOO_MANY_REQUESTS');
 
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])
-        ->post('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230004']))
+        ->postJson('/api/v1/public/pendaftaran', dataPendaftaran(['nik' => '3374015402230004']))
         ->assertCreated();
 });
 
@@ -402,7 +390,7 @@ it('membuat akun wali saat pendaftaran tanpa login diterima dan baru memberi not
 it('tidak mengirim notifikasi saat pendaftaran tanpa login ditolak', function () {
     $pendaftaran = daftarPpdbPublik($this);
 
-    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/tolak", ['alasan' => 'Dokumen tidak terbaca.'])->assertOk();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/tolak", ['alasan' => 'Berkas tidak lengkap.'])->assertOk();
 
     Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
     expect(User::query()->where('role', 'wali_murid')->where('username', '!=', $this->ibuSari->user->username)->exists())->toBeFalse();

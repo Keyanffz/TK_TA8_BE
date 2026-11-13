@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\Hubungan;
-use App\Enums\JenisDokumen;
 use App\Enums\Role;
 use App\Enums\StatusKelasMurid;
 use App\Enums\StatusPembayaran;
@@ -18,7 +17,6 @@ use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pembayaran;
 use App\Models\Pendaftaran;
-use App\Models\PendaftaranDokumen;
 use App\Models\Pengaturan;
 use App\Models\Pengumuman;
 use App\Models\Rapor;
@@ -135,15 +133,13 @@ it('menyimpan target kelas dan murid pada pengumuman', function () {
         ->and($pengumuman->penulis->role)->toBe(Role::SuperAdmin);
 });
 
-it('menghubungkan pendaftaran PPDB ke wali, dokumen, dan murid yang dibuat saat diterima', function () {
+it('menghubungkan pendaftaran PPDB ke wali dan murid yang dibuat saat diterima', function () {
     $pendaftaran = Pendaftaran::factory()->create();
-    PendaftaranDokumen::factory()->for($pendaftaran)->create(['jenis' => JenisDokumen::KartuKeluarga]);
     $murid = Murid::factory()->create();
 
     $pendaftaran->update(['status' => StatusPendaftaran::Diterima, 'murid_id' => $murid->id]);
 
-    expect($pendaftaran->dokumen->first()?->jenis)->toBe(JenisDokumen::KartuKeluarga)
-        ->and($pendaftaran->waliMurid->pendaftaran->first()?->is($pendaftaran))->toBeTrue()
+    expect($pendaftaran->waliMurid->pendaftaran->first()?->is($pendaftaran))->toBeTrue()
         ->and($murid->pendaftaran?->is($pendaftaran))->toBeTrue();
 });
 

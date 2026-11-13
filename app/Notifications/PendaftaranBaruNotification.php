@@ -38,7 +38,7 @@ class PendaftaranBaruNotification extends NotifikasiDatabase
 
     protected function pesan(object $notifiable): string
     {
-        return "{$this->namaAnak} didaftarkan ke Kelompok {$this->tingkat} ({$this->kode}). Periksa dokumennya.";
+        return "{$this->namaAnak} didaftarkan ke Kelompok {$this->tingkat} ({$this->kode}). Berkasnya dibawa pendaftar ke sekolah.";
     }
 
     protected function url(object $notifiable): string

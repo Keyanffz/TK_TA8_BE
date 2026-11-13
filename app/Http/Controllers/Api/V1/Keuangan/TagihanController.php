@@ -75,7 +75,7 @@ class TagihanController extends Controller
     }
 
     /**
-     * Membuat tagihan sekali bayar (uang pangkal, seragam) untuk murid tertentu (`murid_ids`) atau semua murid
+     * Membuat tagihan sekali bayar (uang pendidikan, seragam) untuk murid tertentu (`murid_ids`) atau semua murid
      * aktif satu kelas (`kelas_id`). Murid yang sudah punya tagihan jenis itu (selain dibatalkan), tidak aktif,
      * atau tingkat kelasnya tidak sesuai dilewati.
      */

@@ -3,7 +3,6 @@
 namespace Database\Seeders\Demo;
 
 use App\Enums\Hubungan;
-use App\Enums\JenisDokumen;
 use App\Enums\Role;
 use App\Enums\StatusMurid;
 use App\Enums\StatusPendaftaran;
@@ -16,7 +15,6 @@ use App\Models\User;
 use App\Models\WaliMurid;
 use App\Services\WaliMuridService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * PPDB tahun ajaran 2027/2028 yang sedang dibuka dengan 5 pendaftar: dua adik dari wali yang sudah punya akun,
@@ -65,13 +63,6 @@ class PpdbDemoSeeder extends Seeder
                 'diproses_at' => $status[$urutan] === StatusPendaftaran::Diajukan ? null : '2026-09-21 10:00:00',
             ]);
 
-            foreach ([JenisDokumen::AktaKelahiran, JenisDokumen::KartuKeluarga, JenisDokumen::PasFoto] as $jenis) {
-                $pendaftaran->dokumen()->create([
-                    'jenis' => $jenis,
-                    'path' => GambarContoh::simpan('local', 'ppdb', 800, 1100),
-                ]);
-            }
-
             if ($pendaftaran->status === StatusPendaftaran::Diterima) {
                 $this->jadikanMurid($pendaftaran, $kepalaSekolah);
             }
@@ -87,7 +78,7 @@ class PpdbDemoSeeder extends Seeder
             'ppdb.tahun_ajaran_id' => $tahunAjaranTujuan->id,
             'ppdb.kuota' => self::KUOTA,
             'ppdb.info' => '<p><strong>Syarat:</strong> usia minimal 4 tahun (Kelompok A) atau 5 tahun (Kelompok B) pada 1 Juli 2027, fotokopi akta kelahiran, fotokopi Kartu Keluarga, dan pas foto 3x4.</p>'
-                .'<p><strong>Alur:</strong> isi formulir di halaman PPDB, unggah dokumen, simpan kode pendaftaran, lalu cek status pendaftaran dengan kode itu dan tanggal lahir anak. Anak yang diterima mendapat kartu akun wali murid dari sekolah.</p>',
+                .'<p><strong>Alur:</strong> isi formulir di halaman PPDB, simpan kode pendaftaran, bawa berkas ke sekolah, lalu cek status pendaftaran dengan kode itu dan tanggal lahir anak. Anak yang diterima mendapat kartu akun wali murid dari sekolah.</p>',
         ];
 
         foreach ($nilai as $kunci => $isi) {
@@ -97,10 +88,6 @@ class PpdbDemoSeeder extends Seeder
 
     private function jadikanMurid(Pendaftaran $pendaftaran, User $kepalaSekolah): void
     {
-        $pasFoto = $pendaftaran->dokumen()->where('jenis', JenisDokumen::PasFoto)->firstOrFail();
-        $fotoMurid = 'murid/'.basename($pasFoto->path);
-        Storage::disk('local')->copy($pasFoto->path, $fotoMurid);
-
         $murid = Murid::query()->create([
             'nis' => 'TA20270001',
             'nik' => $pendaftaran->nik,
@@ -111,7 +98,6 @@ class PpdbDemoSeeder extends Seeder
             'tanggal_lahir' => $pendaftaran->tanggal_lahir,
             'agama' => $pendaftaran->agama,
             'alamat' => $pendaftaran->alamat,
-            'foto_path' => $fotoMurid,
             'status' => StatusMurid::Aktif,
             'tanggal_masuk' => '2027-07-12',
         ]);

@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Notifications\RaporDiajukanNotification;
 use App\Notifications\RaporDitarikNotification;
 use App\Notifications\RaporRevisiNotification;
-use App\Notifications\RaporTerbitNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -178,10 +177,9 @@ class RaporService
             return $rapor;
         });
 
-        $rapor->load([...self::RELASI_NOTIFIKASI, 'murid.waliMurid.user']);
+        $rapor->load('murid');
         activity('rapor')->causedBy($kepalaSekolah)->performedOn($rapor)->event('terbit')
             ->log("Menerbitkan rapor semester {$rapor->semester} {$rapor->murid->nama_lengkap}");
-        Notification::send($rapor->murid->waliMurid->pluck('user'), new RaporTerbitNotification($rapor));
 
         return $rapor;
     }
@@ -208,8 +206,8 @@ class RaporService
     }
 
     /**
-     * Menarik rapor yang sudah terbit kembali ke `revisi` (misalnya ada kesalahan yang baru ketahuan). Wali
-     * tidak lagi bisa melihatnya sampai rapor diterbitkan ulang; guru pembuat diberi tahu beserta catatannya.
+     * Menarik rapor yang sudah terbit kembali ke `revisi` (misalnya ada kesalahan yang baru ketahuan). Guru
+     * pembuat diberi tahu beserta catatannya.
      *
      * @throws BusinessRuleException
      */

@@ -49,9 +49,7 @@ class Rapor extends Model
         match ($user->role) {
             Role::SuperAdmin => null,
             Role::Guru => $query->whereHas('kelas', fn (Builder $kelas) => $kelas->diampuOleh($user)),
-            Role::WaliMurid => $query
-                ->where('status', StatusRapor::Terbit)
-                ->whereHas('murid', fn (Builder $murid) => $murid->visibleTo($user)),
+            Role::WaliMurid => $query->whereRaw('1 = 0'),
         };
     }
 

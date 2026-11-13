@@ -13,7 +13,6 @@ use App\Models\WaliMurid;
 use App\Notifications\RaporDiajukanNotification;
 use App\Notifications\RaporDitarikNotification;
 use App\Notifications\RaporRevisiNotification;
-use App\Notifications\RaporTerbitNotification;
 use Database\Seeders\ElemenPenilaianSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -120,10 +119,9 @@ it('membolehkan Kepala Sekolah membuat rapor hanya untuk kelas yang dia ampu', f
         ->assertJsonPath('data.pembuat.id', $this->kepsek->guru->id);
 });
 
-it('menjalankan alur lengkap rapor sampai terbit dan memberi tahu pihak terkait', function () {
+it('menjalankan alur lengkap rapor sampai terbit tanpa mengirim notifikasi ke wali murid', function () {
     $rapor = buatDraftRapor($this);
     $urlStaff = "/mudarris/rapor/{$rapor->id}";
-    $urlWali = "/dashboard/rapor/{$rapor->id}";
 
     $this->actingAs($this->buAini->user)->putJson("/api/v1/rapor/{$rapor->id}", isiLengkap($rapor))
         ->assertOk()
@@ -168,8 +166,7 @@ it('menjalankan alur lengkap rapor sampai terbit dan memberi tahu pihak terkait'
         ->assertJsonPath('data.terbit_at', '2026-12-18T09:00:00+07:00');
 
     expect($rapor->fresh()?->disetujui_oleh)->toBe($this->kepsek->id);
-    Notification::assertSentTo([$this->ibu->user, $this->ayah->user], RaporTerbitNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibu->user)
-        === ['jenis' => 'rapor_terbit', 'judul' => 'Rapor sudah terbit', 'pesan' => 'Rapor semester 1 tahun ajaran 2026/2027 untuk Aisyah sudah terbit dan bisa diunduh.', 'url' => $urlWali]);
+    Notification::assertNothingSentTo([$this->ibu->user, $this->ayah->user]);
     expect(Activity::query()->where('log_name', 'rapor')->pluck('event')->all())->toBe(['revisi', 'terbit']);
 });
 
@@ -247,9 +244,8 @@ it('membolehkan Kepala Sekolah memperbaiki isi rapor yang diajukan tanpa menguba
         ->assertJsonPath('code', 'BUSINESS_RULE');
 });
 
-it('menarik rapor terbit kembali ke revisi, memberi tahu guru pembuat, dan menyembunyikannya dari wali', function () {
+it('menarik rapor terbit kembali ke revisi dan memberi tahu guru pembuat', function () {
     $rapor = Rapor::factory()->for($this->aisyah)->for($this->kelasA1)->terbit()->create(['dibuat_oleh' => $this->buAini->id, 'disetujui_oleh' => $this->kepsek->id]);
-    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$rapor->id}")->assertOk();
 
     $this->actingAs($this->kepsek)->postJson("/api/v1/rapor/{$rapor->id}/tarik", ['catatan' => 'Berat badan salah ketik.'])
         ->assertOk()
@@ -269,7 +265,6 @@ it('menarik rapor terbit kembali ke revisi, memberi tahu guru pembuat, dan menye
     expect($log->causer_id)->toBe($this->kepsek->id)
         ->and($log->properties['catatan'])->toBe('Berat badan salah ketik.');
 
-    $this->actingAs($this->ibu->user)->getJson("/api/v1/rapor/{$rapor->id}")->assertNotFound();
     $this->actingAs($this->buAini->user)->putJson("/api/v1/rapor/{$rapor->id}", ['berat_badan' => 18.5])->assertOk();
 });
 

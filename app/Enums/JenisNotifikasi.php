@@ -16,6 +16,7 @@ enum JenisNotifikasi: string
     case PembayaranDitolak = 'pembayaran_ditolak';
     case RaporDiajukan = 'rapor_diajukan';
     case RaporRevisi = 'rapor_revisi';
+    /** Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. */
     case RaporTerbit = 'rapor_terbit';
     case PengumumanBaru = 'pengumuman_baru';
     case PendaftaranBaru = 'pendaftaran_baru';

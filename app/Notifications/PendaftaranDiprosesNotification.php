@@ -27,8 +27,8 @@ class PendaftaranDiprosesNotification extends NotifikasiDatabase
 
         [$this->judulNotifikasi, $this->pesanNotifikasi] = match ($pendaftaran->status) {
             StatusPendaftaran::Diverifikasi => [
-                'Dokumen PPDB sudah diverifikasi',
-                "Dokumen pendaftaran {$anak} sudah diverifikasi. Tunggu keputusan akhir dari sekolah.",
+                'Berkas PPDB sudah diverifikasi',
+                "Berkas pendaftaran {$anak} sudah diterima dan dicek sekolah. Tunggu keputusan akhir dari sekolah.",
             ],
             StatusPendaftaran::Diterima => [
                 'Pendaftaran PPDB diterima',

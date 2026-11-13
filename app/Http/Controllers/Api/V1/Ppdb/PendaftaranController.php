@@ -26,7 +26,7 @@ use Spatie\QueryBuilder\QueryBuilder;
 
 class PendaftaranController extends Controller
 {
-    private const RELASI_DETAIL = ['tahunAjaran', 'waliMurid.user', 'dokumen', 'murid'];
+    private const RELASI_DETAIL = ['tahunAjaran', 'waliMurid.user', 'murid'];
 
     public function __construct(private readonly PendaftaranService $pendaftaranService) {}
 
@@ -55,7 +55,7 @@ class PendaftaranController extends Controller
     }
 
     /**
-     * Detail pendaftaran beserta dokumen dan data wali pendaftar.
+     * Detail pendaftaran beserta data wali pendaftar.
      */
     public function show(int $id): JsonResponse
     {
@@ -66,13 +66,13 @@ class PendaftaranController extends Controller
     }
 
     /**
-     * Wali yang sudah login mendaftarkan kakak/adik (`multipart/form-data`) untuk tahun ajaran PPDB di pengaturan.
-     * Ditolak kalau PPDB ditutup, kuota penuh, atau NIK anak sudah punya pendaftaran selain ditolak atau sudah
-     * menjadi murid. Anak yang diterima ditautkan ke akun ini.
+     * Wali yang sudah login mendaftarkan kakak/adik untuk tahun ajaran PPDB di pengaturan. Tanpa unggahan; akta
+     * kelahiran, kartu keluarga, dan pas foto dibawa ke sekolah. Ditolak kalau PPDB ditutup, kuota penuh, atau NIK
+     * anak sudah punya pendaftaran selain ditolak atau sudah menjadi murid. Anak yang diterima ditautkan ke akun ini.
      */
     public function store(BuatPendaftaranRequest $request, #[CurrentUser] User $user): JsonResponse
     {
-        $pendaftaran = $this->pendaftaranService->daftar($user->profilWaliMurid(), $request->dataPendaftaran(), $request->dokumen());
+        $pendaftaran = $this->pendaftaranService->daftar($user->profilWaliMurid(), $request->validated());
 
         return ApiResponse::success(
             new PendaftaranDetailResource($pendaftaran->load(self::RELASI_DETAIL)),
@@ -82,13 +82,12 @@ class PendaftaranController extends Controller
     }
 
     /**
-     * Pendaftaran PPDB tanpa login (`multipart/form-data`), dengan isian dan aturan yang sama seperti
-     * `POST /pendaftaran`. Dibatasi 3 pendaftaran per jam per IP. Simpan `kode` untuk mengecek status lewat
+     * Pendaftaran PPDB tanpa login, dengan isian dan aturan yang sama seperti `POST /pendaftaran`. Dibatasi 3 pendaftaran per jam per IP. Simpan `kode` untuk mengecek status lewat
      * `GET /public/pendaftaran/status`. Kalau diterima, sekolah membuatkan akun wali dengan username NIS anak.
      */
     public function storePublik(BuatPendaftaranRequest $request): JsonResponse
     {
-        $pendaftaran = $this->pendaftaranService->daftar(null, $request->dataPendaftaran(), $request->dokumen());
+        $pendaftaran = $this->pendaftaranService->daftar(null, $request->validated());
 
         return ApiResponse::success(
             new PendaftaranPublikResource($pendaftaran->load('tahunAjaran')),
@@ -110,7 +109,7 @@ class PendaftaranController extends Controller
     }
 
     /**
-     * Menandai dokumen pendaftaran sudah diperiksa dan lengkap.
+     * Menandai berkas pendaftar (akta kelahiran, kartu keluarga, pas foto) sudah diterima dan dicek di sekolah.
      */
     public function verifikasi(int $id, #[CurrentUser] User $user): JsonResponse
     {
