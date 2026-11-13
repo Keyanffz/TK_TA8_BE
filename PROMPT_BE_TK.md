@@ -41,7 +41,7 @@ Sistem Informasi Sekolah **TK Tarbiyatul Athfal 8** berbasis web (dan nanti mobi
   | `guru` | Guru | Admin |
   | `wali_murid` | Orang tua / wali | User |
 - **Murid TIDAK punya akun login.** Murid hanya data. Semua akses anak lewat akun wali murid (1 wali bisa punya beberapa anak, 1 anak bisa punya beberapa wali, misal ayah & ibu).
-- **Absensi hanya untuk guru aktif dan Kepala Sekolah** (berbasis lokasi dan foto, lihat A2.12). Tidak ada absensi murid.
+- **Absensi guru aktif dan Kepala Sekolah** berbasis lokasi dan foto (A2.12). **Absensi murid** dicatat guru per kelas (hadir, izin, sakit, alpa), tanpa lokasi dan foto; wali murid tidak melihatnya (A2.15).
 - **Dua area dashboard terpisah**: wali murid di `/dashboard/...`, guru dan Kepala Sekolah di `/mudarris/...` (termasuk halaman akun: `/mudarris/login`, serta `/mudarris/lupa-password` dan `/mudarris/reset-password` khusus Kepala Sekolah). Di dalam `/mudarris`, menu, isi beranda, dan aksi menyesuaikan role dan izin modul guru (A2.13).
 - Konten website publik (landing page, profil sekolah, galeri) diubah super admin, atau guru yang diberi izin modul `konten_website` (A2.13). Pengaturan sistem (aturan tagihan, PPDB, absensi) tetap khusus super admin.
 
@@ -66,6 +66,8 @@ Sistem Informasi Sekolah **TK Tarbiyatul Athfal 8** berbasis web (dan nanti mobi
 12. **Absensi guru dan Kepala Sekolah:** peserta absensi adalah guru yang akunnya `aktif` dan Kepala Sekolah. Guru nonaktif tidak ikut absensi dan tidak ditandai tidak hadir. Absen masuk dan absen pulang dilakukan dari HP di `/mudarris/absensi` dengan lokasi perangkat dan swafoto. Semua keputusan diambil backend dengan jam server (`Asia/Jakarta`): hari ini tidak sebelum tanggal mulai absensi, hari kerja dan bukan tanggal libur, di dalam jam jenis absen itu, jarak ke titik sekolah (Haversine) tidak melebihi radius, akurasi lokasi tidak melebihi batas, belum absen jenis itu hari ini, dan absen pulang hanya setelah absen masuk. Jarak yang ditampilkan FE hanya informasi. Status absen masuk `hadir` atau `terlambat` menurut batas terlambat; absen pulang tidak punya status. Peserta yang tidak bisa datang mencatat `izin` atau `sakit` sendiri di jam absen masuk dengan keterangan dan foto, tanpa lokasi; hari itu tidak ada absen pulang. Peserta yang perlu pulang sebelum jam pulang buka bisa absen pulang lebih awal dengan alasan, tanpa persetujuan; lokasi dan foto tetap diperiksa. Peserta mendapat notifikasi setiap absennya tercatat dan setiap Kepala Sekolah mengoreksi atau mencatat absensinya. Setelah jam masuk tutup di hari kerja, scheduler menandai peserta yang belum absen masuk sebagai `tidak_hadir`, termasuk susulan hari kerja yang terlewat sampai 7 hari ke belakang, tetapi tidak pernah untuk tanggal sebelum tanggal mulai absensi. Kalau Kepala Sekolah menambahkan tanggal libur, tanda `tidak_hadir` buatan scheduler yang belum dikoreksi pada tanggal itu dihapus; absen sungguhan dan baris yang sudah dikoreksi tetap. Kepala Sekolah bisa mengoreksi status absen masuk dengan catatan wajib; pengoreksi dan waktunya dicatat. Guru tidak bisa absen untuk hari yang sudah lewat: kalau peserta lupa absen padahal masuk dan belum punya absen masuk di tanggal itu (misalnya hari ini sebelum jam masuk tutup), Kepala Sekolah mencatat absen masuk `hadir` atau `terlambat` untuk tanggal itu dengan catatan wajib, tanpa waktu, lokasi, dan foto, dan baris itu langsung dianggap sudah dikoreksi. Hal yang sama untuk peserta yang lupa absen pulang: Kepala Sekolah mencatat absen pulang untuk tanggal yang sudah punya absen masuk `hadir` atau `terlambat` dan belum punya absen pulang. Koreksi dan pencatatan oleh Kepala Sekolah boleh melampirkan satu foto atau dokumen PDF (misalnya surat dokter atau surat tugas); lampiran disimpan di disk private, hanya dikirim ke pemilik absensi, Kepala Sekolah, dan pemegang izin lihat laporan absensi, dan dihapus bersama foto setelah masa simpan. **Akses absen susulan:** kalau peserta tidak bisa absen karena kendala di sekolah (misalnya wifi mati), Kepala Sekolah memberi akses untuk satu peserta, satu tanggal (hari ini atau hari kerja terakhir sebelumnya yang bukan tanggal libur), dan satu jenis absen, dengan catatan wajib; untuk masuk dan pulang diberikan dua akses. Akses sekali pakai, berlaku sampai akhir hari diberikan (23:59 WIB), tidak untuk Kepala Sekolah sendiri, dan ditolak kalau absensi jenis itu sudah ada (kecuali tanda `tidak_hadir` buatan scheduler yang belum dikoreksi) atau akses yang sama masih aktif. Peserta absen sendiri dengan swafoto tanpa pemeriksaan lokasi dan jam: absen masuk susulan berstatus `hadir` dengan waktu server saat dikirim dan mengganti tanda `tidak_hadir` scheduler di tanggal itu; absen pulang susulan hanya setelah absen masuk tanggal itu `hadir` atau `terlambat`; barisnya bertanda `susulan`. Akses yang belum dipakai tidak menahan scheduler, dan baris susulan tidak dihapus kalau tanggalnya dijadikan libur. Kepala Sekolah melihat absensi semua peserta per tanggal selain rekap 1–3 bulan. Foto absensi disimpan di disk private, hanya bisa dibuka pemiliknya dan Kepala Sekolah, dan file-nya dihapus setelah masa simpan (data absensinya tetap). Aturan absensi (titik sekolah, radius, batas akurasi, jam, hari kerja, tanggal libur, tanggal mulai, masa simpan foto) diatur Kepala Sekolah di pengaturan grup `absensi`.
 13. **Hak akses guru:** Kepala Sekolah memberi guru izin per modul dengan level `lihat` atau `kelola` (`kelola` mencakup `lihat`): `keuangan` (semua tagihan dan pembayaran, keringanan, laporan, tunggakan; kelola = keringanan, tagihan sekali bayar, ubah tagihan, catat pembayaran), `konten_website` (profil sekolah, landing page, banner beranda wali, galeri), `laporan_absensi` (rekap, absensi harian, riwayat dan foto peserta lain; kelola = koreksi dan pencatatan absensi peserta lain, tidak untuk absensinya sendiri), `data_murid` (semua murid dan alumni; kelola = tambah, ubah, hapus, status, import, kartu akun wali), dan `pengumuman` (semua pengumuman termasuk draft; kelola = target apa pun, tampil di website, ubah dan hapus pengumuman siapa pun). Preset (Bendahara, Admin Website, Admin Absensi, Tata Usaha) mengganti seluruh izin guru lalu bisa disesuaikan per modul. Manajemen guru, manajemen izin, pengaturan absensi, dan bagian lain di luar kelima modul tetap khusus Kepala Sekolah. Izin diperiksa backend di setiap route terkait dan dibaca dari database di setiap request, jadi pencabutan berlaku di request berikutnya. FE membangun menu, penjaga halaman, dan tombol aksi dari `izin` di `GET /auth/me`. Setiap perubahan izin dan setiap aksi di modul keuangan dicatat di log aktivitas.
 14. **Status murid, alumni, dan import:** status murid `aktif`, `lulus`, `pindah`, atau `keluar` beserta tanggal status, tahun lulus (lulus), sekolah tujuan (pindah), dan keterangan; setiap perubahan dicatat di riwayat status. Status diubah per murid, massal untuk murid terpilih, atau meluluskan satu kelas sekaligus untuk tahun tertentu; kenaikan kelas dengan status lulus juga mengisi tahun lulus dan riwayat. Murid lulus, pindah, dan keluar keluar dari penempatan kelas aktif dan tidak ikut generate tagihan berikutnya; tagihan lamanya tetap tercatat. Alumni dicari per tahun lulus. Murid bisa diimpor dari Excel/CSV lewat template: pratinjau memeriksa setiap baris (valid/invalid beserta alasan) tanpa menyimpan, lalu simpan meng-commit semua baris valid dalam satu transaksi dan mengembalikan baris yang gagal. Duplikat dideteksi lewat NISN, atau nama lengkap + tanggal lahir untuk baris tanpa NISN. Murid aktif hasil import mengikuti aturan akun wali otomatis (A2.1); murid lulus, pindah, dan keluar tidak dibuatkan akun wali. Untuk alumni, NISN dan tanggal status opsional; alumni lulus tanpa tanggal memakai akhir tahun ajaran di tahun lulusnya. Akun wali yang semua anaknya sudah tidak aktif tetap aktif (tagihan lama, kwitansi, PPDB adik), tetapi tidak lagi menerima pengumuman untuk semua dan untuk wali murid.
+
+15. **Absensi murid:** wali kelas dan guru pendamping kelas itu di tahun ajaran aktif, serta Kepala Sekolah, mencatat absensi harian semua murid berpenempatan aktif di satu kelas sekaligus (bawaan hadir), dengan status `hadir`, `izin`, `sakit`, atau `alpa` dan keterangan opsional. Satu murid satu baris per tanggal; penyimpanan satu kelas dalam satu transaksi dan wajib memuat semua murid aktif kelas itu. Tanggal tidak setelah hari ini, hari kerja menurut `absensi.hari_kerja`, bukan `absensi.tanggal_libur` (pengaturan yang sama dengan absensi guru), dan di dalam rentang tahun ajaran kelas itu; tanggal yang sudah lewat boleh diubah. Guru lain, termasuk pemegang izin `data_murid`, tidak bisa membuka atau mencatat (404); wali murid tidak melihat absensi murid. Rekap bulanan per murid (jumlah tiap status dan jumlah hari tercatat) bisa diekspor .xlsx dan PDF berkop sekolah. Tidak ada log aktivitas per penyimpanan; `dicatat_oleh` menyimpan pencatat terakhir.
 
 ## A3. Use Case per Aktor
 
@@ -94,6 +96,7 @@ Sistem Informasi Sekolah **TK Tarbiyatul Athfal 8** berbasis web (dan nanti mobi
 - Kelola rapor murid kelasnya (draft, isi per elemen, ajukan, perbaiki saat revisi)
 - Buat pengumuman untuk kelasnya / murid di kelasnya, dengan lampiran opsional (PDF atau gambar)
 - Lihat status tagihan murid kelasnya; wali kelas mencatat pembayaran tunai murid kelasnya dan mengunduh kwitansinya
+- Wali kelas dan guru pendamping: catat absensi harian murid kelasnya (hadir, izin, sakit, alpa), lihat rekap bulanan, ekspor Excel dan PDF
 - Lihat agenda
 - **Dengan izin modul dari Kepala Sekolah (A2.13)**: membuka bagian keuangan, konten website, laporan absensi, data murid (termasuk status, alumni, dan import), atau pengumuman sesuai level lihat atau kelola
 - Absen masuk dan absen pulang dengan lokasi dan foto, catat izin atau sakit dengan keterangan dan foto, absen pulang lebih awal dengan alasan, absen susulan dengan swafoto kalau diberi akses Kepala Sekolah, lihat status hari ini dan riwayat absensinya sendiri, dan menerima notifikasi saat absensinya tercatat, dikoreksi, atau diberi akses susulan
@@ -107,6 +110,7 @@ Sistem Informasi Sekolah **TK Tarbiyatul Athfal 8** berbasis web (dan nanti mobi
 - Kelola murid (CRUD, ubah status satu murid atau massal termasuk meluluskan satu kelas, riwayat status, alumni per tahun lulus, import dari Excel/CSV, unduh kartu akun wali, ubah hubungan & kontak utama wali, lepas tautan wali), lihat & ubah data wali murid, reset password wali murid
 - Keuangan: jenis tagihan, keringanan, generate tagihan manual (idempoten), tagihan sekali bayar (uang pendidikan/seragam), ubah jatuh tempo/potongan/catatan tagihan, catat pembayaran tunai (boleh dicicil), batalkan pembayaran yang salah catat, batalkan tagihan dan aktifkan kembali, laporan & ekspor Excel, daftar tunggakan
 - Rapor: review, perbaiki isi sebelum terbit, terbitkan, minta revisi, tarik rapor terbit; kelola elemen penilaian
+- Absensi murid semua kelas: catat harian, rekap bulanan, ekspor Excel dan PDF
 - Pengumuman (semua target, dengan lampiran opsional) & agenda
 - PPDB: buka/tutup, verifikasi, terima (pilih kelas), tolak
 - **CMS website:** profil sekolah, konten landing, galeri
@@ -156,6 +160,8 @@ erDiagram
     galeri_album ||--o{ galeri_foto : ""
     users ||--o{ absensi : "absen / mengoreksi"
     users ||--o{ akses_absen_susulan : "peserta / pemberi"
+    murid ||--o{ absensi_murid : ""
+    kelas ||--o{ absensi_murid : ""
 
     users {
         bigint id PK
@@ -230,6 +236,12 @@ erDiagram
         date tanggal
         string jenis
         timestamp dipakai_at }
+    absensi_murid {
+        bigint id PK
+        bigint murid_id FK
+        bigint kelas_id FK
+        date tanggal
+        string status }
 ```
 
 ### Detail tabel
@@ -261,6 +273,7 @@ Semua tabel punya `id` (bigint PK) dan `created_at/updated_at` kecuali pivot yan
 - **galeri_album**: judul, slug, deskripsi, cover_path, tanggal, is_publik. **galeri_foto**: galeri_album_id, path (public), caption, urutan
 - **absensi**: user_id (FK users; guru atau Kepala Sekolah), tanggal (date), jenis (enum JenisAbsensi), status (nullable enum StatusAbsensi; hanya untuk jenis `masuk`), waktu (timestamp nullable, jam server saat absen; null untuk `tidak_hadir` dari scheduler dan baris yang dicatat Kepala Sekolah), latitude dan longitude (decimal 10,7 nullable), akurasi_meter (int nullable), jarak_meter (int nullable, jarak ke titik sekolah saat absen), foto_path (nullable, private; dikosongkan saat file dihapus setelah masa simpan), lampiran_path (nullable, private; foto atau PDF dari koreksi atau pencatatan Kepala Sekolah, dikosongkan bersama foto setelah masa simpan), keterangan (text nullable, maks 500; alasan dari peserta untuk izin, sakit, atau pulang lebih awal), pulang_awal (bool, default false; absen pulang sebelum jam pulang buka), susulan (bool, default false; dikirim lewat akses absen susulan), catatan_koreksi (nullable), dikoreksi_oleh (FK users nullable), dikoreksi_at (nullable). **Unique (user_id, tanggal, jenis)**
 - **akses_absen_susulan**: user_id (FK users; peserta), tanggal (date), jenis (enum JenisAbsensi), catatan (text; alasan dari Kepala Sekolah), diberikan_oleh (FK users), berlaku_sampai (datetime; akhir hari akses diberikan), dipakai_at (nullable). Index (user_id, tanggal). Dihapus saat dicabut sebelum dipakai
+- **absensi_murid**: murid_id (FK murid), kelas_id (FK kelas; kelas tempat absensi dicatat), tanggal (date), status (enum StatusAbsensiMurid), keterangan (nullable, maks 255), dicatat_oleh (FK users; pencatat terakhir). **Unique (murid_id, tanggal)**, index (kelas_id, tanggal)
 - **pengaturan**: kunci (unique), nilai (json), grup (string: profil | landing | keuangan | ppdb | beranda | absensi)
 - Tabel bawaan: personal_access_tokens, notifications, password_reset_tokens, jobs, failed_jobs, activity_log (spatie)
 
@@ -316,6 +329,7 @@ Semua tabel punya `id` (bigint PK) dan `created_at/updated_at` kecuali pivot yan
 - **NadaInfo**: `info`, `penting`, `peringatan`
 - **JenisAbsensi**: `masuk`, `pulang`
 - **StatusAbsensi**: `hadir`, `terlambat`, `tidak_hadir`, `izin`, `sakit`
+- **StatusAbsensiMurid**: `hadir`, `izin`, `sakit`, `alpa`
 - **ModulIzin**: `keuangan`, `konten_website`, `laporan_absensi`, `data_murid`, `pengumuman`
 - **LevelIzin**: `lihat`, `kelola`
 - **PresetIzin**: `bendahara`, `admin_website`, `admin_absensi`, `tata_usaha`
@@ -478,6 +492,19 @@ flowchart TD
     SC -->|Tidak| SD[Ditolak: kedaluwarsa atau sudah dipakai]
     SC -->|Ya| SE["Simpan susulan tanpa lokasi dan jam: masuk hadir (ganti tidak_hadir scheduler), pulang hanya setelah masuk hadir atau terlambat"]
     SE --> T
+```
+
+### Absensi murid
+
+```mermaid
+flowchart TD
+    A([Wali kelas, guru pendamping, atau Kepsek buka tab Absensi kelas]) --> B[Pilih tanggal]
+    B --> C{Tidak setelah hari ini, hari kerja, bukan tanggal libur, di dalam tahun ajaran kelas?}
+    C -->|Tidak| D[Isian terkunci + alasan]
+    C -->|Ya| E[Semua murid aktif tampil, bawaan hadir atau status yang sudah tersimpan]
+    E --> F[Ubah status: hadir, izin, sakit, alpa + keterangan opsional]
+    F --> G[Simpan semua murid dalam satu transaksi]
+    G --> H[Rekap bulanan per murid + ekspor Excel / PDF]
 ```
 
 ### Hak akses guru
@@ -701,6 +728,13 @@ Untuk W: `"email": null`, `"username": "TA20260001"` (NIS anak), `wajib_ganti_pa
 
 **Bentuk absensi:** `{ id, user_id, tanggal, jenis, status, waktu, latitude, longitude, akurasi_meter, jarak_meter, ada_foto, keterangan, pulang_awal, susulan, lampiran: { jenis: pdf|gambar, url } | null, catatan_koreksi, dikoreksi_oleh: { id, nama } | null, dikoreksi_at }`. `susulan` true untuk absen lewat akses absen susulan. `lampiran.url` = signed URL 30 menit. `status` null untuk absen pulang; `waktu`, koordinat, akurasi, dan jarak null untuk `tidak_hadir` dari scheduler dan absensi (masuk atau pulang) yang dicatat lewat `POST /absensi/koreksi`; izin dan sakit punya `waktu` dan foto, tetapi koordinat, akurasi, dan jarak null. `keterangan` = alasan dari peserta, null kalau tidak diisi. `pulang_awal` true hanya untuk absen pulang sebelum jam pulang buka. Foto diambil lewat `GET /absensi/{id}/foto` kalau `ada_foto`.
 
+### Absensi murid
+- Akses semua endpoint: SA (kelas mana pun), G (wali kelas atau guru pendamping kelas itu di TA aktif; guru lain, termasuk Izin(data_murid), → 404 `NOT_FOUND`), W → 403 `FORBIDDEN`.
+- `GET /kelas/{id}/absensi-murid?tanggal=YYYY-MM-DD` — (bawaan hari ini) → `{ tanggal, bisa_dicatat, alasan, murid: [{ murid: { id, nis, nama_lengkap }, status: StatusAbsensiMurid | null, keterangan }] }`. Murid = penempatan aktif di kelas itu ditambah murid yang sudah punya absensi di kelas itu pada tanggal tersebut, urut nama; `status` null kalau belum dicatat. `bisa_dicatat` false dengan `alasan` untuk tanggal setelah hari ini, bukan hari kerja, tanggal libur, atau di luar tahun ajaran kelas
+- `PUT /kelas/{id}/absensi-murid` — `{ tanggal, absensi: [{ murid_id, status, keterangan? }] }` (keterangan maks 255, `murid_id` tidak boleh dobel) → bentuk sama dengan `GET`. Semua murid aktif kelas itu wajib ada dan tidak boleh ada murid lain; disimpan dalam satu transaksi (dibuat atau diperbarui). Ditolak 422 `BUSINESS_RULE` dengan pesan sebabnya untuk tanggal yang tidak bisa dicatat, murid aktif yang terlewat, murid yang bukan murid aktif kelas itu, atau penyimpanan bersamaan untuk tanggal yang sama
+- `GET /kelas/{id}/absensi-murid/rekap?bulan=YYYY-MM` — (bawaan bulan berjalan) → `{ bulan, hari_tercatat, murid: [{ murid: { id, nis, nama_lengkap }, hadir, izin, sakit, alpa }] }`; murid = penempatan aktif ditambah murid yang punya absensi di kelas itu pada bulan itu
+- `GET /kelas/{id}/absensi-murid/rekap/export?bulan=YYYY-MM&format=xlsx|pdf` — file Excel (bawaan; kolom NIS, Nama, Hadir, Izin, Sakit, Alpa) atau PDF A4 berkop sekolah dengan kelas, bulan, tahun ajaran, wali kelas, dan jumlah hari tercatat; nama file `absensi-murid-<nama-kelas>-YYYY-MM.<format>`
+
 ### PPDB
 - `POST /pendaftaran` — W — JSON (data + `hubungan`, tanpa unggahan), untuk kakak/adik dari wali yang sudah punya akun. Tahun ajaran diambil dari `ppdb.tahun_ajaran_id`. Tolak jika PPDB tutup / kuota penuh / NIK anak sudah punya pendaftaran selain `ditolak` atau sudah menjadi murid (pendaftar yang pernah ditolak boleh daftar ulang)
 - `GET /pendaftaran` — SA (semua), W (miliknya)
@@ -761,13 +795,13 @@ app/
     Middleware/           # EnsureAccountActive, EnsureRole, EnsureIzin, ForceJsonResponse
   Models/
   Policies/               # otorisasi & scoping per model
-  Services/               # logika bisnis (TagihanService, PembayaranService, RaporService, PendaftaranService, WaliMuridService, KartuAkunService, MediaService, PengaturanService, DashboardService, AbsensiService, AbsenSusulanService, RekapAbsensiService, IzinGuruService, StatusMuridService, ImportMuridService)
+  Services/               # logika bisnis (TagihanService, PembayaranService, RaporService, PendaftaranService, WaliMuridService, KartuAkunService, MediaService, PengaturanService, DashboardService, AbsensiService, AbsenSusulanService, RekapAbsensiService, AbsensiMuridService, IzinGuruService, StatusMuridService, ImportMuridService)
   Notifications/
   Console/Commands/       # tagihan:generate, tagihan:pengingat, tagihan:tandai-terlambat, absensi:tandai-tidak-hadir, absensi:hapus-foto-lama, pengaturan:bersihkan-gambar
   Support/ApiResponse.php # helper format respons A7
   Support/                # juga AturanAbsensi (aturan dari pengaturan grup absensi) dan Jarak (Haversine)
   Exports/                # export Excel, termasuk template import murid
-resources/views/pdf/      # template rapor, kwitansi, dan rekap absensi (hijau, logo sekolah)
+resources/views/pdf/      # template rapor, kwitansi, rekap absensi guru dan murid (hijau, logo sekolah)
 routes/api.php            # prefix v1, dikelompokkan per modul
 ```
 
@@ -799,6 +833,7 @@ Aturan:
 - Akses data milik orang lain → **404** (bukan 403) supaya tidak membocorkan keberadaan data.
 - `catatan_khusus` murid hanya muncul di Resource untuk SA, guru pengampu, pemegang izin `data_murid`, dan wali anak tsb.
 - Wali murid tidak membuka rapor: route rapor dibatasi `role:super_admin,guru` dan `Rapor::scopeVisibleTo` tidak mengembalikan apa pun untuk wali.
+- Absensi murid: route `role:super_admin,guru`; `AbsensiMuridService::kelasUntuk()` mencari kelas di antara `Kelas::scopeDiampuOleh` untuk guru (tanpa pengecualian izin modul), kelas lain → 404.
 - Absensi: semua endpoint `role:super_admin,guru`; rekap, ekspor, dan absensi harian `izin:laporan_absensi,lihat`; koreksi (`PATCH /absensi/{id}/koreksi`, `POST /absensi/koreksi`) `izin:laporan_absensi,kelola`, dan guru tidak boleh mengoreksi absensinya sendiri (`BUSINESS_RULE`). Beri dan cabut akses susulan `role:super_admin`; `POST /absensi/susulan/{id}/absen` mencari akses di antara milik pengguna itu saja (milik orang lain → 404). `Absensi::scopeVisibleTo`: SA dan izin lihat laporan absensi semua, guru lain hanya miliknya; foto absensi guru lain → 404.
 
 ## B5. File & media
@@ -836,6 +871,7 @@ Aturan:
 15. **Izin guru** (`IzinGuruService`, A2.13): `atur()` mengganti seluruh baris `izin_guru` guru itu dalam transaksi dan mencatat log aktivitas `izin` (`sebelum`, `sesudah`, `preset`) hanya kalau ada perubahan; `terapkanPreset()` memakai isi `PresetIzin::izin()`. Profil guru milik Kepala Sekolah ditolak `BUSINESS_RULE`. Migration `pindahkan_izin_keuangan_ke_izin_guru` memindahkan `bisa_kelola_keuangan = true` (selain profil Kepala Sekolah) menjadi izin `keuangan` `kelola` lalu menghapus kolomnya.
 16. **Status murid** (`StatusMuridService`, A2.14): `terapkan()` (di dalam transaksi pemanggil) memeriksa tanggal tidak sebelum tanggal masuk dan tahun lulus tidak sebelum tahun masuk, menyimpan `status`, `tanggal_keluar`, `tahun_lulus` (hanya lulus), `sekolah_tujuan` (hanya pindah), `keterangan_status` (hanya non-aktif), menulis `riwayat_status_murid`, dan menyesuaikan penempatan di TA aktif (lulus → `lulus`, pindah/keluar → `keluar`, aktif → `aktif` dengan cek kapasitas). `ubah()` menolak status yang sama; `ubahMassal()` melewati murid berstatus sama dan menjalankan semuanya dalam satu transaksi. Kenaikan kelas memanggil `terapkan()` untuk murid lulus (tahun lulus = tahun akhir TA aktif). Generate tagihan tidak berubah karena sudah hanya untuk murid aktif berpenempatan aktif.
 17. **Import murid** (`ImportMuridService`, A2.14): membaca sheet pertama lewat `maatwebsite/excel` (CSV dengan pemisah koma atau titik koma), judul kolom di baris 1, maks 500 baris. Tanggal dari nomor seri Excel, `YYYY-MM-DD`, `DD/MM/YYYY`, atau `DD-MM-YYYY` dinormalkan ke `YYYY-MM-DD`. Aturan data diri sama dengan `POST /murid` (`SimpanMuridRequest::aturanDataDiri()`); duplikat lewat NISN (termasuk murid terhapus dan baris sebelumnya) atau nama lengkap + tanggal lahir untuk baris tanpa NISN; kelas dicocokkan nama di TA aktif dengan sisa kapasitas. Simpan memeriksa ulang, membuat hash password awal murid aktif di luar transaksi per kelompok 50 baris (`set_time_limit` diulang setiap kelompok dan dikembalikan sesudahnya), lalu menyimpan semua baris valid dalam satu `DB::transaction` (murid, akun wali otomatis dengan hash itu, penempatan kelas). Pelanggaran unique saat menyimpan → `BUSINESS_RULE`, tidak ada yang tersimpan.
+18. **Absensi murid** (`AbsensiMuridService`, A2.15): `simpan()` memeriksa tanggal (`alasanTanggalDitolak()`) dan kecocokan murid dengan penempatan aktif, lalu dalam satu `DB::transaction` mengunci baris yang sudah ada (`whereDate` + `lockForUpdate`) dan memperbarui atau membuat baris tiap murid; unique (murid_id, tanggal) yang terlanggar karena penyimpanan bersamaan → `BUSINESS_RULE`. Rekap dihitung dari baris `kelas_id` itu di bulan itu. Ekspor `RekapAbsensiMuridExport` (dengan `WithStrictNullComparison`) dan `pdf.rekap-absensi-murid`.
 
 ## B7. Keamanan
 
