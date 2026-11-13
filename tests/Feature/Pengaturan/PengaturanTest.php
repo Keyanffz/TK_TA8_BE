@@ -112,6 +112,20 @@ it('memvalidasi nilai per kunci dan menolak kunci yang tidak dikenal', function 
     'tanggal mulai absensi bukan tanggal' => [['absensi.tanggal_mulai' => '1 Oktober'], 'absensi.tanggal_mulai'],
 ]);
 
+it('memberi contoh isian di pesan format jam dan tanggal', function () {
+    $galat = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
+        'absensi.jam_masuk' => ['buka' => '6.30', 'batas_terlambat' => '07:15', 'tutup' => '09:00'],
+        'absensi.tanggal_libur' => ['17 Agustus'],
+        'ppdb.tanggal_buka' => '01/10/2026',
+    ]])->assertStatus(422)->json('errors');
+
+    expect($galat)->toMatchArray([
+        'absensi.jam_masuk.buka' => ['Isi jam dengan format JJ:MM, misalnya 07:15.'],
+        'absensi.tanggal_libur.0' => ['Isi tanggal dengan format TTTT-BB-HH, misalnya 2026-10-01.'],
+        'ppdb.tanggal_buka' => ['Isi tanggal dengan format TTTT-BB-HH, misalnya 2026-10-01.'],
+    ]);
+});
+
 it('menyebut nama field item di pesan validasi daftar, bukan nama daftarnya', function () {
     $galat = $this->actingAs($this->kepsek)->putJson('/api/v1/pengaturan', ['items' => [
         'landing.program' => [['deskripsi' => 'Belajar sambil bermain.', 'ikon' => 'blocks']],

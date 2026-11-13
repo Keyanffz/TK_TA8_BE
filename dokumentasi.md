@@ -171,7 +171,7 @@ Acuan: Bagian C dan, sebagai rujukan tambahan, `antislop.md` dan `GUIDE.md` dari
 4. Diperbaiki di branch `be/jam-absensi`, bukan di sini supaya tidak bentrok: komentar `pdf/bagian/kop.blade.php` yang menyebut kop hanya untuk kwitansi dan rapor.
 5. `check:slop` mendapat dua pola: pesan error generik ("terjadi kesalahan", "something went wrong", "oops") di file konten, dan komentar banner (`// ====`, `/* ----`, `# ----`) di luar test. Keduanya nol temuan di kode sekarang dan diuji dengan file sementara.
 6. Diusulkan: komentar banner `|----` di `config/*.php` adalah bawaan file konfigurasi Laravel. Tidak dihapus karena file itu disalin dari framework dan lebih mudah dibandingkan dengan versi Laravel berikutnya kalau tetap utuh.
-7. Diusulkan: pesan format tanggal dan jam dari `lang/id/validation.php` ("... tidak cocok dengan format H:i.") menyebut format teknis. FE memeriksa format lebih dulu, jadi pesan ini jarang terlihat; perbaikannya butuh pesan khusus per format.
+7. Diperbaiki setelah disetujui pemilik repo: pesan format tanggal dan jam di `PUT /pengaturan` menyebut format mesin ("Buka tidak cocok dengan format H:i."). `PengaturanService::pesanFormat()` memberi pesan dengan contoh untuk setiap kunci beraturan `date_format:H:i` ("Isi jam dengan format JJ:MM, misalnya 07:15.") dan `date_format:Y-m-d` ("Isi tanggal dengan format TTTT-BB-HH, misalnya 2026-10-01."), termasuk kunci yang ditambahkan nanti. Pesan bawaan `lang/id/validation.php` untuk endpoint lain tidak diubah. Ditambah test.
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 
@@ -993,7 +993,7 @@ Diambil selama Fase 3:
 
 Pasangan FE `fe/anti-slop`. Bagian A tidak berubah. Temuan di "Audit AI-slop".
 
-Diubah: `PengaturanService::namaAtribut()`, `Pendaftaran` (relasi `pemroses()` dihapus), `database/seeders/Demo/KomunikasiDemoSeeder.php`, migration `2026_09_26_072119_create_personal_access_tokens_table.php` (komentar saja), `scripts/check-slop.sh`; test `PengaturanTest` (pesan validasi item daftar).
+Diubah: `PengaturanService::namaAtribut()` dan `pesanFormat()`, `Pendaftaran` (relasi `pemroses()` dihapus), `database/seeders/Demo/KomunikasiDemoSeeder.php`, migration `2026_09_26_072119_create_personal_access_tokens_table.php` (komentar saja), `scripts/check-slop.sh`; test `PengaturanTest` (pesan validasi item daftar, pesan format jam dan tanggal).
 
 Pengecekan: `php artisan test --compact` lolos di SQLite dan di MariaDB 10.11.14 (database terpisah); Pint, PHPStan, `check:slop` bersih; `migrate:fresh --seed` dan `DemoSeeder` di MariaDB. Test baru gagal dengan kode `namaAtribut()` lama.
 
