@@ -2,47 +2,29 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
-use Maatwebsite\Excel\Concerns\WithTitle;
+use Carbon\CarbonInterface;
+use Maatwebsite\Excel\Concerns\Export;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 /**
- * `GET /absensi/rekap/export?format=xlsx`. Menggantikan CSV yang kolomnya menyatu di Excel berpengaturan
- * Indonesia (pemisah daftar titik koma); .xlsx menyimpan sel, jadi tidak bergantung pemisah. Tanpa
- * `WithStrictNullComparison`, angka 0 ditulis sebagai sel kosong.
+ * `GET /absensi/rekap/export?format=xlsx`: sheet Rekap Absensi berisi jumlah per peserta, sheet Harian berisi jam
+ * masuk dan jam pulang setiap peserta per hari, seperti buku absen di sekolah. Menggantikan CSV yang kolomnya
+ * menyatu di Excel berpengaturan Indonesia (pemisah daftar titik koma); .xlsx menyimpan sel, jadi tidak bergantung
+ * pemisah.
  */
-class RekapAbsensiExport implements FromArray, ShouldAutoSize, WithHeadings, WithStrictNullComparison, WithTitle
+class RekapAbsensiExport implements Export, WithMultipleSheets
 {
-    public const JUDUL_KOLOM = ['Nama', 'Jabatan', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak Hadir', 'Tidak Absen Pulang'];
-
     /**
      * @param  list<array{user: array{id: int, nama: string, jabatan: string|null}, hadir: int, terlambat: int, izin: int, sakit: int, tidak_hadir: int, tidak_absen_pulang: int}>  $rekap
+     * @param  list<array{user: array{id: int, nama: string, jabatan: string|null}, hari: list<array{tanggal: CarbonInterface, jam_masuk: string, jam_pulang: string, status: string, keterangan: string}>}>  $harian
      */
-    public function __construct(private readonly array $rekap) {}
+    public function __construct(private readonly array $rekap, private readonly array $harian) {}
 
     /**
-     * @return list<list<string|int>>
+     * @return list<Export>
      */
-    public function array(): array
+    public function sheets(): array
     {
-        return array_map(fn (array $baris): array => [
-            $baris['user']['nama'], $baris['user']['jabatan'] ?? '',
-            $baris['hadir'], $baris['terlambat'], $baris['izin'], $baris['sakit'], $baris['tidak_hadir'], $baris['tidak_absen_pulang'],
-        ], $this->rekap);
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function headings(): array
-    {
-        return self::JUDUL_KOLOM;
-    }
-
-    public function title(): string
-    {
-        return 'Rekap Absensi';
+        return [new RekapAbsensiSheet($this->rekap), new HarianAbsensiSheet($this->harian)];
     }
 }
