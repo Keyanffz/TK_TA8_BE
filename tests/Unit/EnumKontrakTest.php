@@ -48,7 +48,7 @@ it('memakai nilai enum persis seperti kontrak A4, A5, dan A7', function (string 
     'JenisKelamin (A4)' => [JenisKelamin::class, ['L', 'P']],
     'JenisNotifikasi (A7)' => [JenisNotifikasi::class, [
         'tagihan_baru', 'tagihan_tertunda', 'pengingat_tagihan', 'tagihan_terlambat', 'pembayaran_masuk',
-        'pembayaran_diterima', 'pembayaran_ditolak', 'rapor_diajukan', 'rapor_revisi', 'rapor_terbit',
+        'pembayaran_diterima', 'pembayaran_ditolak', 'pembayaran_dibatalkan', 'rapor_diajukan', 'rapor_revisi', 'rapor_terbit',
         'pengumuman_baru', 'pendaftaran_baru', 'pendaftaran_diproses', 'anak_tertaut', 'absensi_tercatat',
         'absensi_dikoreksi',
         'absensi_susulan_diberikan',
