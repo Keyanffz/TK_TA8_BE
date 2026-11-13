@@ -10,12 +10,15 @@ use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
 /**
+ * Tanpa `WithStrictNullComparison`, angka 0 (misalnya potongan atau sisa) ditulis sebagai sel kosong.
+ *
  * @implements WithMapping<Tagihan>
  */
-class TagihanSheet implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping, WithTitle
+class TagihanSheet implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping, WithStrictNullComparison, WithTitle
 {
     public function __construct(private readonly Carbon $dari, private readonly Carbon $sampai) {}
 

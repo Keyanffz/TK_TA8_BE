@@ -14,6 +14,7 @@ use App\Models\Tagihan;
 use App\Models\TahunAjaran;
 use App\Models\WaliMurid;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * SPP Rp 150.000 Agustus–September untuk Aisyah (TK A1) dan Bima (TK B1), Seragam Rp 350.000 untuk Aisyah.
@@ -138,12 +139,18 @@ it('mengunduh laporan keuangan sebagai file Excel', function () {
     });
 });
 
-it('menghasilkan file xlsx yang benar-benar bisa dibuka', function () {
+it('menulis angka 0 sebagai angka, bukan sel kosong, di file xlsx', function () {
     $response = $this->actingAs($this->kepsek)->get('/api/v1/laporan/keuangan/export?dari=2026-08-01&sampai=2026-09-30')
         ->assertOk()
         ->assertDownload('laporan-keuangan-2026-08-01-sd-2026-09-30.xlsx');
 
-    expect(substr((string) file_get_contents($response->baseResponse->getFile()->getPathname()), 0, 2))->toBe('PK');
+    $file = IOFactory::load($response->baseResponse->getFile()->getPathname());
+    $tagihan = $file->getSheetByNameOrThrow('Tagihan')->toArray(formatData: false);
+    $pembayaran = $file->getSheetByNameOrThrow('Pembayaran Diterima')->toArray(formatData: false);
+
+    expect(array_slice($tagihan[0], 6, 5))->toBe(['Nominal', 'Potongan', 'Total', 'Terbayar', 'Sisa'])
+        ->and(array_slice($tagihan[1], 6, 5))->toBe([150000, 0, 150000, 150000, 0])
+        ->and($pembayaran[1][7])->toBe(150000);
 });
 
 it('menutup laporan untuk guru tanpa izin keuangan', function () {
