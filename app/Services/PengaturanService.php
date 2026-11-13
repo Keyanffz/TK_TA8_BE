@@ -51,6 +51,8 @@ class PengaturanService
 
     private const MAKSIMAL_TANGGAL_LIBUR = 366;
 
+    private const MAKSIMAL_JAM_TANGGAL = 50;
+
     private const MAKSIMAL_ITEM_DAFTAR = 20;
 
     /**
@@ -301,6 +303,18 @@ class PengaturanService
             'absensi.jam_khusus.*.jam_pulang' => ['required', 'array:buka,tutup'],
             'absensi.jam_khusus.*.jam_pulang.buka' => ['required', 'date_format:H:i'],
             'absensi.jam_khusus.*.jam_pulang.tutup' => ['required', 'date_format:H:i'],
+            'absensi.jam_tanggal' => ['array', 'list', 'max:'.self::MAKSIMAL_JAM_TANGGAL],
+            'absensi.jam_tanggal.*' => ['array:mulai,selesai,keterangan,jam_masuk,jam_pulang'],
+            'absensi.jam_tanggal.*.mulai' => ['required', 'date_format:Y-m-d'],
+            'absensi.jam_tanggal.*.selesai' => ['required', 'date_format:Y-m-d'],
+            'absensi.jam_tanggal.*.keterangan' => ['required', 'string', 'max:100'],
+            'absensi.jam_tanggal.*.jam_masuk' => ['required', 'array:buka,batas_terlambat,tutup'],
+            'absensi.jam_tanggal.*.jam_masuk.buka' => ['required', 'date_format:H:i'],
+            'absensi.jam_tanggal.*.jam_masuk.batas_terlambat' => ['required', 'date_format:H:i'],
+            'absensi.jam_tanggal.*.jam_masuk.tutup' => ['required', 'date_format:H:i'],
+            'absensi.jam_tanggal.*.jam_pulang' => ['required', 'array:buka,tutup'],
+            'absensi.jam_tanggal.*.jam_pulang.buka' => ['required', 'date_format:H:i'],
+            'absensi.jam_tanggal.*.jam_pulang.tutup' => ['required', 'date_format:H:i'],
             'absensi.hari_kerja' => ['array', 'list', 'min:1', 'max:7'],
             'absensi.hari_kerja.*' => ['integer', 'between:1,7', 'distinct'],
             'absensi.tanggal_libur' => ['array', 'list', 'max:'.self::MAKSIMAL_TANGGAL_LIBUR],
@@ -395,6 +409,13 @@ class PengaturanService
                 $items[$kunci] = collect($nilai)->map(fn (mixed $hari): int => (int) $hari)->sort()->values()->all();
             } elseif ($kunci === 'absensi.tanggal_libur' && is_array($nilai)) {
                 $items[$kunci] = collect($nilai)->sort()->values()->all();
+            } elseif ($kunci === 'absensi.jam_tanggal' && is_array($nilai)) {
+                $items[$kunci] = collect($nilai)
+                    ->map(fn (array $rentang): array => [
+                        'mulai' => $rentang['mulai'], 'selesai' => $rentang['selesai'], 'keterangan' => trim($rentang['keterangan']),
+                        'jam_masuk' => $rentang['jam_masuk'], 'jam_pulang' => $rentang['jam_pulang'],
+                    ])
+                    ->sortBy('mulai')->values()->all();
             } elseif ($kunci === 'absensi.jam_khusus' && is_array($nilai)) {
                 $items[$kunci] = collect($nilai)
                     ->map(fn (array $hari): array => ['hari' => (int) $hari['hari'], 'jam_masuk' => $hari['jam_masuk'], 'jam_pulang' => $hari['jam_pulang']])
@@ -431,8 +452,8 @@ class PengaturanService
 
     /**
      * Jam absensi dibandingkan sebagai teks `HH:MM`. Diperiksa terhadap gabungan nilai tersimpan dan nilai
-     * baru, karena jam bawaan, jam khusus, dan hari kerja bisa dikirim terpisah. Jam khusus memakai urutan yang sama
-     * dengan jam bawaan dan hanya boleh untuk hari kerja, termasuk saat hari kerjanya yang diubah.
+     * baru, karena jam bawaan, jam khusus, jam per tanggal, dan hari kerja bisa dikirim terpisah. Jam khusus dan jam
+     * per tanggal memakai urutan yang sama dengan jam bawaan.
      *
      * @param  array<string, mixed>  $pengaturan
      *
@@ -440,20 +461,15 @@ class PengaturanService
      */
     private function pastikanJamAbsensiUrut(array $pengaturan): void
     {
-        $pesan = $this->pesanUrutanJam(
-            'absensi',
-            $pengaturan['absensi.jam_masuk'] ?? AturanAbsensi::BAWAAN['absensi.jam_masuk'],
-            $pengaturan['absensi.jam_pulang'] ?? AturanAbsensi::BAWAAN['absensi.jam_pulang'],
-        );
-        $hariKerja = $pengaturan['absensi.hari_kerja'] ?? AturanAbsensi::BAWAAN['absensi.hari_kerja'];
-
-        foreach ($pengaturan['absensi.jam_khusus'] ?? [] as $urutan => $khusus) {
-            $namaHari = now()->isoWeekday($khusus['hari'])->translatedFormat('l');
-            if (! in_array($khusus['hari'], $hariKerja, true)) {
-                $pesan["absensi.jam_khusus.{$urutan}.hari"] = "{$namaHari} bukan hari kerja. Jam khusus hanya untuk hari kerja; tambahkan {$namaHari} ke hari kerja atau pakai jam bawaan.";
-            }
-            $pesan += $this->pesanUrutanJam("absensi.jam_khusus.{$urutan}", $khusus['jam_masuk'], $khusus['jam_pulang'], $namaHari);
-        }
+        $pesan = [
+            ...$this->pesanUrutanJam(
+                'absensi',
+                $pengaturan['absensi.jam_masuk'] ?? AturanAbsensi::BAWAAN['absensi.jam_masuk'],
+                $pengaturan['absensi.jam_pulang'] ?? AturanAbsensi::BAWAAN['absensi.jam_pulang'],
+            ),
+            ...$this->pesanJamKhusus($pengaturan['absensi.jam_khusus'] ?? [], $pengaturan['absensi.hari_kerja'] ?? AturanAbsensi::BAWAAN['absensi.hari_kerja']),
+            ...$this->pesanJamTanggal($pengaturan['absensi.jam_tanggal'] ?? []),
+        ];
 
         if ($pesan !== []) {
             throw ValidationException::withMessages($pesan);
@@ -461,9 +477,53 @@ class PengaturanService
     }
 
     /**
+     * Jam khusus hanya boleh untuk hari kerja, termasuk saat hari kerjanya yang diubah.
+     *
+     * @param  list<array{hari: int, jam_masuk: array{buka: string, batas_terlambat: string, tutup: string}, jam_pulang: array{buka: string, tutup: string}}>  $jamKhusus
+     * @param  list<int>  $hariKerja
+     * @return array<string, string>
+     */
+    private function pesanJamKhusus(array $jamKhusus, array $hariKerja): array
+    {
+        $pesan = [];
+        foreach ($jamKhusus as $urutan => $khusus) {
+            $namaHari = now()->isoWeekday($khusus['hari'])->translatedFormat('l');
+            if (! in_array($khusus['hari'], $hariKerja, true)) {
+                $pesan["absensi.jam_khusus.{$urutan}.hari"] = "{$namaHari} bukan hari kerja. Jam khusus hanya untuk hari kerja; tambahkan {$namaHari} ke hari kerja atau pakai jam bawaan.";
+            }
+            $pesan += $this->pesanUrutanJam("absensi.jam_khusus.{$urutan}", $khusus['jam_masuk'], $khusus['jam_pulang'], $namaHari);
+        }
+
+        return $pesan;
+    }
+
+    /**
+     * Rentang jam per tanggal sudah urut tanggal mulai (`rapikan()`), jadi rentang yang bertumpuk pasti bersebelahan.
+     *
+     * @param  list<array{mulai: string, selesai: string, keterangan: string, jam_masuk: array{buka: string, batas_terlambat: string, tutup: string}, jam_pulang: array{buka: string, tutup: string}}>  $jamTanggal
+     * @return array<string, string>
+     */
+    private function pesanJamTanggal(array $jamTanggal): array
+    {
+        $pesan = [];
+        foreach ($jamTanggal as $urutan => $rentang) {
+            if ($rentang['selesai'] < $rentang['mulai']) {
+                $pesan["absensi.jam_tanggal.{$urutan}.selesai"] = 'Tanggal selesai tidak boleh sebelum tanggal mulai.';
+            }
+            $sebelumnya = $jamTanggal[$urutan - 1] ?? null;
+            if ($sebelumnya !== null && $rentang['mulai'] <= $sebelumnya['selesai']) {
+                $pesan["absensi.jam_tanggal.{$urutan}.mulai"] = "Rentang {$rentang['keterangan']} bertumpuk dengan {$sebelumnya['keterangan']}. Satu tanggal hanya boleh punya satu jam.";
+            }
+            $pesan += $this->pesanUrutanJam("absensi.jam_tanggal.{$urutan}", $rentang['jam_masuk'], $rentang['jam_pulang'], $rentang['keterangan']);
+        }
+
+        return $pesan;
+    }
+
+    /**
      * @param  array{buka: string, batas_terlambat: string, tutup: string}  $masuk
      * @param  array{buka: string, tutup: string}  $pulang
-     * @param  string|null  $namaHari  hari jam khusus, null untuk jam bawaan
+     * @param  string|null  $namaHari  hari jam khusus atau keterangan jam per tanggal, null untuk jam bawaan
      * @return array<string, string>
      */
     private function pesanUrutanJam(string $awalan, array $masuk, array $pulang, ?string $namaHari = null): array
