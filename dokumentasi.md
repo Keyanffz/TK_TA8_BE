@@ -41,8 +41,9 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`, di atas `be/absensi-murid`) | Selesai, menunggu review; test SQLite, test rapor dan absensi murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru. Template kertas rapor menunggu contoh dari sekolah |
 | Revisi sekolah R7: Docker (branch `be/docker`, di atas `be/ekspor-rapor-kelas`) | Selesai, menunggu review; build image dan `docker compose up` diuji di laptop. Pindah ke VPS belum, uji dulu di VM `debian-lab` (`docs/docker.md`) |
 | Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`, di atas `be/docker`) | Selesai, menunggu review; test SQLite dan MariaDB uji, migration diuji di database uji |
-| Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`) | Selesai, menunggu review; test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, unduhan lewat proxy FE; lihat Changelog |
-| Jam absensi per rentang tanggal, misalnya Ramadan (branch `be/jam-tanggal`, di atas `be/jam-absensi`) | Selesai, menunggu review; test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`; lihat Changelog |
+| Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`) | Selesai, di-merge (PR #29); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, unduhan lewat proxy FE; lihat Changelog |
+| Jam absensi per rentang tanggal, misalnya Ramadan (branch `be/jam-tanggal`) | Selesai, di-merge (PR #31); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`; lihat Changelog |
+| Audit dan perbaikan AI-slop (branch `be/anti-slop`; FE `fe/anti-slop`) | Selesai, di-merge (PR #30); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, `DemoSeeder` di MariaDB |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -191,6 +192,17 @@ Diminta pemilik repo dengan rancangan yang sudah disetujui. Kontrak ditulis ke B
 11. Tanggal yang punya absensi peserta tetapi bukan hari absensi menurut pengaturan sekarang (dijadikan libur setelah ada absen sungguhan, dilepas dari hari kerja, atau sebelum tanggal mulai yang dimajukan) tetap ditulis untuk peserta itu, dengan Keterangan diawali "Tanggal libur", "Bukan hari kerja", atau "Sebelum tanggal mulai absensi". Ringkasan menghitung semua baris absensi di rentang, jadi tanpa baris ini jumlah di ringkasan bisa tidak cocok dengan bagian harian. Dipilih (pilihan b, disetujui pemilik repo) karena sama dengan tab Harian di web yang tetap menampilkan absensi di tanggal libur, tidak menyembunyikan absen sungguhan, dan tidak mengubah definisi rekap atau angka tab Bulanan.
 12. Ukuran: 8 peserta, 3 bulan (Agustus–Oktober 2026, Senin–Sabtu, 1.139 baris absensi di database dev MariaDB): PDF 25 halaman (1 ringkasan + 3 per peserta), 118 KB, dibuat dalam 2,2 detik; .xlsx 0,4 detik. Rancangan tidak diubah.
 13. Jam untuk rentang tanggal tertentu (misalnya Ramadan) dikerjakan di `be/jam-tanggal`.
+### Audit AI-slop (branch `be/anti-slop`)
+
+Acuan: Bagian C dan, sebagai rujukan tambahan, `antislop.md` dan `GUIDE.md` dari repo miqdadbadjuber/anti-slop (dibaca sebagai data di folder sementara, tidak dipasang dan tidak disalin). Pesan untuk pengguna, notifikasi, dan template PDF sudah spesifik; tidak ada pesan error generik, tanda seru, atau em dash di `app/`, `lang/`, dan `resources/`. Temuan dan tindakannya:
+
+1. Diperbaiki: `PengaturanService::namaAtribut()` memakai bagian sebelum `.*` sebagai nama field, sehingga item daftar yang kosong judulnya mendapat pesan "Program wajib diisi." (docblock-nya menyebut "judul"). Sekarang bagian terakhir kunci: "Judul wajib diisi.". Kunci tanpa `.*` dan daftar seperti `absensi.tanggal_libur.*` tidak berubah. Ditambah test.
+2. Diperbaiki: pengumuman demo "Pengingat pembayaran SPP September" (`KomunikasiDemoSeeder`) masih meminta wali mengunggah bukti transfer, padahal pembayaran hanya tunai sejak R3.
+3. Diperbaiki: relasi `Pendaftaran::pemroses()` tidak dipakai di mana pun (dihapus); komentar stub Laravel "Run the migrations." dan "Reverse the migrations." di migration `personal_access_tokens` (dihapus, migration lain tidak memakainya).
+4. Diperbaiki di branch `be/jam-absensi`, bukan di sini supaya tidak bentrok: komentar `pdf/bagian/kop.blade.php` yang menyebut kop hanya untuk kwitansi dan rapor.
+5. `check:slop` mendapat dua pola: pesan error generik ("terjadi kesalahan", "something went wrong", "oops") di file konten, dan komentar banner (`// ====`, `/* ----`, `# ----`) di luar test. Keduanya nol temuan di kode sekarang dan diuji dengan file sementara.
+6. Diusulkan: komentar banner `|----` di `config/*.php` adalah bawaan file konfigurasi Laravel. Tidak dihapus karena file itu disalin dari framework dan lebih mudah dibandingkan dengan versi Laravel berikutnya kalau tetap utuh.
+7. Diperbaiki setelah disetujui pemilik repo: pesan format tanggal dan jam di `PUT /pengaturan` menyebut format mesin ("Buka tidak cocok dengan format H:i."). `PengaturanService::pesanFormat()` memberi pesan dengan contoh untuk setiap kunci beraturan `date_format:H:i` ("Isi jam dengan format JJ:MM, misalnya 07:15.") dan `date_format:Y-m-d` ("Isi tanggal dengan format TTTT-BB-HH, misalnya 2026-10-01."), termasuk kunci yang ditambahkan nanti. Pesan bawaan `lang/id/validation.php` untuk endpoint lain tidak diubah. Ditambah test.
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 
@@ -1035,6 +1047,13 @@ Diubah:
 - `storage/api-docs/api.json`: deskripsi `GET /absensi/hari-ini` dan `GET /absensi/rekap/export`; bentuk respons tidak berubah.
 
 Pengecekan: `php artisan test --compact` 1211 lolos di SQLite dan di MariaDB 10.11.14 (database terpisah `tk_ta8_uji`, container cloud dengan PHP 8.5.9 yang dibangun dari sumber); Pint, PHPStan, `check:slop` bersih. Test jam khusus diperiksa gagal (8 dari 13) saat `jamMasuk()` dan `jamPulang()` sementara dibuat selalu mengembalikan jam bawaan. Database dev MariaDB: `migrate:fresh --seed` dan `DemoSeeder`. Lewat FE (`next start`, Chromium 390 px, masuk sebagai Kepala Sekolah): jam khusus Jumat disimpan dan dibaca ulang, urutan jam salah ditolak di form, halaman Absensi hari Jumat 13 November menampilkan jam khusus, unduhan Excel (sheet Rekap Absensi dan Harian) dan PDF (25 halaman) untuk Agustus–Oktober. Belum diuji: HP sungguhan, Excel dan PDF dibuka di aplikasi kantor (isi dibaca dengan PhpSpreadsheet dan `pdftotext`).
+### Audit dan perbaikan AI-slop (branch `be/anti-slop`)
+
+Pasangan FE `fe/anti-slop`. Bagian A tidak berubah. Temuan di "Audit AI-slop".
+
+Diubah: `PengaturanService::namaAtribut()` dan `pesanFormat()`, `Pendaftaran` (relasi `pemroses()` dihapus), `database/seeders/Demo/KomunikasiDemoSeeder.php`, migration `2026_09_26_072119_create_personal_access_tokens_table.php` (komentar saja), `scripts/check-slop.sh`; test `PengaturanTest` (pesan validasi item daftar, pesan format jam dan tanggal).
+
+Pengecekan: `php artisan test --compact` lolos di SQLite dan di MariaDB 10.11.14 (database terpisah); Pint, PHPStan, `check:slop` bersih; `migrate:fresh --seed` dan `DemoSeeder` di MariaDB. Test baru gagal dengan kode `namaAtribut()` lama.
 
 ### Keputusan pemilik repo atas pertanyaan R3–R6 (branch `be/keputusan-revisi`)
 

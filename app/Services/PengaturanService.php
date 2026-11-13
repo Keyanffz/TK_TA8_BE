@@ -375,7 +375,28 @@ class PengaturanService
             }
         }
 
-        Validator::make($data, $aturanDipakai, [], $this->namaAtribut(array_keys($aturanDipakai)))->validate();
+        Validator::make($data, $aturanDipakai, $this->pesanFormat($aturanDipakai), $this->namaAtribut(array_keys($aturanDipakai)))->validate();
+    }
+
+    /**
+     * Pesan bawaan `date_format` menyebut format mesin ("H:i", "Y-m-d"), jadi kolom jam dan tanggal diberi pesan
+     * dengan contoh isian.
+     *
+     * @param  array<string, mixed>  $aturan
+     * @return array<string, string>
+     */
+    private function pesanFormat(array $aturan): array
+    {
+        $pesan = [];
+        foreach ($aturan as $pola => $satu) {
+            if (is_array($satu) && in_array('date_format:H:i', $satu, true)) {
+                $pesan["{$pola}.date_format"] = 'Isi jam dengan format JJ:MM, misalnya 07:15.';
+            } elseif (is_array($satu) && in_array('date_format:Y-m-d', $satu, true)) {
+                $pesan["{$pola}.date_format"] = 'Isi tanggal dengan format TTTT-BB-HH, misalnya 2026-10-01.';
+            }
+        }
+
+        return $pesan;
     }
 
     /**
@@ -388,7 +409,7 @@ class PengaturanService
     private function namaAtribut(array $pola): array
     {
         return collect($pola)->mapWithKeys(fn (string $satu): array => [
-            $satu => str_replace('_', ' ', Str::afterLast(Str::beforeLast($satu, '.*'), '.')),
+            $satu => str_replace('_', ' ', Str::afterLast(Str::replaceEnd('.*', '', $satu), '.')),
         ])->all();
     }
 

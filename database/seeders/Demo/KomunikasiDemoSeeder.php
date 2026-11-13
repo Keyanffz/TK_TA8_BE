@@ -62,7 +62,7 @@ class KomunikasiDemoSeeder extends Seeder
             ->pluck('id');
         $this->pengumuman($kepalaSekolah, TargetPengumuman::Murid, '2026-09-15 08:00:00',
             'Pengingat pembayaran SPP September',
-            'SPP bulan September sudah melewati jatuh tempo 10 September. Mohon segera melakukan pembayaran dan mengunggah bukti transfer di menu Tagihan, atau membayar tunai ke bendahara sekolah.')
+            'SPP bulan September sudah melewati jatuh tempo 10 September. Mohon segera dibayar tunai di sekolah kepada wali kelas atau bendahara; pembayaran boleh dicicil.')
             ->murid()->attach($menunggakSeptember);
 
         $this->pengumuman($kelasA2->waliKelas->user, TargetPengumuman::Kelas, null,
