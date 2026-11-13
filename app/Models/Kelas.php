@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Role;
 use App\Enums\StatusKelasMurid;
 use App\Enums\Tingkat;
+use Carbon\CarbonInterface;
 use Database\Factories\KelasFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-#[Fillable(['tahun_ajaran_id', 'nama', 'tingkat', 'wali_kelas_id', 'guru_pendamping_id', 'kapasitas'])]
+#[Fillable(['tahun_ajaran_id', 'nama', 'tingkat', 'wali_kelas_id', 'guru_pendamping_id', 'kapasitas', 'hari_sekolah'])]
 class Kelas extends Model
 {
     /** @use HasFactory<KelasFactory> */
@@ -34,7 +35,24 @@ class Kelas extends Model
         return [
             'tingkat' => Tingkat::class,
             'kapasitas' => 'integer',
+            'hari_sekolah' => 'array',
         ];
+    }
+
+    /**
+     * Hari sekolah mingguan absensi murid (nomor hari ISO, 1 = Senin), terpisah dari hari kerja absensi guru.
+     */
+    public function hariSekolah(CarbonInterface $tanggal): bool
+    {
+        return in_array($tanggal->dayOfWeekIso, $this->hari_sekolah, true);
+    }
+
+    public function liburPada(CarbonInterface $tanggal): ?LiburKelas
+    {
+        return $this->libur()
+            ->whereDate('tanggal_mulai', '<=', $tanggal->toDateString())
+            ->whereDate('tanggal_selesai', '>=', $tanggal->toDateString())
+            ->first();
     }
 
     /**
@@ -130,6 +148,14 @@ class Kelas extends Model
     public function kelasMurid(): HasMany
     {
         return $this->hasMany(KelasMurid::class);
+    }
+
+    /**
+     * @return HasMany<LiburKelas, $this>
+     */
+    public function libur(): HasMany
+    {
+        return $this->hasMany(LiburKelas::class);
     }
 
     /**

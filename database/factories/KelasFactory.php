@@ -26,6 +26,7 @@ class KelasFactory extends Factory
             'wali_kelas_id' => null,
             'guru_pendamping_id' => null,
             'kapasitas' => 20,
+            'hari_sekolah' => [1, 2, 3, 4, 5, 6],
         ];
     }
 }

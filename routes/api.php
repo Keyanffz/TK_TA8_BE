@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Absensi\AbsensiController;
 use App\Http\Controllers\Api\V1\Absensi\AbsenSusulanController;
 use App\Http\Controllers\Api\V1\AbsensiMurid\AbsensiMuridController;
+use App\Http\Controllers\Api\V1\AbsensiMurid\HariSekolahKelasController;
 use App\Http\Controllers\Api\V1\Agenda\AgendaController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\ProfilController;
@@ -199,6 +200,10 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/kelas/{id}/absensi-murid', [AbsensiMuridController::class, 'update']);
         Route::get('/kelas/{id}/absensi-murid/rekap', [AbsensiMuridController::class, 'rekap']);
         Route::get('/kelas/{id}/absensi-murid/rekap/export', [AbsensiMuridController::class, 'export']);
+        Route::get('/kelas/{id}/hari-sekolah', [HariSekolahKelasController::class, 'show']);
+        Route::put('/kelas/{id}/hari-sekolah', [HariSekolahKelasController::class, 'ubahHari']);
+        Route::post('/kelas/{id}/libur', [HariSekolahKelasController::class, 'tambahLibur']);
+        Route::delete('/kelas/{id}/libur/{libur_id}', [HariSekolahKelasController::class, 'hapusLibur']);
         Route::get('/kelas/{id}/rapor/pdf', [RaporController::class, 'pdfKelas']);
         Route::get('/elemen-penilaian', [ElemenPenilaianController::class, 'index']);
 
