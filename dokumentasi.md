@@ -38,6 +38,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Revisi sekolah R3: pembayaran tunai dengan cicilan, wali kelas ikut mencatat, pembatalan pembayaran (branch `be/pembayaran-tunai-cicilan`, di atas `be/revisi-kecil`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang berubah |
 | Revisi sekolah R4: ekspor rekap absensi .xlsx dan PDF, lampiran koreksi, akses absen susulan (branch `be/absensi-ekspor-susulan`, di atas `be/pembayaran-tunai-cicilan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint yang baru dan berubah |
 | Revisi sekolah R5: absensi murid per kelas oleh guru kelas (branch `be/absensi-murid`, di atas `be/absensi-ekspor-susulan`) | Selesai, menunggu review; test SQLite dan MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru |
+| Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`, di atas `be/absensi-murid`) | Selesai, menunggu review; test SQLite, test rapor dan absensi murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop`, uji curl endpoint baru. Template kertas rapor menunggu contoh dari sekolah |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -60,7 +61,7 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Laporan (izin lihat keuangan) | `GET /laporan/keuangan`, `GET /laporan/keuangan/export`, `GET /laporan/tunggakan` |
 | Kegiatan kelas | `GET /kegiatan`, `GET /kegiatan/{id}` (SA, G kelas diampu, W kelas anak), `POST /kegiatan`, `PUT/DELETE /kegiatan/{id}`, `POST /kegiatan/{id}/foto`, `PUT/DELETE /kegiatan-foto/{id}` (G pembuat, SA) |
 | Elemen penilaian | `GET /elemen-penilaian` (SA, G), `POST /elemen-penilaian`, `PUT/DELETE /elemen-penilaian/{id}` (SA) |
-| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu; wali murid 403), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
+| Rapor | `GET /rapor`, `GET /rapor/{id}`, `GET /rapor/{id}/pdf` (SA, G kelas diampu; wali murid 403), `GET /kelas/{id}/rapor/pdf?semester=` (rapor terbit satu kelas dalam satu PDF; SA, wali kelas dan guru pendamping kelas itu), `POST /rapor` (G, SA; hanya kelas yang diampu), `PUT /rapor/{id}` (guru pembuat saat draft/revisi, SA saat diajukan), `POST /rapor/{id}/detail/{detail_id}/foto`, `POST /rapor/{id}/ajukan` (guru pembuat), `POST /rapor/{id}/terbitkan`, `POST /rapor/{id}/revisi`, `POST /rapor/{id}/tarik` (SA) |
 | Pengumuman | `GET /pengumuman`, `GET /pengumuman/{id}` (feed per role; izin lihat pengumuman semua), `POST /pengumuman` (SA, G; target bebas untuk izin kelola pengumuman), `PUT/DELETE /pengumuman/{id}` (penulis, SA, izin kelola pengumuman); lampiran opsional lewat multipart (`lampiran`, dan `hapus_lampiran` di `PUT`) |
 | Agenda | `GET /agenda?bulan=` (semua), `POST /agenda`, `PUT/DELETE /agenda/{id}` (SA) |
 | Notifikasi | `GET /notifikasi`, `GET /notifikasi/belum-dibaca`, `POST /notifikasi/{id}/baca`, `POST /notifikasi/baca-semua` (semua) |
@@ -138,6 +139,14 @@ Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon d
 5. Daftar harian dan rekap ikut menampilkan murid yang penempatannya sudah tidak aktif tetapi punya absensi di kelas itu pada tanggal atau bulan tersebut.
 6. Tidak ada log aktivitas per penyimpanan; `dicatat_oleh` berisi pencatat terakhir. Tidak ada notifikasi. `DemoSeeder` belum diisi absensi murid.
 7. Pencarian baris lama memakai `whereDate`, bukan `updateOrCreate`: kolom date bercast tersimpan dengan jam di SQLite sehingga `updateOrCreate` membuat baris kedua dan melanggar unique (ditemukan oleh test).
+
+### Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`)
+
+1. `GET /kelas/{id}/rapor/pdf?semester=1|2` sesuai rancangan R0: semua rapor `terbit` kelas dan semester itu di tahun ajaran kelas, urut nama, tiap murid halaman baru. Rapor yang belum terbit tidak ikut (tidak ada pratinjau satu kelas).
+2. **Template kertas rapor belum ada.** Ekspor memakai template rapor sekarang. Template dipecah menjadi `pdf/bagian/gaya-rapor.blade.php` (gaya) dan `pdf/bagian/isi-rapor.blade.php` (isi satu rapor); saat contoh kertas dari sekolah datang (logo TK sebagai latar di tengah halaman dan detail lain), cukup dua file itu yang diubah dan PDF per murid ikut berubah.
+3. Akses sama dengan absensi murid (`Kelas::untukPengampu()`): Kepala Sekolah kelas mana pun, wali kelas dan guru pendamping hanya kelasnya di tahun ajaran aktif. Guru pendamping ikut boleh (asumsi A7 R0).
+4. Nama file memakai tahun ajaran dengan tanda hubung (`rapor-tk-a1-2026-2027-semester-1.pdf`). PDF per murid yang sudah ada tetap `...-20262027-...` (tidak diubah di fase ini).
+5. PDF dibuat sekaligus dalam satu request. Untuk satu kelas (sekitar 20 murid) dengan foto per elemen, waktu dan memori dompdf belum diukur dengan data sebesar itu; data demo hanya 4 rapor terbit tanpa foto.
 
 ## Keputusan yang sudah diterapkan
 
@@ -938,6 +947,16 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R6: ekspor rapor satu kelas (branch `be/ekspor-rapor-kelas`)
+
+Diminta sekolah (revisi 9). Bagian A (A2.8, A3, A7) dan B4, B6.9 diperbarui; Bagian A tetap identik dengan PROMPT FE.
+
+Baru: `resources/views/pdf/rapor-kelas.blade.php`, `pdf/bagian/gaya-rapor.blade.php`, `pdf/bagian/isi-rapor.blade.php`, `app/Http/Requests/Rapor/RaporKelasPdfRequest.php`, `tests/Feature/Rapor/RaporKelasPdfTest.php` (6 test).
+
+Diubah: `RaporPdfService` (`isi()`, `buatKelas()`, `isiKelas()`, `namaFileKelas()`), `RaporController::pdfKelas()`, `resources/views/pdf/rapor.blade.php` (memakai partial), `Kelas::untukPengampu()` (dipindah dari `AbsensiMuridService`), `AbsensiMuridController`, `routes/api.php`, `storage/api-docs/api.json`.
+
+Pengecekan: `php artisan test --compact` 1163 lolos di SQLite; `tests/Feature/Rapor` dan `tests/Feature/AbsensiMurid` (58 test) lolos di MariaDB 13.0.2 (tanpa migration baru); Pint, PHPStan, `check:slop` bersih. Uji curl dengan database uji berisi `DemoSeeder`: PDF TK B1 semester 1 sebagai wali kelas (200, 4 halaman, 4 rapor urut nama, dicek dengan `pdfinfo` dan `pdftotext`), semester 2 (422), wali kelas lain (404). Lewat proxy FE: PDF yang sama.
 
 ### Revisi sekolah R5: absensi murid per kelas (branch `be/absensi-murid`)
 
