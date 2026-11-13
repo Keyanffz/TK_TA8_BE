@@ -110,6 +110,9 @@ class MuridService
         DB::transaction(function () use ($murid, $penghapus): void {
             $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $penghapus);
             $murid->kelasMurid()->delete();
+            // NISN berindeks unik dan baris ini hanya di-soft-delete; tanpa dikosongkan, murid yang dimasukkan ulang
+            // dengan NISN yang sama akan ditolak.
+            $murid->update(['nisn' => null]);
             $murid->delete();
         });
     }

@@ -33,6 +33,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Lampiran pengumuman (branch `be/lampiran-pengumuman`) | Selesai, diuji (test di SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, uji manual lewat curl; lihat Changelog), disetujui, di-merge (PR #17) |
 | PHP minimum 8.5 (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, dan `check:slop` di PHP 8.5.9; di-merge (PR #18) |
 | Pesan unggahan yang ditolak PHP (branch `ccr-321f1c6b-kacabx`) | Selesai, diminta pemilik repo; test SQLite, Pint, PHPStan, `check:slop`, dan uji manual dengan `upload_max_filesize=2M`; di-merge (PR #19) |
+| Revisi sekolah R1: NISN murid yang dihapus bisa dipakai lagi (branch `be/perbaikan-tambah-murid`) | Selesai, menunggu review; test SQLite, test murid di MariaDB 13.0.2, Pint, PHPStan, `check:slop` |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -77,7 +78,11 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 
 Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon ditinjau; yang tidak disetujui akan diubah.
 
-Saat ini tidak ada.
+### Revisi sekolah R1: NISN murid yang dihapus (branch `be/perbaikan-tambah-murid`)
+
+1. `DELETE /murid/{id}` mengosongkan `nisn` baris yang dihapus. Baris itu hanya di-soft-delete dan `nisn` berindeks unik, jadi tanpa dikosongkan murid yang dimasukkan ulang dengan NISN yang sama ditolak, baik lewat formulir (422 "NISN sudah digunakan.") maupun import ("NISN ... sudah dipakai ..."). Murid yang boleh dihapus hanya yang belum punya tagihan, rapor, atau data PPDB, dan tidak ada fitur memulihkan murid, jadi NISN di baris terhapus tidak dipakai lagi.
+2. Migration `2026_11_12_100000_kosongkan_nisn_murid_terhapus` mengosongkan `nisn` murid yang sudah terhapus sebelum perbaikan ini. Migration ini mengubah data dan tidak punya `down()`; yang berubah hanya baris dengan `deleted_at` terisi. Kalau tidak disetujui, hapus file migration itu sebelum merge.
+3. Penyebab murid tidak tersimpan di production belum terbukti. Cacat NISN ini satu-satunya yang bisa dibuktikan di lokal; daftar yang perlu dicek dari log VPS ada di laporan fase R1.
 
 ## Keputusan yang sudah diterapkan
 
@@ -878,6 +883,21 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Revisi sekolah R1: NISN murid yang dihapus bisa dipakai lagi (branch `be/perbaikan-tambah-murid`)
+
+Revisi 3 dari sekolah (murid baru tidak tersimpan). Alur tambah murid, akun wali otomatis, import, dan ubah status lolos uji di MariaDB lokal; yang ditemukan dan diperbaiki adalah NISN murid terhapus yang tetap terkunci. Keputusan di "Keputusan menunggu review".
+
+Baru:
+
+- `database/migrations/2026_11_12_100000_kosongkan_nisn_murid_terhapus.php`.
+- Test di `ManajemenMuridTest` (NISN murid yang dihapus bisa dipakai saat murid dimasukkan ulang) dan `ImportMuridTest` (baris dengan NISN murid terhapus diterima). Keduanya gagal dengan kode lama.
+
+Diubah:
+
+- `app/Services/MuridService.php`: `hapus()` mengosongkan `nisn` sebelum soft delete. Validasi formulir dan pemeriksaan duplikat import tidak diubah karena keduanya membaca kolom yang sama.
+
+Pengecekan: `php artisan test --compact` (SQLite) 1108 lolos; `tests/Feature/Murid` di MariaDB 13.0.2 83 lolos; Pint, PHPStan, `check:slop` bersih. Migration dicoba di database uji MariaDB: NISN baris terhapus menjadi kosong dan bisa dipakai murid baru. Kontrak API tidak berubah, `api.json` tidak diekspor ulang.
 
 ### Ejaan nama sekolah "Tarbiyatul" (branch `be/ejaan-nama-sekolah`)
 

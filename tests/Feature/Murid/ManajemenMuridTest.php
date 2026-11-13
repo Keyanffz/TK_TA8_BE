@@ -121,6 +121,16 @@ it('menghapus murid yang salah input beserta penempatannya', function () {
         ->and($kelas->kelasMurid()->count())->toBe(0);
 });
 
+it('membebaskan NISN murid yang dihapus supaya bisa dipakai saat murid itu dimasukkan ulang', function () {
+    $salahInput = Murid::factory()->create(['nisn' => '0221234567']);
+
+    $this->actingAs($this->kepsek)->deleteJson("/api/v1/murid/{$salahInput->id}")->assertOk();
+
+    $this->postJson('/api/v1/murid', dataMurid(['nisn' => '0221234567']))
+        ->assertCreated()
+        ->assertJsonPath('data.nisn', '0221234567');
+});
+
 it('menolak menghapus murid yang sudah punya tagihan atau rapor', function (Closure $riwayat) {
     $murid = Murid::factory()->create();
     $riwayat($murid);
