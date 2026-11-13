@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use App\Enums\StatusKelasMurid;
 use App\Enums\Tingkat;
 use Database\Factories\KelasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 #[Fillable(['tahun_ajaran_id', 'nama', 'tingkat', 'wali_kelas_id', 'guru_pendamping_id', 'kapasitas'])]
 class Kelas extends Model
@@ -48,6 +50,22 @@ class Kelas extends Model
             ->where(fn (Builder $kelas) => $kelas
                 ->whereIn('wali_kelas_id', $guruIds)
                 ->orWhereIn('guru_pendamping_id', $guruIds));
+    }
+
+    /**
+     * Kelas untuk fitur khusus pengampu (absensi murid, ekspor rapor kelas): Kepala Sekolah kelas mana pun, guru hanya
+     * kelas yang ia ampu di tahun ajaran aktif. Izin modul tidak membuka kelas lain; kelas di luar jangkauan → 404.
+     *
+     * @throws NotFoundHttpException
+     */
+    public static function untukPengampu(int $id, User $user): self
+    {
+        $query = self::query()->with('tahunAjaran');
+        if ($user->role !== Role::SuperAdmin) {
+            $query->diampuOleh($user);
+        }
+
+        return $query->find($id) ?? throw new NotFoundHttpException;
     }
 
     /**

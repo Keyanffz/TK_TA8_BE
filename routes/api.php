@@ -199,6 +199,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/kelas/{id}/absensi-murid', [AbsensiMuridController::class, 'update']);
         Route::get('/kelas/{id}/absensi-murid/rekap', [AbsensiMuridController::class, 'rekap']);
         Route::get('/kelas/{id}/absensi-murid/rekap/export', [AbsensiMuridController::class, 'export']);
+        Route::get('/kelas/{id}/rapor/pdf', [RaporController::class, 'pdfKelas']);
         Route::get('/elemen-penilaian', [ElemenPenilaianController::class, 'index']);
 
         // Izin per grup diperiksa di controller: grup pengaturan diatur modul yang berbeda-beda.
