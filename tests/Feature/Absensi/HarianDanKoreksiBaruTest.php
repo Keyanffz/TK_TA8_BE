@@ -323,7 +323,7 @@ it('mencatat absen pulang tanpa status, waktu, lokasi, dan foto setelah absen ma
     $log = Activity::query()->where('log_name', 'absensi')->where('subject_id', $absensi['id'])->sole();
     expect($log->event)->toBe('dikoreksi')
         ->and($log->causer_id)->toBe($this->kepsek->id)
-        ->and($log->description)->toBe('Mencatat absen pulang 2026-10-01')
+        ->and($log->description)->toBe('Mencatat absen pulang Hj. Umi Kulsum, S.Pd. 2026-10-01')
         ->and($log->properties->all())->toBe([
             'user_id' => $this->kepsek->id, 'tanggal' => '2026-10-01', 'jenis' => 'pulang', 'sebelum' => null, 'sesudah' => null,
             'catatan' => 'Pulang 12:00 bersama rombongan, lupa absen.',

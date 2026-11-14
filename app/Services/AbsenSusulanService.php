@@ -69,7 +69,7 @@ class AbsenSusulanService
                 'diberikan_oleh' => $pelaku->id,
                 'berlaku_sampai' => today()->endOfDay(),
             ]);
-            $this->catatLog($akses, $pelaku, 'susulan_diberikan', "Memberi akses absen {$jenis->value} susulan {$akses->tanggal->toDateString()}");
+            $this->catatLog($akses, $pelaku, 'susulan_diberikan', "Memberi akses absen {$jenis->value} susulan {$peserta->name} {$akses->tanggal->toDateString()}");
 
             return $akses;
         });
@@ -90,7 +90,7 @@ class AbsenSusulanService
         }
 
         DB::transaction(function () use ($akses, $pelaku): void {
-            $this->catatLog($akses, $pelaku, 'susulan_dicabut', "Mencabut akses absen {$akses->jenis->value} susulan {$akses->tanggal->toDateString()}");
+            $this->catatLog($akses, $pelaku, 'susulan_dicabut', "Mencabut akses absen {$akses->jenis->value} susulan {$akses->loadMissing('user')->user->name} {$akses->tanggal->toDateString()}");
             $akses->delete();
         });
     }

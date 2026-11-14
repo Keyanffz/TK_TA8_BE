@@ -45,6 +45,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Jam absensi per rentang tanggal, misalnya Ramadan (branch `be/jam-tanggal`) | Selesai, di-merge (PR #31); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`; lihat Changelog |
 | Audit dan perbaikan AI-slop (branch `be/anti-slop`; FE `fe/anti-slop`) | Selesai, di-merge (PR #30); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, `DemoSeeder` di MariaDB |
 | Teks izin Keuangan dari uji browser 14 November (branch `be/perbaikan-uji-browser`; FE `fe/perbaikan-uji-browser`) | Selesai, di-merge (PR #32; FE #38); test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, dialog Atur Izin dicek di browser |
+| Nama peserta di log absensi dan teks onboarding A6 dari uji browser 14 November (branch `be/temuan-kecil-uji`; FE `fe/temuan-kecil-uji`) | Selesai, di-merge (PR #33; FE #39); test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, log aktivitas dicek di browser |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -1020,6 +1021,16 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Nama peserta di log absensi dan teks onboarding (branch `be/temuan-kecil-uji`)
+
+Pasangan FE `fe/temuan-kecil-uji`. Bagian A diperbarui (A6) dan tetap identik dengan PROMPT FE.
+
+- A6 flowchart onboarding: "nama, no HP, alamat, pekerjaan wajib; NIK opsional", sesuai aturan `profil_lengkap` di A7 yang sudah dijalankan `WaliMuridService`. Keputusan pemilik repo; kode tidak berubah.
+- Keterangan log aktivitas absensi menyebut nama peserta: koreksi dan pencatatan absen (`AbsensiService::catatKoreksi`), beri dan cabut akses susulan (`AbsenSusulanService`). Sebelumnya hanya tanggal, sehingga Kepala Sekolah tidak tahu absensi siapa yang diubah.
+- Test: keterangan log Catat Absen Pulang dan beri akses susulan diperiksa beserta namanya.
+
+Pengecekan: `php artisan test` (SQLite, 1228 lolos), Pint, PHPStan, `composer check:slop` bersih. Log beri dan cabut akses susulan Linda dicek di halaman Log Aktivitas FE.
 
 ### Teks izin Keuangan (branch `be/perbaikan-uji-browser`)
 
