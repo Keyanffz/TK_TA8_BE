@@ -44,6 +44,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Jam absensi per hari dan jam masuk/pulang di ekspor rekap (branch `be/jam-absensi`) | Selesai, di-merge (PR #29); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, ekspor `api.json`, unduhan lewat proxy FE; lihat Changelog |
 | Jam absensi per rentang tanggal, misalnya Ramadan (branch `be/jam-tanggal`) | Selesai, di-merge (PR #31); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`; lihat Changelog |
 | Audit dan perbaikan AI-slop (branch `be/anti-slop`; FE `fe/anti-slop`) | Selesai, di-merge (PR #30); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, `DemoSeeder` di MariaDB |
+| Teks izin Keuangan dari uji browser 14 November (branch `be/perbaikan-uji-browser`; FE `fe/perbaikan-uji-browser`) | Selesai, menunggu review; test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, dialog Atur Izin dicek di browser |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -1019,6 +1020,14 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### Teks izin Keuangan (branch `be/perbaikan-uji-browser`)
+
+Pasangan FE `fe/perbaikan-uji-browser`. Bagian A tidak berubah. Uji browser 14 November menemukan keterangan modul Keuangan di dialog Atur Izin masih menyebut "catat dan verifikasi pembayaran", padahal sejak pembayaran tunai (A2.5) tidak ada verifikasi.
+
+- `ModulIzin::deskripsi()` untuk Keuangan: "Kelola: keringanan, tagihan sekali bayar, ubah tagihan, catat pembayaran tunai."
+
+Pengecekan: `php artisan test` (SQLite, 1228 lolos), Pint, PHPStan, `composer check:slop` bersih. Teks baru tampil di dialog Atur Izin lewat FE.
 
 ### Jam absensi per rentang tanggal (branch `be/jam-tanggal`)
 
