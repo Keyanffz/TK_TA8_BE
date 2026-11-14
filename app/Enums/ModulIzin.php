@@ -28,7 +28,7 @@ enum ModulIzin: string
     public function deskripsi(): string
     {
         return match ($this) {
-            self::Keuangan => 'Lihat: semua tagihan, pembayaran, keringanan, laporan, dan tunggakan. Kelola: keringanan, tagihan sekali bayar, ubah tagihan, catat dan verifikasi pembayaran.',
+            self::Keuangan => 'Lihat: semua tagihan, pembayaran, keringanan, laporan, dan tunggakan. Kelola: keringanan, tagihan sekali bayar, ubah tagihan, catat pembayaran tunai.',
             self::KontenWebsite => 'Lihat: isi profil sekolah, landing page, banner beranda wali, dan galeri. Kelola: mengubah semuanya dan mengunggah gambar.',
             self::LaporanAbsensi => 'Lihat: rekap, absensi harian, dan riwayat beserta foto semua peserta. Kelola: koreksi status dan catat absen peserta lain.',
             self::DataMurid => 'Lihat: semua murid dan alumni. Kelola: tambah, ubah, hapus, ubah status, luluskan kelas, import, dan kartu akun wali.',
