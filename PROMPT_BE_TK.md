@@ -372,7 +372,7 @@ flowchart TD
     L -->|Ya| M[Ganti password awal, tidak boleh tanggal lahir anak]
     M --> N{profil_lengkap?}
     L -->|Tidak| N
-    N -->|Tidak| O[Onboarding: nama & no HP wajib, NIK, alamat, pekerjaan opsional]
+    N -->|Tidak| O[Onboarding: nama, no HP, alamat, pekerjaan wajib; NIK opsional]
     N -->|Ya| H
     O --> H
     H -->|Wali punya kakak/adik| P[Tambah anak: NIS + tanggal lahir]

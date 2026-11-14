@@ -363,6 +363,7 @@ class AbsensiService
     private function catatKoreksi(Absensi $absensi, ?StatusAbsensi $sebelum, User $pelaku): void
     {
         $tanggal = $absensi->tanggal->toDateString();
+        $nama = $absensi->loadMissing('user')->user->name;
 
         activity('absensi')->performedOn($absensi)->causedBy($pelaku)->event('dikoreksi')
             ->withProperties([
@@ -370,8 +371,8 @@ class AbsensiService
                 'sebelum' => $sebelum?->value, 'sesudah' => $absensi->status?->value, 'catatan' => $absensi->catatan_koreksi,
             ])
             ->log($absensi->jenis === JenisAbsensi::Pulang
-                ? "Mencatat absen pulang {$tanggal}"
-                : "Mengoreksi absensi {$tanggal} menjadi {$absensi->status?->label()}");
+                ? "Mencatat absen pulang {$nama} {$tanggal}"
+                : "Mengoreksi absensi {$nama} {$tanggal} menjadi {$absensi->status?->label()}");
 
         if ($absensi->user_id !== $pelaku->id) {
             $absensi->loadMissing('user')->user->notify(new AbsensiDikoreksiNotification($absensi, $absensi->wasRecentlyCreated, $pelaku));

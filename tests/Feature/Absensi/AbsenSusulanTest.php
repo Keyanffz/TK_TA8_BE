@@ -52,7 +52,10 @@ it('memberi akses susulan, memberi tahu peserta, dan mencatat log', function () 
         'jenis' => 'absensi_susulan_diberikan',
         'pesan' => 'Anda bisa absen masuk untuk Senin, 5 Oktober 2026 dengan swafoto, berlaku sampai 5 Oktober 2026 pukul 23:59. Catatan: Wifi sekolah mati sejak pagi.',
         'url' => '/mudarris/absensi',
-    ])->and(Activity::query()->where('log_name', 'absensi')->sole()->event)->toBe('susulan_diberikan');
+    ]);
+    $log = Activity::query()->where('log_name', 'absensi')->sole();
+    expect($log->event)->toBe('susulan_diberikan')
+        ->and($log->description)->toBe("Memberi akses absen masuk susulan {$this->rina->name} 2026-10-05");
 
     $this->actingAs($this->rina)->getJson('/api/v1/absensi/hari-ini')
         ->assertJsonCount(1, 'data.susulan')
