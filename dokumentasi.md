@@ -46,7 +46,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Audit dan perbaikan AI-slop (branch `be/anti-slop`; FE `fe/anti-slop`) | Selesai, di-merge (PR #30); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, `DemoSeeder` di MariaDB |
 | Teks izin Keuangan dari uji browser 14 November (branch `be/perbaikan-uji-browser`; FE `fe/perbaikan-uji-browser`) | Selesai, di-merge (PR #32; FE #38); test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, dialog Atur Izin dicek di browser |
 | Nama peserta di log absensi dan teks onboarding A6 dari uji browser 14 November (branch `be/temuan-kecil-uji`; FE `fe/temuan-kecil-uji`) | Selesai, di-merge (PR #33; FE #39); test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, log aktivitas dicek di browser |
-| NIS murid diisi Kepala Sekolah, akun wali dibuat saat NIS diisi (branch `be/nis-manual`) | Fase 2 (BE) selesai, menunggu review; FE (Fase 3) belum. Test SQLite dan MariaDB uji (1248 lolos), Pint, PHPStan, `check:slop`, migrate/rollback di database uji, ekspor `api.json`; lihat Changelog |
+| NIS murid diisi Kepala Sekolah, akun wali dibuat saat NIS diisi (branch `be/nis-manual`) | Selesai bersama FE `fe/nis-manual`, menunggu review. Test SQLite dan MariaDB uji (1248 lolos), Pint, PHPStan, `check:slop`, migrate/rollback di database uji, ekspor `api.json`; lihat Changelog |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -1036,7 +1036,7 @@ Diambil selama Fase 3:
 
 ### NIS murid diisi Kepala Sekolah (branch `be/nis-manual`)
 
-Pasangan FE `fe/nis-manual` (Fase 3, belum dikerjakan). Bagian A diperbarui (A2.1, A2.2, A2.3, A2.14, A3, A4 `murid.nis`, flowchart A6 autentikasi, PPDB, import, dan NIS murid baru, A7 murid, NIS, PPDB, dashboard, notifikasi) dan disalin ke PROMPT FE. B2, B6.8, B6.11, B6.17, B6.19 (baru), dan B7 diperbarui. Kontrak rinci di `docs/kontrak-api-fitur-baru.md` bagian 5 (juga disalin ke FE).
+Pasangan FE `fe/nis-manual`. Bagian A diperbarui (A2.1, A2.2, A2.3, A2.14, A3, A4 `murid.nis`, flowchart A6 autentikasi, PPDB, import, dan NIS murid baru, A7 murid, NIS, PPDB, dashboard, notifikasi) dan disalin ke PROMPT FE. B2, B6.8, B6.11, B6.17, B6.19 (baru), dan B7 diperbarui. Kontrak rinci di `docs/kontrak-api-fitur-baru.md` bagian 5 (juga disalin ke FE).
 
 File baru:
 - `database/migrations/2026_11_16_100000_nis_murid_diisi_kepala_sekolah.php`: `murid.nis` nullable `string(20)`. `down()` berhenti kalau ada murid tanpa NIS atau NIS lebih dari 10 karakter.
