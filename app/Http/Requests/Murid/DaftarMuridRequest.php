@@ -20,11 +20,12 @@ class DaftarMuridRequest extends FormRequest
         return [
             ...$this->aturanDaftar(),
             ...$this->aturanUrutan(['nama', 'nis', 'created_at', 'tahun_lulus']),
-            'filter' => ['sometimes', 'array:kelas_id,status,tingkat,tahun_lulus'],
+            'filter' => ['sometimes', 'array:kelas_id,status,tingkat,tahun_lulus,menunggu_nis'],
             'filter.kelas_id' => ['sometimes', 'integer'],
             'filter.status' => ['sometimes', Rule::enum(StatusMurid::class)],
             'filter.tingkat' => ['sometimes', Rule::enum(Tingkat::class)],
             'filter.tahun_lulus' => ['sometimes', 'integer'],
+            'filter.menunggu_nis' => ['sometimes', Rule::in(['true', 'false', '1', '0'])],
         ];
     }
 }

@@ -78,7 +78,7 @@ it('mengisi beranda Kepala Sekolah dengan statistik, keuangan, grafik, dan tinda
         ->assertOk()
         ->assertJsonPath('data.statistik', ['murid_aktif' => 3, 'guru_aktif' => 2, 'kelas' => 2, 'wali_murid' => 1])
         ->assertJsonPath('data.keuangan_bulan_ini', ['total_tagihan' => 450000, 'terbayar' => 200000, 'belum_terbayar' => 250000, 'persen_lunas' => 44.4])
-        ->assertJsonPath('data.tertunda', ['rapor_diajukan' => 1, 'pendaftaran_baru' => 1])
+        ->assertJsonPath('data.tertunda', ['rapor_diajukan' => 1, 'pendaftaran_baru' => 1, 'murid_menunggu_nis' => 0])
         ->assertJsonCount(1, 'data.pengumuman_terbaru')
         ->assertJsonCount(1, 'data.agenda_mendatang');
 

@@ -61,17 +61,15 @@ class ImportMuridController extends Controller
 
     /**
      * Memeriksa ulang file yang sama, lalu menyimpan semua baris valid dalam satu transaksi; baris invalid dilewati
-     * dan dikembalikan di `gagal` dengan bentuk yang sama seperti pratinjau. Murid aktif dibuatkan akun wali otomatis
-     * (username NIS, password awal tanggal lahir DDMMYYYY, wajib diganti) dan ditempatkan di `kelas` kalau diisi.
-     * Murid lulus, pindah, dan keluar disimpan tanpa akun wali dan tidak ikut generate tagihan. Dicatat di log
-     * aktivitas `murid` (event `diimpor`).
+     * dan dikembalikan di `gagal` dengan bentuk yang sama seperti pratinjau. Murid disimpan tanpa NIS; akun wali murid
+     * aktif dibuat saat Kepala Sekolah mengisi NIS. Murid aktif ditempatkan di `kelas` kalau diisi. Murid lulus,
+     * pindah, dan keluar tidak ikut generate tagihan. Dicatat di log aktivitas `murid` (event `diimpor`).
      *
      * @response array{
      *     success: true,
      *     message: string,
      *     data: array{
      *         dibuat: int,
-     *         akun_wali_dibuat: int,
      *         gagal: list<array{
      *             nomor: int,
      *             data: array{nama_lengkap: string|null, nama_panggilan: string|null, nisn: string|null, nik: string|null, jenis_kelamin: string|null, tempat_lahir: string|null, tanggal_lahir: string|null, agama: string|null, alamat: string|null, anak_ke: string|null, catatan_khusus: string|null, tanggal_masuk: string|null, status: string, tanggal_status: string|null, tahun_lulus: string|null, sekolah_tujuan: string|null, keterangan: string|null, kelas: string|null},

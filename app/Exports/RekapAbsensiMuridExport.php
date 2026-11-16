@@ -15,7 +15,7 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 class RekapAbsensiMuridExport implements FromArray, ShouldAutoSize, WithHeadings, WithStrictNullComparison, WithTitle
 {
     /**
-     * @param  list<array{murid: array{id: int, nis: string, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>  $murid
+     * @param  list<array{murid: array{id: int, nis: string|null, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>  $murid
      */
     public function __construct(private readonly array $murid) {}
 

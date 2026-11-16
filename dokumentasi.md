@@ -46,6 +46,7 @@ REST API untuk sistem informasi TK Tarbiyatul Athfal 8. Dipakai oleh frontend Ne
 | Audit dan perbaikan AI-slop (branch `be/anti-slop`; FE `fe/anti-slop`) | Selesai, di-merge (PR #30); test SQLite dan MariaDB 10.11.14, Pint, PHPStan, `check:slop`, `DemoSeeder` di MariaDB |
 | Teks izin Keuangan dari uji browser 14 November (branch `be/perbaikan-uji-browser`; FE `fe/perbaikan-uji-browser`) | Selesai, di-merge (PR #32; FE #38); test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, dialog Atur Izin dicek di browser |
 | Nama peserta di log absensi dan teks onboarding A6 dari uji browser 14 November (branch `be/temuan-kecil-uji`; FE `fe/temuan-kecil-uji`) | Selesai, di-merge (PR #33; FE #39); test SQLite (1228 lolos), Pint, PHPStan, `check:slop`, log aktivitas dicek di browser |
+| NIS murid diisi Kepala Sekolah, akun wali dibuat saat NIS diisi (branch `be/nis-manual`) | Selesai bersama FE `fe/nis-manual`, menunggu review. Test SQLite dan MariaDB uji (1248 lolos), Pint, PHPStan, `check:slop`, migrate/rollback di database uji, ekspor `api.json`; lihat Changelog |
 
 Endpoint yang sudah ada (prefix `/api/v1`):
 
@@ -60,7 +61,8 @@ Endpoint yang sudah ada (prefix `/api/v1`):
 | Wali (W) | `PUT /wali/profil`, `POST /wali/tambah-anak`, `GET /wali/anak` |
 | Tahun ajaran | `GET /tahun-ajaran` (SA, G), `POST /tahun-ajaran`, `PUT/DELETE /tahun-ajaran/{id}`, `POST /tahun-ajaran/{id}/aktifkan` (SA) |
 | Kelas | `GET /kelas`, `GET /kelas/{id}` (SA, G terbatas), `POST /kelas`, `PUT/DELETE /kelas/{id}`, `POST /kelas/{id}/murid`, `DELETE /kelas/{id}/murid/{murid_id}`, `POST /kelas/kenaikan` (SA) |
-| Murid | `GET /murid`, `GET /murid/{id}` (SA dan izin lihat data murid semua, G terbatas, W anak sendiri; filter `tahun_lulus` untuk alumni), `GET /murid/tahun-lulus` (izin lihat data murid), `POST /murid`, `PUT/DELETE /murid/{id}`, `GET /murid/{id}/kartu-akun`, `PATCH /murid/{id}/status`, `POST /murid/status-massal`, `GET /murid/import/template`, `POST /murid/import/pratinjau`, `POST /murid/import` (izin kelola data murid), `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
+| Murid | `GET /murid`, `GET /murid/{id}` (SA dan izin lihat data murid semua, G terbatas, W anak sendiri; filter `tahun_lulus` untuk alumni, `menunggu_nis` untuk murid tanpa NIS), `GET /murid/tahun-lulus` (izin lihat data murid), `POST /murid`, `PUT/DELETE /murid/{id}`, `GET /murid/{id}/kartu-akun`, `PATCH /murid/{id}/status`, `POST /murid/status-massal`, `GET /murid/import/template`, `POST /murid/import/pratinjau`, `POST /murid/import` (izin kelola data murid), `PATCH /murid/{id}/wali/{wali_murid_id}`, `DELETE /murid/{id}/wali/{wali_murid_id}` (SA) |
+| NIS murid (SA) | `PATCH /murid/{id}/nis`, `GET /murid/nis/template`, `POST /murid/nis/import/pratinjau`, `POST /murid/nis/import`, `POST /murid/nis/batch/pratinjau`, `POST /murid/nis/batch` |
 | Jenis tagihan | `GET /jenis-tagihan` (izin lihat keuangan), `POST /jenis-tagihan`, `PUT/DELETE /jenis-tagihan/{id}` (SA) |
 | Keringanan | `GET /keringanan` (izin lihat keuangan), `POST /keringanan`, `PUT/DELETE /keringanan/{id}` (K) |
 | Tagihan | `GET /tagihan`, `GET /tagihan/{id}` (izin lihat keuangan semua, G murid kelasnya, W anak sendiri), `POST /tagihan`, `PUT /tagihan/{id}` (K), `POST /tagihan/generate`, `PATCH /tagihan/{id}/batalkan`, `POST /tagihan/{id}/aktifkan` (SA) |
@@ -90,6 +92,16 @@ Command (bisa dijalankan manual, semua punya `--dry-run`): `tagihan:generate [--
 ## Keputusan menunggu review
 
 Keputusan yang diambil saat pengerjaan dan belum disetujui pemilik repo. Mohon ditinjau; yang tidak disetujui akan diubah.
+
+### NIS murid diisi Kepala Sekolah (branch `be/nis-manual`)
+
+Keputusan pemilik repo dari analisis Fase 1 (16 November): NIS diisi manual dengan format bebas, akun wali dibuat saat NIS diisi, username ikut berubah saat NIS diubah (sesi tetap, wali diberi notifikasi), tanpa notifikasi baru saat akun dibuat selain "pendaftaran diterima" yang sudah ada, simpan massal menyimpan baris valid dan melaporkan baris gagal, dan panel "Murid menunggu NIS" di beranda Kepala Sekolah. Yang diputuskan saat pengerjaan:
+
+1. Karakter NIS: huruf, angka, titik, strip, dan garis miring (contoh NIS dari sekolah belum dikirim; aturan ini mengikuti contoh `2026001`, `26.001`, `001/TA8` di permintaan). Garis miring di nama file kartu akun diganti `-`.
+2. "Menunggu NIS" dibaca dari `nis` null, tanpa kolom atau status murid baru, supaya tagihan, kelas, kenaikan, dan alumni tidak ikut berubah. Murid yang menunggu NIS tetap ikut generate tagihan seperti murid aktif lain.
+3. Mengubah NIS mengganti username akun yang username-nya sama dengan NIS lama, termasuk akun otomatis yang sudah dinonaktifkan, supaya NIS lama bebas dipakai lagi. Notifikasi hanya untuk akun aktif.
+4. Pengisian massal hanya untuk murid tanpa NIS; mengubah NIS hanya lewat `PATCH /murid/{id}/nis`. Import NIS hanya menerima `.xlsx`.
+5. Field `akun_wali_dibuat` dihapus dari respons `POST /murid/import` karena import tidak lagi membuat akun.
 
 ### Revisi sekolah R1: NISN murid yang dihapus (branch `be/perbaikan-tambah-murid`)
 
@@ -775,7 +787,7 @@ Middleware:
 - Login Google (`POST /auth/staff/google`) untuk guru dan Kepala Sekolah: `AuthService::loginGoogle()` memakai `GoogleIdTokenVerifier`, mencocokkan email dari token dengan akun yang ada (tidak pernah membuat akun), menyimpan `users.google_sub` saat login pertama, dan menolak akun Google lain dengan email yang sama. Guru hanya bisa login dengan cara ini.
 - Login password (`POST /auth/staff/login`) hanya untuk Kepala Sekolah. Email tidak terdaftar, password salah, akun guru, dan akun wali murid mendapat pesan yang sama ("Email atau password salah."). Status akun baru dicek setelah password benar.
 - Login wali (`POST /auth/wali/login`) dengan NIS anak sebagai username (dinormalkan ke huruf besar tanpa spasi). NIS tidak terdaftar, password salah, dan akun bukan wali mendapat pesan yang sama ("NIS atau password salah."). Status dicek setelah password benar. Akun wali tidak punya email.
-- Akun wali otomatis (`WaliMuridService::buatAkunOtomatis()`) dibuat saat `POST /murid` dan saat pendaftar PPDB tanpa login diterima: username NIS, password `tanggal_lahir` format `dmY`, `wajib_ganti_password = true`, nama "Wali <nama panggilan>", `profil_lengkap = false`, kontak utama. `lepasAkunOtomatisBelumDipakai()` menonaktifkan akun itu saat anaknya ditambahkan ke akun lain atau murid dihapus. `resetPassword()` mengembalikan password ke tanggal lahir anak kontak utama.
+- Akun wali otomatis (`WaliMuridService::buatAkunOtomatis()`) dibuat saat Kepala Sekolah mengisi NIS murid aktif yang belum punya wali (`NisMuridService::isi()`; murid dari `POST /murid`, import, dan PPDB tanpa login): username NIS, password `tanggal_lahir` format `dmY`, `wajib_ganti_password = true`, nama "Wali <nama panggilan>", `profil_lengkap = false`, kontak utama. `lepasAkunOtomatisBelumDipakai()` menonaktifkan akun itu saat anaknya ditambahkan ke akun lain atau murid dihapus. `resetPassword()` mengembalikan password ke tanggal lahir anak kontak utama.
 - Lupa dan reset password hanya untuk Kepala Sekolah. Balasan tidak membedakan email terdaftar atau tidak, dan tidak mengirim apa pun ke akun guru (login lewat Google) atau wali murid (tidak punya email; reset lewat Kepala Sekolah). Tautan berlaku 60 menit (`auth.passwords.users.expire`).
 - `PUT /auth/profil` dan `PUT /guru/{id}` menerima `multipart/form-data` dengan metode PUT langsung (tanpa `_method`): PHP 8.4 mem-parse body PUT lewat `request_parse_body()` di Symfony HttpFoundation. Sudah dicoba dengan curl ke server lokal.
 - Password baru (ganti, reset): minimal 8 karakter berisi huruf dan angka (`Password::defaults()`). Nomor HP: diawali `08`, 10–15 digit (`App\Rules\NomorHp`).
@@ -902,7 +914,7 @@ Disetujui di Fase 0 (belum semuanya dipakai; diterapkan di fase terkait):
 - Pembatalan tagihan ditolak kalau tagihan `lunas` atau masih ada pembayaran `menunggu`; alasan disimpan di `catatan` dan activity log.
 - Keringanan untuk murid + jenis tagihan yang sama tidak boleh tumpang tindih periodenya; berlaku juga untuk tagihan sekali (acuan tanggal pembuatan).
 - Generate tagihan bulanan hanya untuk periode dalam rentang tahun ajaran aktif. `keuangan.tanggal_jatuh_tempo` divalidasi 1–28.
-- Kode `INV-YYYYMM` tagihan sekali memakai bulan pembuatan. NIS memakai tahun `tanggal_masuk`, nomor urut mulai lagi tiap tahun.
+- Kode `INV-YYYYMM` tagihan sekali memakai bulan pembuatan. NIS tidak lagi dibuat sistem sejak `be/nis-manual`; NIS lama berformat `TA{tahun masuk}{urut}`.
 - Tautkan anak dibatasi 5 percobaan per menit per user. Wali pertama yang tertaut menjadi kontak utama. Sejak `be/login-nis` berlaku untuk tambah anak dengan NIS.
 - Login mengecek status akun hanya setelah password benar.
 - `PATCH /guru/{id}/status` hanya untuk guru `aktif`/`nonaktif`. Sejak `be/login-google-staff` tidak ada lagi status `pending`/`ditolak`.
@@ -943,7 +955,7 @@ Diambil selama Fase 2:
 
 Diambil selama Fase 5 (lihat juga "Keputusan Fase 4–5 (sudah direview)"):
 
-- `App\Support\NomorUrut` membuat nomor berurutan berawalan (NIS, `INV-`, `PAY-`, nanti `PPDB-`) dari nilai terbesar dengan `lockForUpdate` di dalam transaksi; unique index tetap penjaga terakhir. Generate tagihan mengunci nomor dulu, baru membaca tagihan yang sudah ada, supaya dua generate bersamaan tidak membuat tagihan ganda.
+- `App\Support\NomorUrut` membuat nomor berurutan berawalan (`INV-`, `PAY-`, `PPDB-`; dulu juga NIS) dari nilai terbesar dengan `lockForUpdate` di dalam transaksi; unique index tetap penjaga terakhir. Generate tagihan mengunci nomor dulu, baru membaca tagihan yang sudah ada, supaya dua generate bersamaan tidak membuat tagihan ganda.
 - Layanan dipisah per tanggung jawab: `TagihanService` (generate bulanan, tagihan sekali, pembatalan, `potongan()`), `JatuhTempoTagihanService` (terlambat dan pengingat), `PembayaranService` (unggah, tunai, terima, tolak), `KwitansiService`, `LaporanKeuanganService`, `JenisTagihanService`, `KeringananService`.
 - Pembayaran dan pembatalan mengunci baris tagihan (`lockForUpdate`) supaya aturan "maksimal satu `menunggu` dan satu `diterima`" terjaga. File bukti dihapus lagi kalau transaksi gagal.
 - Laporan dihitung di PHP dari baris tagihan/pembayaran (bukan `GROUP BY` fungsi tanggal), supaya hasilnya sama di MySQL, MariaDB, dan SQLite. Datanya kecil (puluhan murid).
@@ -958,7 +970,7 @@ Diambil selama Fase 4 (lihat juga "Keputusan Fase 4–5 (sudah direview)"):
 
 - Scope dipakai di dua tempat yang sama: query daftar (`visibleTo` / `diampuOleh`) dan Policy `view` untuk detail, supaya daftar dan detail tidak pernah berbeda. Pembatasan per role tetap di middleware `role:` (B4).
 - `KelasService` memegang CRUD kelas dan penempatan; `KenaikanKelasService` terpisah karena alurnya panjang dan memakai aturan penempatan yang sama (`pastikanMuridAktif`, `pastikanBelumPunyaKelas`, `pastikanMuatKapasitas`). Penempatan mengunci baris kelas dan murid (`lockForUpdate`) di dalam transaksi supaya dua penempatan bersamaan tidak melewati kapasitas atau menaruh murid di dua kelas.
-- NIS diambil dari NIS terbesar berawalan `TA{tahun masuk}` (termasuk murid yang di-soft delete, karena kolom `nis` unik) dengan `lockForUpdate`, maksimal 9999 per tahun.
+- NIS diisi Kepala Sekolah (`NisMuridService`, B6.19); keunikan diperiksa terhadap NIS murid termasuk yang di-soft delete dan username akun, dengan unique index sebagai penjaga terakhir. Sebelum `be/nis-manual`, NIS diambil dari NIS terbesar berawalan `TA{tahun masuk}`.
 - Relasi `Kelas::muridAktif()` (penempatan `aktif`) dipakai untuk `jumlah_murid` dan kapasitas. `Kelas::muatDetail()` memuat relasi detail kelas di satu tempat.
 - `PengaturanService` dibuat minimal (`nilai()`, `rekeningSekolah()`) tanpa cache, karena `PUT /pengaturan` (yang akan meng-invalidate cache) baru ada di Fase 7.
 - Foto murid disimpan di disk private folder `murid/` lewat `MediaService`; foto lama dihapus setelah transaksi berhasil.
@@ -1021,6 +1033,35 @@ Diambil selama Fase 3:
   Total 61 akun wali: 44 sudah dipakai, 10 wajib ganti password (`TA20250022`–`TA20250030` dan `TA20270001`), 7 nonaktif (`TA20250004`–`TA20250010`, akun otomatis adik yang ditambahkan ke akun kakaknya). Nama wali dan tanggal lahir anak lain diacak faker setiap seeding. Token Tinker untuk wali tidak diperlukan lagi.
 
 ## Changelog
+
+### NIS murid diisi Kepala Sekolah (branch `be/nis-manual`)
+
+Pasangan FE `fe/nis-manual`. Bagian A diperbarui (A2.1, A2.2, A2.3, A2.14, A3, A4 `murid.nis`, flowchart A6 autentikasi, PPDB, import, dan NIS murid baru, A7 murid, NIS, PPDB, dashboard, notifikasi) dan disalin ke PROMPT FE. B2, B6.8, B6.11, B6.17, B6.19 (baru), dan B7 diperbarui. Kontrak rinci di `docs/kontrak-api-fitur-baru.md` bagian 5 (juga disalin ke FE).
+
+File baru:
+- `database/migrations/2026_11_16_100000_nis_murid_diisi_kepala_sekolah.php`: `murid.nis` nullable `string(20)`. `down()` berhenti kalau ada murid tanpa NIS atau NIS lebih dari 10 karakter.
+- `app/Services/NisMuridService.php`: `periksa()` (satu aturan untuk input satuan, tabel web, dan Excel), `isi()` (simpan NIS, buat akun wali otomatis atau ganti username), `pratinjau()`, `simpan()`, `baca()` file Excel, `menungguNis()`.
+- `app/Http/Controllers/Api/V1/Murid/NisMuridController.php`, `app/Http/Requests/Murid/{IsiNisMuridRequest,BatchNisMuridRequest,ImportNisMuridRequest}.php`, `app/Exports/TemplateNisMuridExport.php`.
+- `app/Notifications/UsernameWaliDiubahNotification.php` dan jenis `username_diubah` di `JenisNotifikasi`.
+- `tests/Feature/Murid/NisMuridTest.php` (20 test).
+
+File yang diubah:
+- `MuridService`: generator NIS `TA{tahun}{urut}` dihapus; `buat()` membuat murid tanpa NIS dan tanpa akun wali (menggantikan `buatDenganFotoTersimpan()`); `hapus()` juga mengosongkan `nis` dan username akun otomatis yang belum dipakai.
+- `PendaftaranService::terima()`: tidak membuat akun wali untuk pendaftar tanpa login; akun dibuat saat NIS diisi.
+- `ImportMuridService` dan `ImportMuridController`: tanpa akun wali, tanpa hashing per kelompok, `akun_wali_dibuat` dihapus dari respons dan log; petunjuk kolom `tanggal_lahir` dan `tanggal_masuk` disesuaikan.
+- `MuridController`: `POST /murid` tanpa NIS (pesan baru), filter `filter[menunggu_nis]` (juga di `DaftarMuridRequest`), dokumentasi kartu akun.
+- `KartuAkunService`: tolak murid tanpa NIS, nama file aman untuk garis miring.
+- `DashboardService`: `tertunda.murid_menunggu_nis`.
+- `routes/api.php`: enam route NIS di grup `role:super_admin`.
+- `nis` nullable di Resource (`MuridResource`, `AnakWaliResource`, `KelasDetailResource`, `TagihanResource`, `KeringananResource`, `RaporResource`, `PendaftaranResource`) dan PHPDoc absensi murid, tunggakan, dan rekap absensi murid.
+- PDF: kwitansi tanpa keterangan NIS, rapor dan rekap absensi murid menulis `-`; nama file rapor memakai nama murid kalau NIS kosong.
+- `NomorUrut`: contoh di komentar tidak lagi menyebut NIS.
+- Test yang disesuaikan: `AkunWaliOtomatisTest` (akun dibuat saat NIS diisi), `ManajemenMuridTest`, `ImportMuridTest` (test batas waktu hashing dipindah ke `NisMuridTest`), `PendaftaranTest`, `KartuAkunTest`, `DashboardTest`, `EnumKontrakTest`.
+- `storage/api-docs/api.json` diekspor ulang.
+
+Data lama: NIS murid lama tidak diubah dan akun wali lama tetap. Migration sudah dijalankan di database dev `TK_TA8` (hanya mengubah kolom).
+
+Pengecekan: `php artisan test` di SQLite dan di MariaDB `TK_TA8_uji` (1248 lolos), Pint, PHPStan, `composer check:slop` bersih, `migrate:rollback --step=1` lalu `migrate` di database uji, dan penjaga `down()` dicoba dengan satu murid tanpa NIS (berhenti dengan pesan). Uji curl ke `php artisan serve` dengan database uji (`migrate:fresh --seed` + `DemoSeeder` + tiga murid tanpa NIS, token Sanctum Kepala Sekolah dari tinker, sudah dicabut): daftar `filter[menunggu_nis]` dan `tertunda.murid_menunggu_nis` (3, lalu 0), template .xlsx (kolom `nis` berformat `@`), pratinjau file dengan NIS dobel (kedua baris ditandai), simpan file dengan satu NIS kosong (2 diisi, 2 akun, 1 gagal), kartu akun `001/TA8` → `kartu-akun-001-TA8.pdf`, pratinjau dan simpan tabel, login wali dengan NIS `0012`, ubah NIS ke `0020` (login `0012` ditolak, `0020` diterima, job notifikasi `username_diubah` masuk antrean), NIS yang sudah dipakai → 422 di `errors.nis`.
 
 ### Nama peserta di log absensi dan teks onboarding (branch `be/temuan-kecil-uji`)
 

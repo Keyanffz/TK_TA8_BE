@@ -20,6 +20,7 @@ class KeringananResource extends JsonResource
             'id' => $this->id,
             'murid' => [
                 'id' => $this->murid->id,
+                /** @var string|null */
                 'nis' => $this->murid->nis,
                 'nama_lengkap' => $this->murid->nama_lengkap,
             ],

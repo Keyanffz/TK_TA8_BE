@@ -12,7 +12,6 @@ use App\Services\ImportMuridService;
 use App\Services\KelasService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as TanggalExcel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -110,7 +109,7 @@ it('memeriksa setiap baris di pratinjau tanpa menyimpan apa pun', function () {
         ->and(Murid::query()->count())->toBe(1);
 });
 
-it('menyimpan baris valid, membuatkan akun wali untuk murid aktif, dan mengembalikan baris gagal', function () {
+it('menyimpan baris valid tanpa NIS dan akun wali, lalu mengembalikan baris gagal', function () {
     $respons = $this->actingAs($this->kepsek)->post('/api/v1/murid/import', ['file' => fileXlsx([
         barisMurid(['kelas' => 'TK A1']),
         barisMurid(['nisn' => null, 'nama_lengkap' => 'Bagas Wicaksono', 'status' => 'lulus', 'tahun_lulus' => 2019, 'tanggal_masuk' => '2017-07-17']),
@@ -121,26 +120,23 @@ it('menyimpan baris valid, membuatkan akun wali untuk murid aktif, dan mengembal
         ->assertOk()
         ->assertJsonPath('message', '4 murid diimpor, 1 baris gagal.')
         ->assertJsonPath('data.dibuat', 4)
-        ->assertJsonPath('data.akun_wali_dibuat', 1)
+        ->assertJsonMissingPath('data.akun_wali_dibuat')
         ->assertJsonPath('data.gagal.0.nomor', 6)
         ->assertJsonPath('data.gagal.0.alasan', ['Jenis kelamin diisi L atau P.']);
 
     $raka = Murid::query()->where('nisn', '0211234501')->sole();
-    $akun = User::query()->where('username', $raka->nis)->sole();
     $bagas = Murid::query()->where('nama_lengkap', 'Bagas Wicaksono')->sole();
 
-    expect($raka->nis)->toBe('TA20260001')
-        ->and($akun->wajib_ganti_password)->toBeTrue()
-        ->and(Hash::check('14052021', (string) $akun->password))->toBeTrue()
+    expect($raka->nis)->toBeNull()
         ->and(KelasMurid::query()->where('murid_id', $raka->id)->sole()->status)->toBe(StatusKelasMurid::Aktif)
-        ->and($bagas->nis)->toBe('TA20170001')
+        ->and($bagas->nis)->toBeNull()
         ->and($bagas->status)->toBe(StatusMurid::Lulus)
         ->and($bagas->tanggal_keluar?->toDateString())->toBe('2019-06-22')
         ->and(Murid::query()->where('nama_lengkap', 'Citra Maharani')->sole()->tanggal_keluar?->toDateString())->toBe('2015-06-30')
         ->and(Murid::query()->where('nama_lengkap', 'Dafa Ramadhan')->sole()->tanggal_keluar)->toBeNull()
-        ->and(User::query()->where('role', 'wali_murid')->count())->toBe(1)
+        ->and(User::query()->where('role', 'wali_murid')->count())->toBe(0)
         ->and(Activity::query()->where('log_name', 'murid')->where('event', 'diimpor')->sole()->properties->all())
-        ->toBe(['nama_file' => 'data-murid.xlsx', 'dibuat' => 4, 'akun_wali_dibuat' => 1, 'gagal' => 1]);
+        ->toBe(['nama_file' => 'data-murid.xlsx', 'dibuat' => 4, 'gagal' => 1]);
 });
 
 it('membaca tanggal berformat Excel dan CSV berpemisah titik koma', function () {
@@ -206,20 +202,6 @@ it('membatalkan seluruh import kalau penyimpanan gagal di tengah transaksi', fun
 
     expect(Murid::query()->count())->toBe(0)
         ->and(User::query()->where('role', 'wali_murid')->count())->toBe(0);
-});
-
-it('mengimpor murid aktif lebih dari satu kelompok dan mengembalikan batas waktu PHP seperti semula', function () {
-    $baris = array_map(fn (int $i): array => barisMurid([
-        'nisn' => sprintf('03%08d', $i),
-        'nama_lengkap' => "Murid Uji Import {$i}",
-    ]), range(1, 60));
-
-    $this->actingAs($this->kepsek)->post('/api/v1/murid/import', ['file' => fileXlsx($baris)])
-        ->assertOk()
-        ->assertJsonPath('data.dibuat', 60)
-        ->assertJsonPath('data.akun_wali_dibuat', 60);
-
-    expect(ini_get('max_execution_time'))->toBe('0');
 });
 
 it('menolak file tanpa kolom wajib, tanpa data, atau lebih dari 500 baris', function (Closure $file, string $pesan) {

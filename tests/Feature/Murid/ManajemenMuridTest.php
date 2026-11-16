@@ -32,24 +32,17 @@ function dataMurid(array $timpa = []): array
     ];
 }
 
-it('menambah murid dengan NIS otomatis berurutan per tahun masuk', function () {
-    Murid::factory()->create(['nis' => 'TA20260041']);
-    $terhapus = Murid::factory()->create(['nis' => 'TA20260042']);
-    $terhapus->delete();
-    Murid::factory()->create(['nis' => 'TA20250107']);
-
+it('menambah murid tanpa NIS dan tanpa akun wali sampai Kepala Sekolah mengisi NIS', function () {
     $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMurid())
         ->assertCreated()
-        ->assertJsonPath('data.nis', 'TA20260043')
+        ->assertJsonPath('data.nis', null)
         ->assertJsonPath('data.status', 'aktif')
         ->assertJsonPath('data.tanggal_lahir', '2022-03-14')
         ->assertJsonPath('data.kelas', null)
-        ->assertJsonPath('data.wali.0.username', 'TA20260043')
-        ->assertJsonPath('message', 'Aisyah Putri Ramadhani ditambahkan dengan NIS TA20260043. Akun wali murid memakai NIS ini sebagai username.');
+        ->assertJsonPath('data.wali', [])
+        ->assertJsonPath('message', 'Aisyah Putri Ramadhani ditambahkan. Akun wali murid dibuat setelah Kepala Sekolah mengisi NIS.');
 
-    $this->postJson('/api/v1/murid', dataMurid(['tanggal_masuk' => '2027-01-04']))
-        ->assertCreated()
-        ->assertJsonPath('data.nis', 'TA20270001');
+    expect(User::query()->where('role', 'wali_murid')->exists())->toBeFalse();
 });
 
 it('menyimpan foto murid di disk private dan mengembalikan signed URL', function () {

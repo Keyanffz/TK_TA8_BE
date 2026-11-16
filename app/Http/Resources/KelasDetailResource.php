@@ -41,6 +41,7 @@ class KelasDetailResource extends KelasResource
 
                 return [
                     'id' => $murid->id,
+                    /** @var string|null */
                     'nis' => $murid->nis,
                     'nama_lengkap' => $murid->nama_lengkap,
                     'nama_panggilan' => $murid->nama_panggilan,

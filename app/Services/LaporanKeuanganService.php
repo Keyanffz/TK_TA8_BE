@@ -72,7 +72,7 @@ class LaporanKeuanganService
      *     total_tunggakan: int,
      *     jumlah_murid: int,
      *     murid: list<array{
-     *         id: int, nis: string, nama_lengkap: string, kelas: array{id: int, nama: string}|null,
+     *         id: int, nis: string|null, nama_lengkap: string, kelas: array{id: int, nama: string}|null,
      *         kontak_wali: array{nama: string, no_hp: string|null}|null, jumlah_tagihan: int, total: int,
      *         tagihan: list<array{id: int, kode: string, nama: string, jatuh_tempo: string, total: int, sisa: int}>
      *     }>

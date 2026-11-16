@@ -1,4 +1,4 @@
-# Kontrak API: hak akses guru dan status murid
+# Kontrak API: hak akses guru, status murid, dan NIS murid
 
 Kontrak untuk dua fitur di branch `be/hak-akses-status-murid`: izin modul guru dari Kepala Sekolah (A2.13) dan status murid, alumni, serta import massal (A2.14). Semua endpoint memakai prefix `/api/v1`, header `Authorization: Bearer`, dan format respons A7 (`{ success, message, data, meta }`, error `{ success: false, message, code, errors }`). Tipe lengkap ada di `storage/api-docs/api.json`; file ini salinan identik di repo FE (`docs/kontrak-api-fitur-baru.md`).
 
@@ -20,7 +20,7 @@ Izin data murid tidak membuka modul lain: tagihan, rapor, kegiatan, dan pengumum
 
 ### Tetap khusus Kepala Sekolah
 
-Manajemen guru (`/guru`, termasuk izin), pengaturan grup `absensi`, `ppdb`, dan `keuangan` (rekening, jatuh tempo, pengingat), wali murid (`/wali-murid`, ubah/lepas tautan wali di `/murid/{id}/wali/{wali_murid_id}`), tahun ajaran, kelas, penempatan, kenaikan kelas, jenis tagihan (tambah/ubah/hapus), generate tagihan manual, batalkan/aktifkan tagihan, keputusan rapor, elemen penilaian, PPDB, agenda (tambah/ubah/hapus), dan log aktivitas.
+Manajemen guru (`/guru`, termasuk izin), pengisian dan perubahan NIS murid (`/murid/{id}/nis`, `/murid/nis/...`), pengaturan grup `absensi`, `ppdb`, dan `keuangan` (rekening, jatuh tempo, pengingat), wali murid (`/wali-murid`, ubah/lepas tautan wali di `/murid/{id}/wali/{wali_murid_id}`), tahun ajaran, kelas, penempatan, kenaikan kelas, jenis tagihan (tambah/ubah/hapus), generate tagihan manual, batalkan/aktifkan tagihan, keputusan rapor, elemen penilaian, PPDB, agenda (tambah/ubah/hapus), dan log aktivitas.
 
 ### Preset (`PresetIzin`)
 
@@ -154,11 +154,63 @@ Error file (422 `VALIDATION_ERROR` di `errors.file`): format bukan xlsx/csv, leb
 
 ### `POST /murid/import` (izin kelola data murid)
 
-File yang sama. Diperiksa ulang, lalu semua baris valid disimpan dalam satu transaksi → `{ "dibuat": 7, "akun_wali_dibuat": 5, "gagal": [ …baris invalid, bentuk sama dengan pratinjau… ] }`. Murid aktif dibuatkan akun wali otomatis (username NIS, password awal tanggal lahir DDMMYYYY, wajib diganti) dan ditempatkan di `kelas` kalau diisi; murid lulus/pindah/keluar tanpa akun wali dan tidak ikut generate tagihan. NIS dibuat dari tahun `tanggal_masuk`. Kalau penyimpanan gagal di tengah (misalnya NISN dipakai data lain saat import berjalan), tidak ada yang tersimpan (422 `BUSINESS_RULE`). Hash password awal dibuat per kelompok 50 baris di luar transaksi dengan batas waktu PHP dihitung ulang setiap kelompok. Log aktivitas `murid` event `diimpor` dengan `{ nama_file, dibuat, akun_wali_dibuat, gagal }`.
+File yang sama. Diperiksa ulang, lalu semua baris valid disimpan dalam satu transaksi → `{ "dibuat": 7, "gagal": [ …baris invalid, bentuk sama dengan pratinjau… ] }`. Murid disimpan tanpa NIS dan tanpa akun wali; murid aktif dibuatkan akun wali saat Kepala Sekolah mengisi NIS (bagian 5). Murid aktif ditempatkan di `kelas` kalau diisi; murid lulus/pindah/keluar tidak ikut generate tagihan. Kalau penyimpanan gagal di tengah (misalnya NISN dipakai data lain saat import berjalan), tidak ada yang tersimpan (422 `BUSINESS_RULE`). Log aktivitas `murid` event `diimpor` dengan `{ nama_file, dibuat, gagal }`.
 
 Laporan baris gagal dibuat FE dari `gagal` (CSV berkolom template ditambah `alasan`), dan bisa diperbaiki lalu diimpor ulang.
 
-## 5. Format error
+## 5. NIS murid (Kepala Sekolah)
+
+NIS tidak dibuat otomatis. Murid baru (`POST /murid`, import, PPDB yang diterima) punya `nis` null dan belum punya akun wali sampai Kepala Sekolah mengisi NIS. Daftar murid yang menunggu NIS: `GET /murid?filter[menunggu_nis]=true` (filter juga menerima `false`, `1`, `0`); beranda Kepala Sekolah memuat `tertunda.murid_menunggu_nis` (murid aktif tanpa NIS).
+
+Aturan NIS (sama di ketiga cara): dinormalkan seperti username login wali (huruf besar, semua spasi dibuang), hanya huruf, angka, titik, strip, dan garis miring, maksimal 20 karakter, tidak dipakai murid lain (termasuk yang dihapus) dan tidak dipakai sebagai username akun mana pun. Mengisi NIS murid aktif yang belum tertaut ke wali membuat akun wali otomatis (username NIS, password awal tanggal lahir DDMMYYYY, wajib diganti); murid dari PPDB tanpa login memakai hubungan dan nomor HP formulirnya, akun itu dicatat sebagai `pendaftaran.wali_murid_id`, dan menerima notifikasi `pendaftaran_diproses` (diterima). Murid yang sudah tertaut ke wali (PPDB dari wali yang login) atau tidak aktif hanya mendapat NIS.
+
+### `PATCH /murid/{id}/nis`
+
+`{ "nis": "001/TA8" }` → detail murid. Juga untuk mengubah NIS: username akun yang memakai NIS lama ikut diganti (sesi tetap berlaku) dan akun aktif itu mendapat notifikasi `username_diubah` (`url` `/dashboard/profil`); akun keluarga yang username-nya NIS kakak/adik tidak berubah. Pelanggaran → 422 `VALIDATION_ERROR` di `errors.nis` dengan salah satu pesan:
+
+- `NIS wajib diisi.`
+- `NIS maksimal 20 karakter.`
+- `NIS hanya boleh berisi huruf, angka, titik, strip, dan garis miring.`
+- `NIS <nis> sudah dipakai <nama murid>.`
+- `NIS <nis> sudah dipakai sebagai username akun wali murid lain.`
+- `NIS ini sama dengan NIS sekarang.`
+
+Log aktivitas `murid` event `nis_diisi` (`{ nis, akun_wali_dibuat }`) atau `nis_diubah` (`{ dari, ke }`), dan `akun` event `username_diubah`.
+
+### `GET /murid/nis/template`
+
+File `murid-menunggu-nis.xlsx`, sheet `Murid`: murid aktif yang menunggu NIS, urut nama, kolom `id`, `nama_lengkap`, `tanggal_lahir` (teks, misalnya `14 Mei 2021`), dan `nis` (kosong, berformat teks supaya nol di depan tidak hilang).
+
+### `POST /murid/nis/import/pratinjau` dan `POST /murid/nis/batch/pratinjau`
+
+Import: multipart `file` (.xlsx saja, maks 2 MB, maks 500 baris; hanya `id`, `nama_lengkap`, dan `nis` yang dibaca). Tabel web: `{ "items": [{ "murid_id": 12, "nis": "2026001" }] }` (1–500 item, `murid_id` tidak dobel). Tidak menyimpan apa pun.
+
+```json
+{
+  "ringkasan": { "total": 3, "valid": 1, "invalid": 2, "akun_wali": 1 },
+  "baris": [
+    { "nomor": 2, "murid_id": 12, "nama_lengkap": "Raka Aditya Pratama", "nis": "0012", "valid": true, "akun_wali": true, "alasan": [] },
+    { "nomor": 3, "murid_id": 13, "nama_lengkap": "Salma Azzahra", "nis": "0012", "valid": false, "akun_wali": false, "alasan": ["NIS 0012 dobel dengan baris 2."] }
+  ]
+}
+```
+
+`nomor` = nomor baris spreadsheet (import) atau urutan item mulai 1 (tabel). `nis` sudah dinormalkan; `nama_lengkap` null untuk tabel. Alasan baris selain aturan NIS di atas: `NIS <nis> dobel dengan baris <n>.` (semua baris yang dobel ditandai), `Murid dengan ID <id> tidak ditemukan.`, `<nama> sudah punya NIS <nis>.`, `ID murid kosong atau bukan angka. ...`, dan (import) `Nama <nama di file> tidak sama dengan murid ID <id> (<nama>). ...` (dibandingkan tanpa beda huruf besar dan spasi berlebih). `akun_wali` true untuk baris valid yang akan membuat akun wali; `ringkasan.akun_wali` menjumlahkannya.
+
+Error file (422 `VALIDATION_ERROR` di `errors.file`): bukan .xlsx, lebih dari 2 MB, kolom `id`/`nama_lengkap`/`nis` tidak ada, tidak ada baris data, lebih dari 500 baris, file tidak bisa dibaca.
+
+### `POST /murid/nis/import` dan `POST /murid/nis/batch`
+
+Isian yang sama. Diperiksa ulang, lalu NIS semua baris valid diisi dalam satu transaksi → `{ "diisi": 1, "akun_wali_dibuat": 1, "gagal": [ …baris invalid, bentuk sama dengan pratinjau… ] }`. Kalau NIS bentrok dengan data yang baru tersimpan saat proses berjalan, tidak ada yang disimpan (422 `BUSINESS_RULE`). Hash password awal dibuat per kelompok 50 akun di luar transaksi dengan batas waktu PHP dihitung ulang setiap kelompok.
+
+### Murid tanpa NIS di endpoint lain
+
+- `nis` bertipe `string | null` di semua bentuk murid (daftar, detail, anak wali, kelas, tagihan, keringanan, rapor, PPDB, absensi murid, tunggakan).
+- `GET /murid/{id}/kartu-akun` → 422 `BUSINESS_RULE` `NIS <panggilan> belum diisi Kepala Sekolah, jadi akun walinya belum dibuat.` Nama file kartu akun mengganti karakter selain huruf, angka, titik, strip, dan garis bawah dengan `-` (`001/TA8` → `kartu-akun-001-TA8.pdf`).
+- PDF kwitansi tanpa keterangan NIS, PDF rapor dan rekap absensi murid menulis `-`; ekspor Excel membiarkan selnya kosong.
+- `DELETE /murid/{id}` mengosongkan `nis` murid yang dihapus dan username akun otomatisnya yang belum dipakai, supaya NIS itu bisa dipakai lagi.
+
+## 6. Format error
 
 | Keadaan | Status | `code` | `message` |
 |---|---|---|---|
@@ -166,11 +218,11 @@ Laporan baris gagal dibuat FE dari `gagal` (CSV berkolom template ditambah `alas
 | Guru di bagian khusus Kepala Sekolah (route `role:super_admin`) | 403 | `FORBIDDEN` | `Anda tidak punya akses untuk tindakan ini.` |
 | Guru membaca/mengubah grup pengaturan khusus Kepala Sekolah | 403 | `FORBIDDEN` | `Bagian ini khusus Kepala Sekolah.` |
 | Wali murid di route modul | 403 | `FORBIDDEN` | pesan izin seperti baris pertama |
-| Pelanggaran aturan status/import/izin | 422 | `BUSINESS_RULE` | pesan sebabnya |
+| Pelanggaran aturan status/import/izin/NIS | 422 | `BUSINESS_RULE` | pesan sebabnya |
 | Isian tidak valid | 422 | `VALIDATION_ERROR` | `Data tidak valid`, `errors` per field |
 
-## 6. Perubahan lain
+## 7. Perubahan lain
 
 - Notifikasi `absensi_dikoreksi`: judul dan pesan menyebut pengoreksinya (`Absensi dikoreksi Kepala Sekolah` atau `Absensi dikoreksi <nama guru>`).
-- Log aktivitas baru: `izin` (diubah, preset_diterapkan), `murid` (status_diubah, status_diubah_massal, diimpor), `keringanan` (dibuat, diubah, dihapus), `jenis_tagihan` (dibuat, diubah, dihapus), `tagihan` event `dibuat_sekali`. `filter[jenis]` di `GET /log-aktivitas` menerima `izin`, `murid`, `keringanan`, `jenis_tagihan`, dan `absensi`.
+- Log aktivitas baru: `izin` (diubah, preset_diterapkan), `murid` (status_diubah, status_diubah_massal, diimpor, nis_diisi, nis_diubah), `akun` (username_diubah), `keringanan` (dibuat, diubah, dihapus), `jenis_tagihan` (dibuat, diubah, dihapus), `tagihan` event `dibuat_sekali`. `filter[jenis]` di `GET /log-aktivitas` menerima `izin`, `murid`, `keringanan`, `jenis_tagihan`, dan `absensi`.
 - Kenaikan kelas dengan status `lulus` mengisi `tahun_lulus` (tahun akhir tahun ajaran aktif) dan riwayat status.

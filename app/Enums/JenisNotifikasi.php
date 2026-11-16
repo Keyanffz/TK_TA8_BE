@@ -23,6 +23,7 @@ enum JenisNotifikasi: string
     case PendaftaranBaru = 'pendaftaran_baru';
     case PendaftaranDiproses = 'pendaftaran_diproses';
     case AnakTertaut = 'anak_tertaut';
+    case UsernameDiubah = 'username_diubah';
     case AbsensiTercatat = 'absensi_tercatat';
     case AbsensiDikoreksi = 'absensi_dikoreksi';
     case AbsensiSusulanDiberikan = 'absensi_susulan_diberikan';
@@ -45,6 +46,7 @@ enum JenisNotifikasi: string
             self::PendaftaranBaru => 'Pendaftaran PPDB baru',
             self::PendaftaranDiproses => 'Pendaftaran PPDB diproses',
             self::AnakTertaut => 'Wali murid tertaut',
+            self::UsernameDiubah => 'Username diubah',
             self::AbsensiTercatat => 'Absensi tercatat',
             self::AbsensiDikoreksi => 'Absensi dikoreksi',
             self::AbsensiSusulanDiberikan => 'Akses absen susulan',

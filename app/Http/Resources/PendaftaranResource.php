@@ -44,7 +44,7 @@ class PendaftaranResource extends JsonResource
             /**
              * Murid yang dibuat saat pendaftaran diterima.
              *
-             * @var array{id: int, nis: string}|null
+             * @var array{id: int, nis: string|null}|null
              */
             'murid' => $this->murid === null ? null : ['id' => $this->murid->id, 'nis' => $this->murid->nis],
             'diproses_at' => $this->diproses_at,
