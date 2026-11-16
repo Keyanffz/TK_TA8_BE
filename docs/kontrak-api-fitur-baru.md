@@ -190,12 +190,12 @@ Import: multipart `file` (.xlsx saja, maks 2 MB, maks 500 baris; hanya `id`, `na
   "ringkasan": { "total": 3, "valid": 1, "invalid": 2, "akun_wali": 1 },
   "baris": [
     { "nomor": 2, "murid_id": 12, "nama_lengkap": "Raka Aditya Pratama", "nis": "0012", "valid": true, "akun_wali": true, "alasan": [] },
-    { "nomor": 3, "murid_id": 13, "nama_lengkap": "Salma Azzahra", "nis": "0012", "valid": false, "akun_wali": false, "alasan": ["NIS 0012 dobel dengan baris 2."] }
+    { "nomor": 3, "murid_id": 13, "nama_lengkap": "Salma Azzahra", "nis": "0012", "valid": false, "akun_wali": false, "alasan": ["NIS 0012 dobel dengan Raka Aditya Pratama (baris 2)."] }
   ]
 }
 ```
 
-`nomor` = nomor baris spreadsheet (import) atau urutan item mulai 1 (tabel). `nis` sudah dinormalkan; `nama_lengkap` null untuk tabel. Alasan baris selain aturan NIS di atas: `NIS <nis> dobel dengan baris <n>.` (semua baris yang dobel ditandai), `Murid dengan ID <id> tidak ditemukan.`, `<nama> sudah punya NIS <nis>.`, `ID murid kosong atau bukan angka. ...`, dan (import) `Nama <nama di file> tidak sama dengan murid ID <id> (<nama>). ...` (dibandingkan tanpa beda huruf besar dan spasi berlebih). `akun_wali` true untuk baris valid yang akan membuat akun wali; `ringkasan.akun_wali` menjumlahkannya.
+`nomor` = nomor baris spreadsheet (import) atau urutan item mulai 1 (tabel). `nis` sudah dinormalkan; `nama_lengkap` null untuk tabel. Alasan baris selain aturan NIS di atas: `NIS <nis> dobel dengan <nama murid lain>.` (tabel) atau `... dengan <nama> (baris <n>).` (import), semua baris yang dobel ditandai, `Murid dengan ID <id> tidak ditemukan.`, `<nama> sudah punya NIS <nis>.`, `ID murid kosong atau bukan angka. ...`, dan (import) `Nama <nama di file> tidak sama dengan murid ID <id> (<nama>). ...` (dibandingkan tanpa beda huruf besar dan spasi berlebih). `akun_wali` true untuk baris valid yang akan membuat akun wali; `ringkasan.akun_wali` menjumlahkannya.
 
 Error file (422 `VALIDATION_ERROR` di `errors.file`): bukan .xlsx, lebih dari 2 MB, kolom `id`/`nama_lengkap`/`nis` tidak ada, tidak ada baris data, lebih dari 500 baris, file tidak bisa dibaca.
 

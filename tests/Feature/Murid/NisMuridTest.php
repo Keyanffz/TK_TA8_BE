@@ -143,8 +143,8 @@ it('mengisi NIS tanpa membuat akun untuk murid yang sudah punya wali atau tidak 
 });
 
 it('pratinjau tabel menandai semua baris dobel dan menghitung akun wali yang akan dibuat', function () {
-    $raka = muridMenungguNis();
-    $salma = muridMenungguNis();
+    $raka = muridMenungguNis(['nama_lengkap' => 'Raka Aditya Pratama']);
+    $salma = muridMenungguNis(['nama_lengkap' => 'Salma Azzahra']);
     $tertaut = muridMenungguNis();
     $tertaut->waliMurid()->attach(WaliMurid::factory()->create(), ['hubungan' => Hubungan::Ibu, 'is_kontak_utama' => true]);
     $sudahAda = Murid::factory()->create(['nis' => 'TA900', 'nama_lengkap' => 'Dimas Prasetyo']);
@@ -161,8 +161,8 @@ it('pratinjau tabel menandai semua baris dobel dan menghitung akun wali yang aka
 
     expect($respons->json('data.ringkasan'))->toBe(['total' => 6, 'valid' => 1, 'invalid' => 5, 'akun_wali' => 0])
         ->and($respons->json('data.baris.*.alasan'))->toBe([
-            ['NIS TA001 dobel dengan baris 2.'],
-            ['NIS TA001 dobel dengan baris 1.'],
+            ['NIS TA001 dobel dengan Salma Azzahra.'],
+            ['NIS TA001 dobel dengan Raka Aditya Pratama.'],
             [],
             ['Dimas Prasetyo sudah punya NIS TA900.'],
             ['Murid dengan ID 999 tidak ditemukan.'],
@@ -232,6 +232,19 @@ it('menyediakan daftar murid aktif yang menunggu NIS dengan kolom NIS berformat 
             [$salma->id, 'Salma Azzahra', '17 Agustus 2021', null],
         ])
         ->and($sheet->getStyle('D2')->getNumberFormat()->getFormatCode())->toBe('@');
+});
+
+it('menyebut nama murid dan nomor baris lain saat NIS di file dobel', function () {
+    $raka = muridMenungguNis(['nama_lengkap' => 'Raka Aditya Pratama']);
+    $salma = muridMenungguNis(['nama_lengkap' => 'Salma Azzahra']);
+
+    $this->actingAs($this->kepsek)->post('/api/v1/murid/nis/import/pratinjau', ['file' => fileNis([
+        [$raka->id, 'Raka Aditya Pratama', null, '0012'],
+        [$salma->id, 'Salma Azzahra', null, '0012'],
+    ])])
+        ->assertOk()
+        ->assertJsonPath('data.baris.0.alasan', ['NIS 0012 dobel dengan Salma Azzahra (baris 3).'])
+        ->assertJsonPath('data.baris.1.alasan', ['NIS 0012 dobel dengan Raka Aditya Pratama (baris 2).']);
 });
 
 it('memeriksa file NIS: nama dibandingkan setelah dirapikan, NIS teks tetap dengan nol di depan', function () {
