@@ -32,8 +32,9 @@ class MuridController extends Controller
      * kelas yang dia ampu pada tahun ajaran aktif, wali murid hanya anaknya sendiri.
      *
      * Filter `filter[kelas_id]`, `filter[status]`, `filter[tingkat]` (tingkat kelas di tahun ajaran aktif),
-     * `filter[tahun_lulus]` (daftar alumni bersama `filter[status]=lulus`). `search` mencari nama lengkap, nama
-     * panggilan, NIS, dan NISN. Urutan `sort` = `nama` | `nis` | `created_at` | `tahun_lulus`.
+     * `filter[tahun_lulus]` (daftar alumni bersama `filter[status]=lulus`), `filter[menunggu_nis]` (`true`: murid yang
+     * NIS-nya belum diisi Kepala Sekolah, `false`: yang sudah). `search` mencari nama lengkap, nama panggilan, NIS, dan
+     * NISN. Urutan `sort` = `nama` | `nis` | `created_at` | `tahun_lulus`.
      */
     public function index(DaftarMuridRequest $request, #[CurrentUser] User $user): JsonResponse
     {
@@ -47,6 +48,9 @@ class MuridController extends Controller
                 AllowedFilter::callback('tingkat', fn (Builder $query, mixed $tingkat) => $query
                     ->whereHas('kelasAktif', fn (Builder $kelas) => $kelas->where('tingkat', $tingkat))),
                 AllowedFilter::exact('tahun_lulus'),
+                AllowedFilter::callback('menunggu_nis', fn (Builder $query, mixed $menunggu) => filter_var($menunggu, FILTER_VALIDATE_BOOLEAN)
+                    ? $query->whereNull('nis')
+                    : $query->whereNotNull('nis')),
             )
             ->allowedSorts($urutNama, AllowedSort::field('nis'), AllowedSort::field('created_at'), AllowedSort::field('tahun_lulus'))
             ->defaultSort($urutNama)
@@ -68,19 +72,19 @@ class MuridController extends Controller
     }
 
     /**
-     * Menambah murid (status aktif). NIS dibuat otomatis dari tahun `tanggal_masuk`. Kirim sebagai
-     * `multipart/form-data` jika menyertakan foto.
+     * Menambah murid (status aktif) tanpa NIS. Kirim sebagai `multipart/form-data` jika menyertakan foto.
      *
-     * Murid baru langsung dibuatkan akun wali: username NIS, password awal tanggal lahir anak (DDMMYYYY) yang
-     * wajib diganti saat login pertama, hubungan `wali` sebagai kontak utama. Akun ini muncul di `wali`.
+     * NIS diisi Kepala Sekolah lewat `PATCH /murid/{id}/nis` atau pengisian massal; saat itu murid dibuatkan akun wali
+     * (username NIS, password awal tanggal lahir anak DDMMYYYY yang wajib diganti, hubungan `wali` sebagai kontak
+     * utama). Sampai NIS diisi, `nis` null dan `wali` kosong.
      */
-    public function store(SimpanMuridRequest $request, #[CurrentUser] User $user): JsonResponse
+    public function store(SimpanMuridRequest $request): JsonResponse
     {
-        $murid = $this->muridService->buat($request->dataMurid(), $request->foto(), $user);
+        $murid = $this->muridService->buat($request->dataMurid(), $request->foto());
 
         return ApiResponse::success(
             new MuridDetailResource($murid->muatDetail()),
-            "{$murid->nama_lengkap} ditambahkan dengan NIS {$murid->nis}. Akun wali murid memakai NIS ini sebagai username.",
+            "{$murid->nama_lengkap} ditambahkan. Akun wali murid dibuat setelah Kepala Sekolah mengisi NIS.",
             status: 201,
         );
     }
@@ -113,8 +117,9 @@ class MuridController extends Controller
 
     /**
      * Kartu akun wali murid (PDF A6) untuk dicetak dan dibagikan: nama anak, kelas, NIS sebagai username, keterangan
-     * password awal, dan alamat website. Password tidak ditulis. Ditolak 422 `BUSINESS_RULE` kalau tidak ada akun
-     * wali aktif dengan username NIS ini.
+     * password awal, dan alamat website. Password tidak ditulis. Ditolak 422 `BUSINESS_RULE` kalau NIS belum diisi
+     * atau tidak ada akun wali aktif dengan username NIS ini. Karakter NIS yang tidak aman untuk nama file (misalnya
+     * garis miring) diganti `-` di nama file.
      */
     #[Response(200, 'Kartu akun PDF', mediaType: 'application/pdf', type: 'string', format: 'binary')]
     public function kartuAkun(int $id, KartuAkunService $kartuAkun): HttpResponse

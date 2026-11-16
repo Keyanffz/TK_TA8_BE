@@ -48,7 +48,7 @@ class AbsensiMuridService
      * Murid berpenempatan aktif di kelas itu, ditambah murid yang sudah punya absensi di kelas itu pada tanggal
      * tersebut (misalnya yang kemudian pindah), urut nama.
      *
-     * @return array{tanggal: string, bisa_dicatat: bool, alasan: string|null, murid: list<array{murid: array{id: int, nis: string, nama_lengkap: string}, status: StatusAbsensiMurid|null, keterangan: string|null}>}
+     * @return array{tanggal: string, bisa_dicatat: bool, alasan: string|null, murid: list<array{murid: array{id: int, nis: string|null, nama_lengkap: string}, status: StatusAbsensiMurid|null, keterangan: string|null}>}
      */
     public function harian(Kelas $kelas, Carbon $tanggal): array
     {
@@ -127,7 +127,7 @@ class AbsensiMuridService
      * aturan kelas sekarang adalah hari sekolah dan bukan libur yang dihitung: baris pada tanggal yang kemudian
      * dijadikan libur atau dilepas dari hari sekolah tetap tersimpan, dan ikut dihitung lagi kalau aturannya dikembalikan.
      *
-     * @return array{bulan: string, hari_tercatat: int, murid: list<array{murid: array{id: int, nis: string, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>}
+     * @return array{bulan: string, hari_tercatat: int, murid: list<array{murid: array{id: int, nis: string|null, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>}
      */
     public function rekap(Kelas $kelas, Carbon $bulan): array
     {
@@ -200,7 +200,7 @@ class AbsensiMuridService
     }
 
     /**
-     * @return array{id: int, nis: string, nama_lengkap: string}
+     * @return array{id: int, nis: string|null, nama_lengkap: string}
      */
     private function ringkasan(Murid $murid): array
     {

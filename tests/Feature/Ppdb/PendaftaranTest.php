@@ -177,10 +177,10 @@ it('menjalankan alur verifikasi lalu terima: membuat murid tanpa foto, menautkan
         ->assertOk()
         ->assertJsonPath('message', 'Nadia Putri Rahma diterima sebagai murid.')
         ->assertJsonPath('data.status', 'diterima')
-        ->assertJsonPath('data.murid.nis', 'TA20270001');
+        ->assertJsonPath('data.murid.nis', null);
 
-    $murid = Murid::query()->with(['waliMurid', 'kelas'])->where('nis', 'TA20270001')->sole();
-    expect($murid->nama_lengkap)->toBe('Nadia Putri Rahma')
+    $murid = Murid::query()->with(['waliMurid', 'kelas'])->where('nama_lengkap', 'Nadia Putri Rahma')->sole();
+    expect($murid->nis)->toBeNull()
         ->and($murid->status)->toBe(StatusMurid::Aktif)
         ->and($murid->tanggal_masuk->toDateString())->toBe('2027-07-12')
         ->and($murid->nik)->toBe('3374015402230001')
@@ -190,7 +190,7 @@ it('menjalankan alur verifikasi lalu terima: membuat murid tanpa foto, menautkan
         ->and($murid->waliMurid->sole()->pivot->is_kontak_utama)->toBeTrue()
         ->and($murid->kelas->sole()->id)->toBe($kelas->id)
         ->and($murid->kelas->sole()->pivot->status)->toBe(StatusKelasMurid::Aktif)
-        ->and(User::query()->where('username', 'TA20270001')->exists())->toBeFalse();
+        ->and(User::query()->where('role', 'wali_murid')->count())->toBe(1);
     expect(Storage::disk('local')->allFiles())->toBe([]);
 
     Notification::assertSentTo($this->ibuSari->user, PendaftaranDiprosesNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibuSari->user)['pesan']
@@ -363,28 +363,32 @@ it('membatasi cek status pendaftaran 10 kali per menit per IP', function () {
     $this->getJson('/api/v1/public/pendaftaran/status?kode=PPDB-2027-0009&tanggal_lahir=2023-02-14')->assertTooManyRequests();
 });
 
-it('membuat akun wali saat pendaftaran tanpa login diterima dan baru memberi notifikasi setelah akun ada', function () {
+it('membuat akun wali pendaftar tanpa login saat Kepala Sekolah mengisi NIS, lalu baru memberi notifikasi', function () {
     $pendaftaran = daftarPpdbPublik($this, ['hubungan' => 'ayah']);
 
     $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertOk();
-    Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
-
     $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima")
         ->assertOk()
-        ->assertJsonPath('data.wali.username', 'TA20270001')
-        ->assertJsonPath('data.wali.no_hp', '081234567890');
+        ->assertJsonPath('data.wali', null)
+        ->assertJsonPath('data.murid.nis', null);
+    Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
 
-    $akun = User::query()->where('username', 'TA20270001')->sole();
-    $murid = Murid::query()->with('waliMurid')->where('nis', 'TA20270001')->sole();
+    $muridId = $pendaftaran->fresh()?->murid_id;
+    $this->actingAs($this->kepsek)->patchJson("/api/v1/murid/{$muridId}/nis", ['nis' => '2027001'])->assertOk();
+
+    $akun = User::query()->where('username', '2027001')->sole();
+    $murid = Murid::query()->with('waliMurid')->findOrFail($muridId);
     expect($akun->wajib_ganti_password)->toBeTrue()
         ->and($akun->name)->toBe('Wali Nadia')
+        ->and($akun->no_hp)->toBe('081234567890')
         ->and($pendaftaran->fresh()?->wali_murid_id)->toBe($akun->waliMurid?->id)
         ->and($murid->waliMurid->sole()->pivot->hubungan->value)->toBe('ayah')
         ->and($murid->waliMurid->sole()->pivot->is_kontak_utama)->toBeTrue();
 
-    Notification::assertSentTo($akun, PendaftaranDiprosesNotification::class);
+    Notification::assertSentTo($akun, PendaftaranDiprosesNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($akun)['pesan']
+        === 'Nadia (PPDB-2027-0001) diterima dan sudah tertaut ke akun Anda. Kelasnya akan diinformasikan sekolah.');
 
-    $this->postJson('/api/v1/auth/wali/login', ['username' => 'TA20270001', 'password' => '14022023'])->assertOk();
+    $this->postJson('/api/v1/auth/wali/login', ['username' => '2027001', 'password' => '14022023'])->assertOk();
 });
 
 it('tidak mengirim notifikasi saat pendaftaran tanpa login ditolak', function () {

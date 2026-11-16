@@ -8,16 +8,12 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Murid;
 use App\Models\MuridWali;
 use App\Models\User;
-use App\Support\NomorUrut;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class MuridService
 {
     public const FOLDER_FOTO = 'murid';
-
-    private const DIGIT_URUT_NIS = 4;
 
     public function __construct(
         private readonly MediaService $media,
@@ -25,41 +21,22 @@ class MuridService
     ) {}
 
     /**
-     * NIS dibuat otomatis dengan format `TA{tahun masuk}{urut 4 digit}`; nomor urut mulai lagi tiap tahun. Murid
-     * baru langsung dibuatkan akun wali dengan username NIS-nya (hubungan `wali`, bisa diubah Kepala Sekolah).
+     * Murid baru belum punya NIS dan akun wali; keduanya dibuat saat Kepala Sekolah mengisi NIS
+     * (`NisMuridService::isi()`). Dipakai juga oleh import murid dan penerimaan PPDB. Status bawaan aktif; import
+     * murid mengirim status lain untuk data alumni.
      *
      * @param  array<string, mixed>  $data
-     *
-     * @throws BusinessRuleException
      */
-    public function buat(array $data, ?UploadedFile $foto, User $pembuat): Murid
+    public function buat(array $data, ?UploadedFile $foto): Murid
     {
         $fotoPath = $foto === null ? null : $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
-        return DB::transaction(function () use ($data, $fotoPath, $pembuat): Murid {
-            $murid = $this->buatDenganFotoTersimpan($data, $fotoPath);
-            $this->waliMuridService->buatAkunOtomatis($murid, Hubungan::Wali, null, $pembuat);
-
-            return $murid;
-        });
-    }
-
-    /**
-     * Sama dengan `buat()` tanpa akun wali dan tanpa unggahan foto, dipakai juga oleh import murid dan penerimaan
-     * PPDB. Status bawaan aktif; import murid mengirim status lain untuk data alumni.
-     *
-     * @param  array<string, mixed>  $data
-     *
-     * @throws BusinessRuleException
-     */
-    public function buatDenganFotoTersimpan(array $data, ?string $fotoPath): Murid
-    {
-        return DB::transaction(fn (): Murid => Murid::query()->create([
+        return Murid::query()->create([
             'status' => StatusMurid::Aktif,
             ...$data,
-            'nis' => $this->nisBaru(Carbon::parse($data['tanggal_masuk'])),
+            'nis' => null,
             'foto_path' => $fotoPath,
-        ]));
+        ]);
     }
 
     /**
@@ -97,7 +74,7 @@ class MuridService
     /**
      * Hapus hanya untuk data yang salah input. Murid yang sudah punya tagihan, rapor, atau berasal dari
      * PPDB disimpan sebagai riwayat; statusnya diubah menjadi pindah/keluar. Akun wali otomatis murid ini yang
-     * belum pernah dipakai ikut dinonaktifkan.
+     * belum pernah dipakai ikut dinonaktifkan dan username-nya dikosongkan.
      *
      * @throws BusinessRuleException
      */
@@ -108,11 +85,11 @@ class MuridService
         }
 
         DB::transaction(function () use ($murid, $penghapus): void {
-            $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $penghapus);
+            $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $penghapus)?->user->update(['username' => null]);
             $murid->kelasMurid()->delete();
-            // NISN berindeks unik dan baris ini hanya di-soft-delete; tanpa dikosongkan, murid yang dimasukkan ulang
-            // dengan NISN yang sama akan ditolak.
-            $murid->update(['nisn' => null]);
+            // NIS, NISN, dan username berindeks unik, sedangkan baris ini hanya di-soft-delete; tanpa dikosongkan,
+            // nomor yang salah input tidak bisa dipakai murid lain.
+            $murid->update(['nis' => null, 'nisn' => null]);
             $murid->delete();
         });
     }
@@ -180,17 +157,5 @@ class MuridService
                 'is_kontak_utama' => $kontakUtama,
             ], fn (mixed $nilai): bool => $nilai !== null))
             ->log("Mengubah tautan {$wali->user->name} dengan {$murid->nama_lengkap}");
-    }
-
-    /**
-     * Murid yang di-soft delete ikut dihitung karena kolom `nis` unik.
-     *
-     * @throws BusinessRuleException
-     */
-    private function nisBaru(Carbon $tanggalMasuk): string
-    {
-        $awalan = 'TA'.$tanggalMasuk->year;
-
-        return NomorUrut::format($awalan, NomorUrut::berikutnya(Murid::withTrashed(), 'nis', $awalan, self::DIGIT_URUT_NIS), self::DIGIT_URUT_NIS);
     }
 }

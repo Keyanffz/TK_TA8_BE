@@ -46,6 +46,14 @@ it('menolak kartu akun kalau akun wali dengan NIS itu sudah nonaktif', function 
         ->assertJsonPath('code', 'BUSINESS_RULE');
 });
 
+it('menolak kartu akun murid yang NIS-nya belum diisi', function () {
+    $murid = Murid::factory()->create(['nis' => null, 'nama_panggilan' => 'Bima']);
+
+    $this->actingAs($this->kepsek)->getJson("/api/v1/murid/{$murid->id}/kartu-akun")
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'NIS Bima belum diisi Kepala Sekolah, jadi akun walinya belum dibuat.');
+});
+
 it('hanya Kepala Sekolah yang bisa mengunduh kartu akun', function () {
     $this->actingAs(buatGuru()->user)->getJson("/api/v1/murid/{$this->murid->id}/kartu-akun")->assertForbidden();
     $this->actingAs($this->kepsek)->getJson('/api/v1/murid/999999/kartu-akun')->assertNotFound();

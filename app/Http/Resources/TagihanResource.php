@@ -27,6 +27,7 @@ class TagihanResource extends JsonResource
             'kode' => $this->kode,
             'murid' => [
                 'id' => $this->murid->id,
+                /** @var string|null */
                 'nis' => $this->murid->nis,
                 'nama_lengkap' => $this->murid->nama_lengkap,
                 'nama_panggilan' => $this->murid->nama_panggilan,

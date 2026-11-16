@@ -30,7 +30,7 @@
     <table class="rincian">
         <tr><td class="label">Nomor kwitansi</td><td>{{ $pembayaran->kode }}</td></tr>
         <tr><td class="label">Nomor tagihan</td><td>{{ $tagihan->kode }}</td></tr>
-        <tr><td class="label">Nama murid</td><td>{{ $murid->nama_lengkap }} (NIS {{ $murid->nis }})</td></tr>
+        <tr><td class="label">Nama murid</td><td>{{ $murid->nama_lengkap }}@if ($murid->nis !== null) (NIS {{ $murid->nis }})@endif</td></tr>
         @if ($kelas)
             <tr><td class="label">Kelas</td><td>{{ $kelas->nama }}</td></tr>
         @endif

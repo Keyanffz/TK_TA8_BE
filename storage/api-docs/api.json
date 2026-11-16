@@ -2843,7 +2843,10 @@
                                                                         "type": "integer"
                                                                     },
                                                                     "nis": {
-                                                                        "type": "string"
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     },
                                                                     "nama_lengkap": {
                                                                         "type": "string"
@@ -3152,7 +3155,10 @@
                                                                         "type": "integer"
                                                                     },
                                                                     "nis": {
-                                                                        "type": "string"
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     },
                                                                     "nama_lengkap": {
                                                                         "type": "string"
@@ -3468,7 +3474,10 @@
                                                                         "type": "integer"
                                                                     },
                                                                     "nis": {
-                                                                        "type": "string"
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     },
                                                                     "nama_lengkap": {
                                                                         "type": "string"
@@ -6128,11 +6137,16 @@
                                                                 "pendaftaran_baru": {
                                                                     "type": "integer",
                                                                     "minimum": 0
+                                                                },
+                                                                "murid_menunggu_nis": {
+                                                                    "type": "integer",
+                                                                    "minimum": 0
                                                                 }
                                                             },
                                                             "required": [
                                                                 "rapor_diajukan",
-                                                                "pendaftaran_baru"
+                                                                "pendaftaran_baru",
+                                                                "murid_menunggu_nis"
                                                             ]
                                                         },
                                                         "pengumuman_terbaru": {
@@ -12137,7 +12151,7 @@
         "/murid/import": {
             "post": {
                 "operationId": "importMurid.simpan",
-                "summary": "Memeriksa ulang file yang sama, lalu menyimpan semua baris valid dalam satu transaksi; baris invalid dilewati\ndan dikembalikan di `gagal` dengan bentuk yang sama seperti pratinjau. Murid aktif dibuatkan akun wali otomatis\n(username NIS, password awal tanggal lahir DDMMYYYY, wajib diganti) dan ditempatkan di `kelas` kalau diisi.\nMurid lulus, pindah, dan keluar disimpan tanpa akun wali dan tidak ikut generate tagihan. Dicatat di log\naktivitas `murid` (event `diimpor`)",
+                "summary": "Memeriksa ulang file yang sama, lalu menyimpan semua baris valid dalam satu transaksi; baris invalid dilewati\ndan dikembalikan di `gagal` dengan bentuk yang sama seperti pratinjau. Murid disimpan tanpa NIS; akun wali murid\naktif dibuat saat Kepala Sekolah mengisi NIS. Murid aktif ditempatkan di `kelas` kalau diisi. Murid lulus,\npindah, dan keluar tidak ikut generate tagihan. Dicatat di log aktivitas `murid` (event `diimpor`)",
                 "tags": [
                     "ImportMurid"
                 ],
@@ -12169,9 +12183,6 @@
                                             "type": "object",
                                             "properties": {
                                                 "dibuat": {
-                                                    "type": "integer"
-                                                },
-                                                "akun_wali_dibuat": {
                                                     "type": "integer"
                                                 },
                                                 "gagal": {
@@ -12333,7 +12344,6 @@
                                             },
                                             "required": [
                                                 "dibuat",
-                                                "akun_wali_dibuat",
                                                 "gagal"
                                             ]
                                         },
@@ -18638,7 +18648,10 @@
                                                                 "type": "integer"
                                                             },
                                                             "nis": {
-                                                                "type": "string"
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
                                                             },
                                                             "nama_lengkap": {
                                                                 "type": "string"
@@ -19731,8 +19744,8 @@
         "/murid": {
             "post": {
                 "operationId": "murid.store",
-                "description": "Murid baru langsung dibuatkan akun wali: username NIS, password awal tanggal lahir anak (DDMMYYYY) yang\nwajib diganti saat login pertama, hubungan `wali` sebagai kontak utama. Akun ini muncul di `wali`.",
-                "summary": "Menambah murid (status aktif). NIS dibuat otomatis dari tahun `tanggal_masuk`. Kirim sebagai\n`multipart/form-data` jika menyertakan foto",
+                "description": "NIS diisi Kepala Sekolah lewat `PATCH /murid/{id}/nis` atau pengisian massal; saat itu murid dibuatkan akun wali\n(username NIS, password awal tanggal lahir anak DDMMYYYY yang wajib diganti, hubungan `wali` sebagai kontak\nutama). Sampai NIS diisi, `nis` null dan `wali` kosong.",
+                "summary": "Menambah murid (status aktif) tanpa NIS. Kirim sebagai `multipart/form-data` jika menyertakan foto",
                 "tags": [
                     "Murid"
                 ],
@@ -19846,7 +19859,7 @@
                         }
                     },
                     "422": {
-                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "description": "VALIDATION_ERROR",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -19861,7 +19874,6 @@
                                         "code": {
                                             "type": "string",
                                             "enum": [
-                                                "BUSINESS_RULE",
                                                 "VALIDATION_ERROR"
                                             ]
                                         },
@@ -19931,7 +19943,7 @@
             },
             "get": {
                 "operationId": "murid.index",
-                "description": "Filter `filter[kelas_id]`, `filter[status]`, `filter[tingkat]` (tingkat kelas di tahun ajaran aktif),\n`filter[tahun_lulus]` (daftar alumni bersama `filter[status]=lulus`). `search` mencari nama lengkap, nama\npanggilan, NIS, dan NISN. Urutan `sort` = `nama` | `nis` | `created_at` | `tahun_lulus`.",
+                "description": "Filter `filter[kelas_id]`, `filter[status]`, `filter[tingkat]` (tingkat kelas di tahun ajaran aktif),\n`filter[tahun_lulus]` (daftar alumni bersama `filter[status]=lulus`), `filter[menunggu_nis]` (`true`: murid yang\nNIS-nya belum diisi Kepala Sekolah, `false`: yang sudah). `search` mencari nama lengkap, nama panggilan, NIS, dan\nNISN. Urutan `sort` = `nama` | `nis` | `created_at` | `tahun_lulus`.",
                 "summary": "Daftar murid. Kepala Sekolah dan pemegang izin lihat data murid melihat semua murid, guru lain hanya murid di\nkelas yang dia ampu pada tahun ajaran aktif, wali murid hanya anaknya sendiri",
                 "tags": [
                     "Murid"
@@ -20008,6 +20020,19 @@
                         "in": "query",
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "filter[menunggu_nis]",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "true",
+                                "false",
+                                "1",
+                                "0"
+                            ]
                         }
                     }
                 ],
@@ -20882,7 +20907,7 @@
         "/murid/{id}/kartu-akun": {
             "get": {
                 "operationId": "murid.kartuAkun",
-                "summary": "Kartu akun wali murid (PDF A6) untuk dicetak dan dibagikan: nama anak, kelas, NIS sebagai username, keterangan\npassword awal, dan alamat website. Password tidak ditulis. Ditolak 422 `BUSINESS_RULE` kalau tidak ada akun\nwali aktif dengan username NIS ini",
+                "summary": "Kartu akun wali murid (PDF A6) untuk dicetak dan dibagikan: nama anak, kelas, NIS sebagai username, keterangan\npassword awal, dan alamat website. Password tidak ditulis. Ditolak 422 `BUSINESS_RULE` kalau NIS belum diisi\natau tidak ada akun wali aktif dengan username NIS ini. Karakter NIS yang tidak aman untuk nama file (misalnya\ngaris miring) diganti `-` di nama file",
                 "tags": [
                     "Murid"
                 ],
@@ -21030,6 +21055,1467 @@
                                         },
                                         "errors": {
                                             "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/murid/{id}/nis": {
+            "patch": {
+                "operationId": "nisMurid.isi",
+                "summary": "Mengisi atau mengubah NIS satu murid. NIS disimpan huruf besar tanpa spasi: huruf, angka, titik, strip, dan\ngaris miring, maksimal 20 karakter, unik di antara NIS murid (termasuk yang dihapus) dan username akun.\nMengisi NIS murid aktif yang belum punya wali membuat akun wali otomatis (username NIS, password awal tanggal\nlahir DDMMYYYY, wajib diganti); murid dari PPDB tanpa login memakai hubungan dan nomor HP formulirnya. Mengubah\nNIS ikut mengganti username akun yang memakai NIS lama, dan akun itu mendapat notifikasi `username_diubah`.\nPelanggaran aturan dibalas 422 `VALIDATION_ERROR` di field `nis`",
+                "tags": [
+                    "NisMurid"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IsiNisMuridRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/MuridDetailResource"
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "NOT_FOUND"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/murid/nis/template": {
+            "get": {
+                "operationId": "nisMurid.template",
+                "summary": "File .xlsx berisi murid aktif yang menunggu NIS (kolom `id`, `nama_lengkap`, `tanggal_lahir`, dan `nis` kosong\nberformat teks), urut nama, untuk diisi lalu diunggah ke `POST /murid/nis/import`",
+                "tags": [
+                    "NisMurid"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar murid menunggu NIS (.xlsx)",
+                        "content": {
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/murid/nis/import/pratinjau": {
+            "post": {
+                "operationId": "nisMurid.pratinjauImport",
+                "summary": "Memeriksa NIS dari file tanpa menyimpan. `nomor` = nomor baris di spreadsheet. Baris invalid membawa `alasan`:\nNIS kosong atau formatnya salah, NIS dobel di file (semua baris yang dobel), NIS sudah dipakai murid lain atau\nusername akun lain, murid tidak ditemukan atau sudah punya NIS, dan nama yang tidak sama dengan murid ber-ID itu\n(dibandingkan tanpa beda huruf besar dan spasi berlebih). `akun_wali` true untuk baris yang akan membuat akun\nwali. Kolom wajib yang tidak ada, file kosong, file tidak terbaca, atau lebih dari 500 baris ditolak 422\n`VALIDATION_ERROR` di field `file`",
+                "tags": [
+                    "NisMurid"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImportNisMuridRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ringkasan": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": {
+                                                            "type": "integer"
+                                                        },
+                                                        "valid": {
+                                                            "type": "integer"
+                                                        },
+                                                        "invalid": {
+                                                            "type": "integer"
+                                                        },
+                                                        "akun_wali": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "total",
+                                                        "valid",
+                                                        "invalid",
+                                                        "akun_wali"
+                                                    ]
+                                                },
+                                                "baris": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "nomor": {
+                                                                "type": "integer"
+                                                            },
+                                                            "murid_id": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nama_lengkap": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nis": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "valid": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "akun_wali": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "alasan": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "nomor",
+                                                            "murid_id",
+                                                            "nama_lengkap",
+                                                            "nis",
+                                                            "valid",
+                                                            "akun_wali",
+                                                            "alasan"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "ringkasan",
+                                                "baris"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/murid/nis/import": {
+            "post": {
+                "operationId": "nisMurid.simpanImport",
+                "summary": "Memeriksa ulang file yang sama, lalu mengisi NIS semua baris valid dalam satu transaksi; baris invalid\ndikembalikan di `gagal` dengan bentuk yang sama seperti pratinjau. Kalau NIS bentrok dengan data yang baru\ntersimpan saat proses berjalan, tidak ada yang disimpan (422 `BUSINESS_RULE`)",
+                "tags": [
+                    "NisMurid"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImportNisMuridRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "diisi": {
+                                                    "type": "integer"
+                                                },
+                                                "akun_wali_dibuat": {
+                                                    "type": "integer"
+                                                },
+                                                "gagal": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "nomor": {
+                                                                "type": "integer"
+                                                            },
+                                                            "murid_id": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nama_lengkap": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nis": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "valid": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "akun_wali": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "alasan": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "nomor",
+                                                            "murid_id",
+                                                            "nama_lengkap",
+                                                            "nis",
+                                                            "valid",
+                                                            "akun_wali",
+                                                            "alasan"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "diisi",
+                                                "akun_wali_dibuat",
+                                                "gagal"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR / BUSINESS_RULE",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR",
+                                                "BUSINESS_RULE"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/murid/nis/batch/pratinjau": {
+            "post": {
+                "operationId": "nisMurid.pratinjauBatch",
+                "summary": "Sama dengan pratinjau import untuk NIS yang diketik di tabel web. `nomor` = urutan item mulai 1; baris kosong\nsebaiknya tidak dikirim",
+                "tags": [
+                    "NisMurid"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BatchNisMuridRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ringkasan": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": {
+                                                            "type": "integer"
+                                                        },
+                                                        "valid": {
+                                                            "type": "integer"
+                                                        },
+                                                        "invalid": {
+                                                            "type": "integer"
+                                                        },
+                                                        "akun_wali": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "total",
+                                                        "valid",
+                                                        "invalid",
+                                                        "akun_wali"
+                                                    ]
+                                                },
+                                                "baris": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "nomor": {
+                                                                "type": "integer"
+                                                            },
+                                                            "murid_id": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nama_lengkap": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nis": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "valid": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "akun_wali": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "alasan": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "nomor",
+                                                            "murid_id",
+                                                            "nama_lengkap",
+                                                            "nis",
+                                                            "valid",
+                                                            "akun_wali",
+                                                            "alasan"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "ringkasan",
+                                                "baris"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_REQUESTS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "TOO_MANY_REQUESTS"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Jumlah detik sampai boleh mencoba lagi.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/murid/nis/batch": {
+            "post": {
+                "operationId": "nisMurid.simpanBatch",
+                "summary": "Sama dengan simpan import untuk NIS yang diketik di tabel web",
+                "tags": [
+                    "NisMurid"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BatchNisMuridRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "diisi": {
+                                                    "type": "integer"
+                                                },
+                                                "akun_wali_dibuat": {
+                                                    "type": "integer"
+                                                },
+                                                "gagal": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "nomor": {
+                                                                "type": "integer"
+                                                            },
+                                                            "murid_id": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nama_lengkap": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "nis": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "valid": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "akun_wali": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "alasan": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "nomor",
+                                                            "murid_id",
+                                                            "nama_lengkap",
+                                                            "nis",
+                                                            "valid",
+                                                            "akun_wali",
+                                                            "alasan"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "diisi",
+                                                "akun_wali_dibuat",
+                                                "gagal"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHENTICATED",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "UNAUTHENTICATED"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN / ACCOUNT_INACTIVE / PASSWORD_WAJIB_DIGANTI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FORBIDDEN",
+                                                "ACCOUNT_INACTIVE",
+                                                "PASSWORD_WAJIB_DIGANTI"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "code",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "BUSINESS_RULE / VALIDATION_ERROR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "BUSINESS_RULE",
+                                                "VALIDATION_ERROR"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
                                         }
                                     },
                                     "required": [
@@ -37086,7 +38572,11 @@
                         "type": "integer"
                     },
                     "nis": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "NIS diisi Kepala Sekolah; null selama murid menunggu NIS."
                     },
                     "nama_lengkap": {
                         "type": "string"
@@ -37144,6 +38634,41 @@
                     "is_kontak_utama"
                 ],
                 "title": "AnakWaliResource"
+            },
+            "BatchNisMuridRequest": {
+                "type": "object",
+                "description": "`POST /murid/nis/batch/pratinjau` dan `POST /murid/nis/batch`: NIS yang diketik di tabel web. Isi tiap baris\ndiperiksa `NisMuridService` dan hasilnya dilaporkan per baris, bukan sebagai error validasi.",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "murid_id": {
+                                    "type": "integer"
+                                },
+                                "nis": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 50
+                                }
+                            },
+                            "required": [
+                                "murid_id",
+                                "nis"
+                            ]
+                        },
+                        "minItems": 1,
+                        "maxItems": 500,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "items"
+                ],
+                "title": "BatchNisMuridRequest"
             },
             "BayarTagihanRequest": {
                 "type": "object",
@@ -37776,6 +39301,37 @@
                 ],
                 "title": "ImportMuridRequest"
             },
+            "ImportNisMuridRequest": {
+                "type": "object",
+                "description": "`POST /murid/nis/import/pratinjau` dan `POST /murid/nis/import` (multipart): file .xlsx dari template, maksimal\n2 MB. CSV tidak diterima karena Excel membuang angka nol di depan NIS saat membuka CSV.",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 2048 kilobytes."
+                    }
+                },
+                "required": [
+                    "file"
+                ],
+                "title": "ImportNisMuridRequest"
+            },
+            "IsiNisMuridRequest": {
+                "type": "object",
+                "description": "`PATCH /murid/{id}/nis`. Format, keunikan, dan aturan murid diperiksa `NisMuridService` (pesan di field `nis`).",
+                "properties": {
+                    "nis": {
+                        "type": "string",
+                        "description": "Huruf, angka, titik, strip, dan garis miring, maksimal 20 karakter; disimpan huruf besar tanpa spasi.",
+                        "maxLength": 50
+                    }
+                },
+                "required": [
+                    "nis"
+                ],
+                "title": "IsiNisMuridRequest"
+            },
             "IsiRaporRequest": {
                 "type": "object",
                 "description": "`PUT /rapor/{id}`. Elemen yang tidak dikirim di `detail` tidak berubah.",
@@ -37852,7 +39408,7 @@
             },
             "JenisNotifikasi": {
                 "type": "string",
-                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `pembayaran_dibatalkan` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |\n| `absensi_susulan_diberikan` <br/>  |",
+                "description": "Nilai `jenis` pada notifikasi (A7 \"Bentuk notifikasi\"). FE memakainya untuk ikon dan pengelompokan.\n| |\n|---|\n| `tagihan_baru` <br/>  |\n| `tagihan_tertunda` <br/>  |\n| `pengingat_tagihan` <br/>  |\n| `tagihan_terlambat` <br/>  |\n| `pembayaran_masuk` <br/>  |\n| `pembayaran_diterima` <br/>  |\n| `pembayaran_ditolak` <br/>  |\n| `pembayaran_dibatalkan` <br/>  |\n| `rapor_diajukan` <br/>  |\n| `rapor_revisi` <br/>  |\n| `rapor_terbit` <br/> Hanya ada di notifikasi lama; sejak wali murid tidak membuka rapor di aplikasi, jenis ini tidak dibuat lagi. |\n| `pengumuman_baru` <br/>  |\n| `pendaftaran_baru` <br/>  |\n| `pendaftaran_diproses` <br/>  |\n| `anak_tertaut` <br/>  |\n| `username_diubah` <br/>  |\n| `absensi_tercatat` <br/>  |\n| `absensi_dikoreksi` <br/>  |\n| `absensi_susulan_diberikan` <br/>  |",
                 "enum": [
                     "tagihan_baru",
                     "tagihan_tertunda",
@@ -37869,6 +39425,7 @@
                     "pendaftaran_baru",
                     "pendaftaran_diproses",
                     "anak_tertaut",
+                    "username_diubah",
                     "absensi_tercatat",
                     "absensi_dikoreksi",
                     "absensi_susulan_diberikan"
@@ -38139,7 +39696,10 @@
                                     "type": "integer"
                                 },
                                 "nis": {
-                                    "type": "string"
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
                                 },
                                 "nama_lengkap": {
                                     "type": "string"
@@ -38343,7 +39903,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "nama_lengkap": {
                                 "type": "string"
@@ -38737,7 +40300,11 @@
                         "type": "integer"
                     },
                     "nis": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "NIS diisi Kepala Sekolah; null selama murid menunggu NIS."
                     },
                     "nisn": {
                         "type": [
@@ -39019,7 +40586,11 @@
                         "type": "integer"
                     },
                     "nis": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "NIS diisi Kepala Sekolah; null selama murid menunggu NIS."
                     },
                     "nisn": {
                         "type": [
@@ -39475,7 +41046,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             }
                         },
                         "required": [
@@ -39725,7 +41299,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             }
                         },
                         "required": [
@@ -40183,7 +41760,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "nama_lengkap": {
                                 "type": "string"
@@ -40384,7 +41964,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "nama_lengkap": {
                                 "type": "string"
@@ -41486,7 +43069,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "nama_lengkap": {
                                 "type": "string"
@@ -41634,7 +43220,10 @@
                                 "type": "integer"
                             },
                             "nis": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "nama_lengkap": {
                                 "type": "string"

@@ -6,6 +6,7 @@ use App\Enums\StatusAkun;
 use App\Models\Murid;
 use App\Models\User;
 use App\Models\WaliMurid;
+use App\Services\WaliMuridService;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Activitylog\Models\Activity;
 
@@ -28,9 +29,24 @@ function dataMuridBaru(array $timpa = []): array
     ];
 }
 
-it('membuat akun wali dengan username NIS dan password tanggal lahir saat murid ditambahkan', function () {
-    $response = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())
-        ->assertCreated()
+/**
+ * Murid ditambahkan lewat `POST /murid`, lalu NIS-nya diisi Kepala Sekolah sehingga akun walinya dibuat.
+ */
+function muridDenganNis(object $test, User $kepsek, string $nis = 'TA20260001'): Murid
+{
+    $id = $test->actingAs($kepsek)->postJson('/api/v1/murid', dataMuridBaru())->assertCreated()->json('data.id');
+    $test->actingAs($kepsek)->patchJson("/api/v1/murid/{$id}/nis", ['nis' => $nis])->assertOk();
+
+    return Murid::query()->findOrFail($id);
+}
+
+it('membuat akun wali dengan username NIS dan password tanggal lahir saat Kepala Sekolah mengisi NIS', function () {
+    $id = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.id');
+
+    $response = $this->actingAs($this->kepsek)->patchJson("/api/v1/murid/{$id}/nis", ['nis' => 'ta 2026 0001'])
+        ->assertOk()
+        ->assertJsonPath('message', 'NIS TA20260001 tersimpan untuk Raka Aditya Pratama. Akun wali dibuat dengan username TA20260001; kartu akunnya bisa diunduh.')
+        ->assertJsonPath('data.nis', 'TA20260001')
         ->assertJsonPath('data.wali.0.nama', 'Wali Raka')
         ->assertJsonPath('data.wali.0.email', null)
         ->assertJsonPath('data.wali.0.hubungan', 'wali')
@@ -57,23 +73,26 @@ it('membuat akun wali dengan username NIS dan password tanggal lahir saat murid 
         ->assertJsonPath('data.user.wali_murid.anak.0.nama_panggilan', 'Raka');
 });
 
-it('membatalkan pembuatan murid kalau akun walinya gagal dibuat', function () {
-    User::factory()->waliMurid()->create(['username' => 'TA20260001']);
+it('membatalkan pengisian NIS kalau akun walinya gagal dibuat', function () {
+    $id = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.id');
+    $this->mock(WaliMuridService::class)->shouldReceive('buatAkunOtomatis')->andThrow(new RuntimeException('Gagal menulis akun.'));
 
-    $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->assertServerError();
+    $this->actingAs($this->kepsek)->patchJson("/api/v1/murid/{$id}/nis", ['nis' => 'TA20260001'])->assertServerError();
 
-    expect(Murid::query()->count())->toBe(0);
+    expect(Murid::query()->findOrFail($id)->nis)->toBeNull()
+        ->and(Activity::query()->where('event', 'nis_diisi')->exists())->toBeFalse();
 });
 
-it('menonaktifkan akun wali otomatis yang belum dipakai saat murid dihapus', function () {
-    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
-    $akun = User::query()->where('username', $nis)->sole();
+it('menonaktifkan akun wali otomatis yang belum dipakai dan membebaskan NIS-nya saat murid dihapus', function () {
+    $murid = muridDenganNis($this, $this->kepsek);
+    $akun = User::query()->where('username', 'TA20260001')->sole();
     $akun->createToken('web');
-    $murid = Murid::query()->where('nis', $nis)->sole();
 
     $this->actingAs($this->kepsek)->deleteJson("/api/v1/murid/{$murid->id}")->assertOk();
 
     expect($akun->fresh()?->status)->toBe(StatusAkun::Nonaktif)
+        ->and($akun->fresh()?->username)->toBeNull()
+        ->and(Murid::withTrashed()->findOrFail($murid->id)->nis)->toBeNull()
         ->and($akun->tokens()->count())->toBe(0)
         ->and($akun->waliMurid?->murid()->count())->toBe(0)
         ->and(Activity::query()->where('log_name', 'akun')->where('event', 'dinonaktifkan')->where('subject_id', $akun->id)->exists())->toBeTrue();
@@ -95,8 +114,8 @@ function ubahTanggalLahir(object $test, User $kepsek, Murid $murid, string $tang
 }
 
 it('mengganti password awal akun otomatis yang belum dipakai saat tanggal lahir murid dikoreksi', function () {
-    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
-    $murid = Murid::query()->where('nis', $nis)->sole();
+    $nis = 'TA20260001';
+    $murid = muridDenganNis($this, $this->kepsek, $nis);
     $akun = User::query()->where('username', $nis)->sole();
 
     ubahTanggalLahir($this, $this->kepsek, $murid, '2021-12-06');
@@ -115,8 +134,8 @@ it('mengganti password awal akun otomatis yang belum dipakai saat tanggal lahir 
 });
 
 it('tidak mengubah password akun yang sudah dipakai saat tanggal lahir murid dikoreksi', function () {
-    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
-    $murid = Murid::query()->where('nis', $nis)->sole();
+    $nis = 'TA20260001';
+    $murid = muridDenganNis($this, $this->kepsek, $nis);
     $akun = User::query()->where('username', $nis)->sole();
     $akun->update(['password' => 'rakaCeria21', 'wajib_ganti_password' => false]);
 
@@ -126,8 +145,8 @@ it('tidak mengubah password akun yang sudah dipakai saat tanggal lahir murid dik
 });
 
 it('tidak mengubah password akun keluarga yang direset dan tertaut ke anak lain', function () {
-    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
-    $murid = Murid::query()->where('nis', $nis)->sole();
+    $nis = 'TA20260001';
+    $murid = muridDenganNis($this, $this->kepsek, $nis);
     $akun = User::query()->with('waliMurid')->where('username', $nis)->sole();
     $akun->waliMurid?->murid()->attach(Murid::factory()->create(), ['hubungan' => Hubungan::Ibu, 'is_kontak_utama' => true]);
 
@@ -138,8 +157,8 @@ it('tidak mengubah password akun keluarga yang direset dan tertaut ke anak lain'
 });
 
 it('tidak menyentuh password akun kalau tanggal lahir tidak berubah', function () {
-    $nis = $this->actingAs($this->kepsek)->postJson('/api/v1/murid', dataMuridBaru())->json('data.nis');
-    $murid = Murid::query()->where('nis', $nis)->sole();
+    $nis = 'TA20260001';
+    $murid = muridDenganNis($this, $this->kepsek, $nis);
 
     ubahTanggalLahir($this, $this->kepsek, $murid, '2021-11-05');
 

@@ -25,6 +25,11 @@ class MuridResource extends JsonResource
 
         return [
             'id' => $this->id,
+            /**
+             * NIS diisi Kepala Sekolah; null selama murid menunggu NIS.
+             *
+             * @var string|null
+             */
             'nis' => $this->nis,
             'nisn' => $this->nisn,
             'nik' => $this->nik,

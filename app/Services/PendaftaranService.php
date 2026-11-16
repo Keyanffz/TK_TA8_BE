@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Notification;
  * pendaftaran selain yang ditolak di tahun ajaran itu. Alur: diajukan → diverifikasi → diterima, dan
  * diajukan/diverifikasi → ditolak. Formulir tidak mengunggah berkas; berkas dibawa ke sekolah dan `diverifikasi`
  * berarti sudah dicek di sana. Menerima pendaftar membuat data murid dalam satu transaksi. Pendaftaran tanpa
- * login belum punya wali; akun walinya dibuat saat diterima.
+ * login belum punya wali; akun walinya dibuat saat Kepala Sekolah mengisi NIS murid itu.
  */
 class PendaftaranService
 {
@@ -32,7 +32,6 @@ class PendaftaranService
         private readonly PengaturanService $pengaturan,
         private readonly MuridService $muridService,
         private readonly KelasService $kelasService,
-        private readonly WaliMuridService $waliMuridService,
     ) {}
 
     /**
@@ -114,10 +113,10 @@ class PendaftaranService
     }
 
     /**
-     * Membuat murid (NIS dari tanggal mulai tahun ajaran tujuan), menautkan wali pendaftar sebagai kontak utama
-     * dengan hubungan dari pendaftaran, dan menempatkan murid di kelas kalau dipilih (kelas harus di tahun ajaran
-     * tujuan, dengan cek kapasitas). Murid dibuat tanpa foto. Pendaftaran tanpa login dibuatkan akun wali otomatis
-     * (nomor HP dari formulir), lalu akun itu dicatat sebagai wali pendaftar.
+     * Membuat murid tanpa NIS dan tanpa foto, menautkan wali pendaftar sebagai kontak utama dengan hubungan dari
+     * pendaftaran, dan menempatkan murid di kelas kalau dipilih (kelas harus di tahun ajaran tujuan, dengan cek
+     * kapasitas). Pendaftaran tanpa login belum punya wali: akunnya dibuat saat Kepala Sekolah mengisi NIS
+     * (`NisMuridService::isi()`), dengan hubungan dan nomor HP dari formulir.
      *
      * @throws BusinessRuleException
      */
@@ -131,7 +130,7 @@ class PendaftaranService
             $pendaftaran = $this->kunci($pendaftaran, [StatusPendaftaran::Diverifikasi], 'diterima');
             $pendaftaran->loadMissing('tahunAjaran');
 
-            $murid = $this->muridService->buatDenganFotoTersimpan([
+            $murid = $this->muridService->buat([
                 'nik' => $pendaftaran->nik,
                 'nama_lengkap' => $pendaftaran->nama_lengkap,
                 'nama_panggilan' => $pendaftaran->nama_panggilan,
@@ -142,10 +141,7 @@ class PendaftaranService
                 'alamat' => $pendaftaran->alamat,
                 'tanggal_masuk' => $pendaftaran->tahunAjaran->tanggal_mulai->toDateString(),
             ], null);
-            if ($pendaftaran->wali_murid_id === null) {
-                $wali = $this->waliMuridService->buatAkunOtomatis($murid, $pendaftaran->hubungan, $pendaftaran->no_hp, $kepalaSekolah);
-                $pendaftaran->wali_murid_id = $wali->id;
-            } else {
+            if ($pendaftaran->wali_murid_id !== null) {
                 $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
             }
 

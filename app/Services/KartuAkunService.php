@@ -39,6 +39,10 @@ class KartuAkunService
      */
     public function isi(Murid $murid): array
     {
+        if ($murid->nis === null) {
+            throw new BusinessRuleException("NIS {$murid->nama_panggilan} belum diisi Kepala Sekolah, jadi akun walinya belum dibuat.");
+        }
+
         $akunAktif = User::query()
             ->where('username', $murid->nis)
             ->where('role', Role::WaliMurid)
@@ -57,8 +61,11 @@ class KartuAkunService
         ];
     }
 
+    /**
+     * NIS boleh berisi garis miring, yang tidak boleh ada di nama file unduhan.
+     */
     public function namaFile(Murid $murid): string
     {
-        return "kartu-akun-{$murid->nis}.pdf";
+        return 'kartu-akun-'.preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $murid->nis).'.pdf';
     }
 }

@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\LogAktivitas\LogAktivitasController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\Murid\ImportMuridController;
 use App\Http\Controllers\Api\V1\Murid\MuridController;
+use App\Http\Controllers\Api\V1\Murid\NisMuridController;
 use App\Http\Controllers\Api\V1\Murid\StatusMuridController;
 use App\Http\Controllers\Api\V1\Notifikasi\NotifikasiController;
 use App\Http\Controllers\Api\V1\Pengaturan\PengaturanController;
@@ -100,6 +101,13 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
 
         Route::patch('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'ubahWali']);
         Route::delete('/murid/{id}/wali/{wali_murid_id}', [MuridController::class, 'lepasWali']);
+
+        Route::patch('/murid/{id}/nis', [NisMuridController::class, 'isi']);
+        Route::get('/murid/nis/template', [NisMuridController::class, 'template']);
+        Route::post('/murid/nis/import/pratinjau', [NisMuridController::class, 'pratinjauImport']);
+        Route::post('/murid/nis/import', [NisMuridController::class, 'simpanImport']);
+        Route::post('/murid/nis/batch/pratinjau', [NisMuridController::class, 'pratinjauBatch']);
+        Route::post('/murid/nis/batch', [NisMuridController::class, 'simpanBatch']);
 
         Route::post('/jenis-tagihan', [JenisTagihanController::class, 'store']);
         Route::put('/jenis-tagihan/{id}', [JenisTagihanController::class, 'update']);

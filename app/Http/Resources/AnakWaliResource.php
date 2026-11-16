@@ -29,6 +29,11 @@ class AnakWaliResource extends JsonResource
 
         return [
             'id' => $this->id,
+            /**
+             * NIS diisi Kepala Sekolah; null selama murid menunggu NIS.
+             *
+             * @var string|null
+             */
             'nis' => $this->nis,
             'nama_lengkap' => $this->nama_lengkap,
             'nama_panggilan' => $this->nama_panggilan,

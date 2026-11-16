@@ -94,7 +94,7 @@ class RaporPdfService
 
     public function namaFile(Rapor $rapor): string
     {
-        return 'rapor-'.Str::slug("{$rapor->murid->nis} {$rapor->tahunAjaran->nama} semester {$rapor->semester}").'.pdf';
+        return 'rapor-'.Str::slug(($rapor->murid->nis ?? $rapor->murid->nama_lengkap)." {$rapor->tahunAjaran->nama} semester {$rapor->semester}").'.pdf';
     }
 
     /** `rapor-tk-a1-2026-2027-semester-1.pdf`. */

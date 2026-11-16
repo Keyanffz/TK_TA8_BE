@@ -10,7 +10,7 @@
 
     <table class="identitas">
         <tr><td class="label">Nama</td><td>{{ $rapor->murid->nama_lengkap }}</td><td class="label">Kelas</td><td>{{ $rapor->kelas->nama }}</td></tr>
-        <tr><td class="label">NIS</td><td>{{ $rapor->murid->nis }}</td><td class="label">Tinggi badan</td><td>{{ $rapor->tinggi_badan !== null ? $rapor->tinggi_badan.' cm' : '-' }}</td></tr>
+        <tr><td class="label">NIS</td><td>{{ $rapor->murid->nis ?? '-' }}</td><td class="label">Tinggi badan</td><td>{{ $rapor->tinggi_badan !== null ? $rapor->tinggi_badan.' cm' : '-' }}</td></tr>
         <tr><td class="label">Nama panggilan</td><td>{{ $rapor->murid->nama_panggilan }}</td><td class="label">Berat badan</td><td>{{ $rapor->berat_badan !== null ? $rapor->berat_badan.' kg' : '-' }}</td></tr>
     </table>
 

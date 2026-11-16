@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\Hubungan;
 use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\Murid\SimpanMuridRequest;
@@ -17,7 +16,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -30,10 +28,10 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as TanggalExcel;
 
 /**
  * Import murid dari file Excel/CSV hasil template (A2.14). Pratinjau hanya memeriksa; simpan memeriksa ulang (data
- * bisa berubah sejak pratinjau) lalu menyimpan semua baris valid dalam satu transaksi. Murid aktif dibuatkan akun
- * wali otomatis seperti `POST /murid` dan bisa langsung ditempatkan di kelas tahun ajaran aktif; murid lulus, pindah,
- * dan keluar disimpan tanpa akun wali, sehingga juga tidak ikut generate tagihan. Duplikat dideteksi lewat NISN, atau
- * lewat nama lengkap + tanggal lahir untuk baris tanpa NISN.
+ * bisa berubah sejak pratinjau) lalu menyimpan semua baris valid dalam satu transaksi. Murid disimpan tanpa NIS
+ * seperti `POST /murid`; akun wali murid aktif dibuat saat Kepala Sekolah mengisi NIS. Murid aktif bisa langsung
+ * ditempatkan di kelas tahun ajaran aktif; murid lulus, pindah, dan keluar tidak ikut generate tagihan. Duplikat
+ * dideteksi lewat NISN, atau lewat nama lengkap + tanggal lahir untuk baris tanpa NISN.
  *
  * @phpstan-type IsiBaris array<string, string|null>
  * @phpstan-type BarisPratinjau array{nomor: int, data: IsiBaris, valid: bool, alasan: list<string>}
@@ -49,12 +47,12 @@ class ImportMuridService
         'nik' => ['Tidak', '16 digit. Tulis sebagai teks (kolom template sudah berformat teks) supaya digit terakhir tidak berubah.'],
         'jenis_kelamin' => ['Ya', 'L atau P.'],
         'tempat_lahir' => ['Ya', 'Kota tempat lahir.'],
-        'tanggal_lahir' => ['Ya', 'YYYY-MM-DD, misalnya 2021-05-14 (DD/MM/YYYY juga diterima). Untuk murid aktif, ini juga password awal akun wali (DDMMYYYY).'],
+        'tanggal_lahir' => ['Ya', 'YYYY-MM-DD, misalnya 2021-05-14 (DD/MM/YYYY juga diterima). Untuk murid aktif, ini juga password awal akun wali (DDMMYYYY) yang dibuat setelah Kepala Sekolah mengisi NIS.'],
         'agama' => ['Ya', 'Misalnya Islam.'],
         'alamat' => ['Ya', 'Alamat rumah.'],
         'anak_ke' => ['Tidak', 'Angka 1 sampai 20.'],
         'catatan_khusus' => ['Tidak', 'Misalnya alergi makanan atau kebutuhan khusus.'],
-        'tanggal_masuk' => ['Ya', 'YYYY-MM-DD. Tahunnya dipakai untuk NIS.'],
+        'tanggal_masuk' => ['Ya', 'YYYY-MM-DD.'],
         'status' => ['Tidak', 'aktif, lulus, pindah, atau keluar; kosong berarti aktif. Murid lulus, pindah, dan keluar tidak dibuatkan akun wali dan tidak ditagih.'],
         'tanggal_status' => ['Tidak', 'Tanggal lulus, pindah, atau keluar (YYYY-MM-DD); kosong untuk murid aktif. Kosong untuk murid lulus berarti akhir tahun ajaran di tahun lulus.'],
         'tahun_lulus' => ['Untuk status lulus', 'Tahun lulus, misalnya 2019.'],
@@ -64,14 +62,6 @@ class ImportMuridService
     ];
 
     public const MAKSIMAL_BARIS = 500;
-
-    /**
-     * Hash bcrypt password awal sekitar 0,2 detik per murid aktif. Batas waktu PHP dihitung ulang dari nol setiap
-     * kelompok, supaya import ratusan murid aktif tidak terhenti oleh `max_execution_time`.
-     */
-    private const BARIS_PER_KELOMPOK = 50;
-
-    private const DETIK_PER_KELOMPOK = 60;
 
     private const KOLOM_TANGGAL = ['tanggal_lahir', 'tanggal_masuk', 'tanggal_status'];
 
@@ -99,7 +89,6 @@ class ImportMuridService
 
     public function __construct(
         private readonly MuridService $muridService,
-        private readonly WaliMuridService $waliMuridService,
         private readonly KelasService $kelasService,
         private readonly StatusMuridService $statusMurid,
     ) {}
@@ -125,7 +114,7 @@ class ImportMuridService
     /**
      * Baris invalid tidak disimpan dan dikembalikan sebagai `gagal` beserta alasannya.
      *
-     * @return array{dibuat: int, akun_wali_dibuat: int, gagal: list<BarisPratinjau>}
+     * @return array{dibuat: int, gagal: list<BarisPratinjau>}
      *
      * @throws ValidationException
      * @throws BusinessRuleException
@@ -135,27 +124,22 @@ class ImportMuridService
         $hasil = $this->periksa($this->baca($file));
         $valid = array_values(array_filter($hasil, fn (array $satu): bool => $satu['valid']));
         $gagal = array_values(array_map($this->untukRespons(...), array_filter($hasil, fn (array $satu): bool => ! $satu['valid'])));
-        $akunWali = 0;
-        $batasWaktuAwal = (int) ini_get('max_execution_time');
 
         try {
             if ($valid !== []) {
-                $hashPassword = $this->hashPasswordAwal($valid);
-                $akunWali = DB::transaction(fn (): int => $this->simpanBaris($valid, $hashPassword, $pelaku));
+                DB::transaction(fn () => $this->simpanBaris($valid));
             }
         } catch (UniqueConstraintViolationException) {
-            throw new BusinessRuleException('Ada NISN atau NIS yang baru saja dipakai data lain saat import berjalan, jadi tidak ada murid yang disimpan. Unggah ulang file untuk memeriksa datanya lagi.');
-        } finally {
-            set_time_limit($batasWaktuAwal);
+            throw new BusinessRuleException('Ada NISN yang baru saja dipakai data lain saat import berjalan, jadi tidak ada murid yang disimpan. Unggah ulang file untuk memeriksa datanya lagi.');
         }
 
         if ($valid !== []) {
             activity('murid')->causedBy($pelaku)->event('diimpor')
-                ->withProperties(['nama_file' => $file->getClientOriginalName(), 'dibuat' => count($valid), 'akun_wali_dibuat' => $akunWali, 'gagal' => count($gagal)])
+                ->withProperties(['nama_file' => $file->getClientOriginalName(), 'dibuat' => count($valid), 'gagal' => count($gagal)])
                 ->log('Mengimpor '.count($valid)." murid dari {$file->getClientOriginalName()}");
         }
 
-        return ['dibuat' => count($valid), 'akun_wali_dibuat' => $akunWali, 'gagal' => $gagal];
+        return ['dibuat' => count($valid), 'gagal' => $gagal];
     }
 
     /**
@@ -388,60 +372,25 @@ class ImportMuridService
     }
 
     /**
-     * Di luar transaksi, supaya transaksi tidak menahan kunci selama hashing berjalan.
-     *
      * @param  list<HasilPeriksa>  $valid
-     * @return array<int, string> hash password awal per nomor baris murid aktif
-     */
-    private function hashPasswordAwal(array $valid): array
-    {
-        $aktif = array_filter($valid, fn (array $satu): bool => $satu['data']['status'] === StatusMurid::Aktif->value);
-        $hash = [];
-
-        foreach (array_chunk($aktif, self::BARIS_PER_KELOMPOK) as $kelompok) {
-            set_time_limit(self::DETIK_PER_KELOMPOK);
-
-            foreach ($kelompok as $satu) {
-                $hash[$satu['nomor']] = Hash::make(Murid::passwordAwalDari(Carbon::parse((string) $satu['data']['tanggal_lahir'])));
-            }
-        }
-
-        return $hash;
-    }
-
-    /**
-     * @param  list<HasilPeriksa>  $valid
-     * @param  array<int, string>  $hashPassword
-     * @return int jumlah akun wali yang dibuat
      *
      * @throws BusinessRuleException
      */
-    private function simpanBaris(array $valid, array $hashPassword, User $pelaku): int
+    private function simpanBaris(array $valid): void
     {
         $penempatan = [];
-        $akunWali = 0;
 
-        foreach (array_chunk($valid, self::BARIS_PER_KELOMPOK) as $kelompok) {
-            set_time_limit(self::DETIK_PER_KELOMPOK);
+        foreach ($valid as $satu) {
+            $murid = $this->muridService->buat($this->dataMurid($satu), null);
 
-            foreach ($kelompok as $satu) {
-                $murid = $this->muridService->buatDenganFotoTersimpan($this->dataMurid($satu), null);
-
-                if ($murid->status === StatusMurid::Aktif) {
-                    $this->waliMuridService->buatAkunOtomatis($murid, Hubungan::Wali, null, $pelaku, $hashPassword[$satu['nomor']]);
-                    $akunWali++;
-                }
-                if ($satu['kelas'] !== null) {
-                    $penempatan[$satu['kelas']->id][] = $murid->id;
-                }
+            if ($satu['kelas'] !== null) {
+                $penempatan[$satu['kelas']->id][] = $murid->id;
             }
         }
 
         foreach ($penempatan as $kelasId => $muridIds) {
             $this->kelasService->tempatkanMurid(Kelas::query()->findOrFail($kelasId), $muridIds);
         }
-
-        return $akunWali;
     }
 
     /**

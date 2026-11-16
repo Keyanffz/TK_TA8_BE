@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Nomor berurutan dengan awalan tetap, misalnya NIS `TA20260001`, tagihan `INV-202609-00001`, dan
+ * Nomor berurutan dengan awalan tetap, misalnya kode PPDB `PPDB-2027-0001`, tagihan `INV-202609-00001`, dan
  * pembayaran `PAY-20260905-00001`. Nomor diambil dari nilai terbesar berawalan sama dengan kunci baris
  * (`lockForUpdate`), jadi harus dipanggil di dalam transaksi. Unique index di kolomnya tetap menjadi
  * penjaga terakhir.

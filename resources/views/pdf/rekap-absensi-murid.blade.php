@@ -45,7 +45,7 @@
             @forelse ($rekap['murid'] as $nomor => $baris)
                 <tr>
                     <td class="angka">{{ $nomor + 1 }}</td>
-                    <td>{{ $baris['murid']['nis'] }}</td>
+                    <td>{{ $baris['murid']['nis'] ?? '-' }}</td>
                     <td class="teks">{{ $baris['murid']['nama_lengkap'] }}</td>
                     <td class="angka">{{ $baris['hadir'] }}</td>
                     <td class="angka">{{ $baris['izin'] }}</td>

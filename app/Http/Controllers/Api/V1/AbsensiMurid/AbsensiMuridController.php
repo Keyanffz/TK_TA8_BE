@@ -38,7 +38,7 @@ class AbsensiMuridController extends Controller
      *         tanggal: string,
      *         bisa_dicatat: bool,
      *         alasan: string|null,
-     *         murid: list<array{murid: array{id: int, nis: string, nama_lengkap: string}, status: \App\Enums\StatusAbsensiMurid|null, keterangan: string|null}>
+     *         murid: list<array{murid: array{id: int, nis: string|null, nama_lengkap: string}, status: \App\Enums\StatusAbsensiMurid|null, keterangan: string|null}>
      *     },
      *     meta: null
      * }
@@ -60,7 +60,7 @@ class AbsensiMuridController extends Controller
      *         tanggal: string,
      *         bisa_dicatat: bool,
      *         alasan: string|null,
-     *         murid: list<array{murid: array{id: int, nis: string, nama_lengkap: string}, status: \App\Enums\StatusAbsensiMurid|null, keterangan: string|null}>
+     *         murid: list<array{murid: array{id: int, nis: string|null, nama_lengkap: string}, status: \App\Enums\StatusAbsensiMurid|null, keterangan: string|null}>
      *     },
      *     meta: null
      * }
@@ -86,7 +86,7 @@ class AbsensiMuridController extends Controller
      *     data: array{
      *         bulan: string,
      *         hari_tercatat: int,
-     *         murid: list<array{murid: array{id: int, nis: string, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>
+     *         murid: list<array{murid: array{id: int, nis: string|null, nama_lengkap: string}, hadir: int, izin: int, sakit: int, alpa: int}>
      *     },
      *     meta: null
      * }

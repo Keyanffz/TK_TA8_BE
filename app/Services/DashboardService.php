@@ -52,7 +52,7 @@ class DashboardService
      *     statistik: array{murid_aktif: int, guru_aktif: int, kelas: int, wali_murid: int},
      *     keuangan_bulan_ini: array{total_tagihan: int, terbayar: int, belum_terbayar: int, persen_lunas: float},
      *     grafik_pemasukan: list<array{bulan: string, total: int}>,
-     *     tertunda: array{rapor_diajukan: int, pendaftaran_baru: int},
+     *     tertunda: array{rapor_diajukan: int, pendaftaran_baru: int, murid_menunggu_nis: int},
      *     pengumuman_terbaru: AnonymousResourceCollection,
      *     agenda_mendatang: AnonymousResourceCollection
      * }
@@ -82,6 +82,7 @@ class DashboardService
             'tertunda' => [
                 'rapor_diajukan' => Rapor::query()->where('status', StatusRapor::Diajukan)->count(),
                 'pendaftaran_baru' => Pendaftaran::query()->where('status', StatusPendaftaran::Diajukan)->count(),
+                'murid_menunggu_nis' => Murid::query()->whereNull('nis')->where('status', StatusMurid::Aktif)->count(),
             ],
             'pengumuman_terbaru' => $this->pengumumanTerbaru($user),
             'agenda_mendatang' => $this->agendaMendatang(),
