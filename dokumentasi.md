@@ -1034,6 +1034,10 @@ Diambil selama Fase 3:
 
 ## Changelog
 
+### Pesan NIS dobel menyebut nama murid (branch `be/pesan-nis-dobel`)
+
+Uji tampilan NIS: di tabel web, "NIS 0012 dobel dengan baris 2" merujuk nomor yang tidak tampil di tabel. `NisMuridService` sekarang menyebut nama murid lain ("dobel dengan Salma Azzahra"), dan untuk file Excel juga nomor barisnya ("dobel dengan Salma Azzahra (baris 3)"). `docs/kontrak-api-fitur-baru.md` disesuaikan (juga di FE). Pengecekan: `php artisan test` (SQLite, 1249 lolos, termasuk test baru untuk pesan dobel di file), Pint, PHPStan, `composer check:slop` bersih.
+
 ### NIS murid diisi Kepala Sekolah (branch `be/nis-manual`)
 
 Pasangan FE `fe/nis-manual`. Bagian A diperbarui (A2.1, A2.2, A2.3, A2.14, A3, A4 `murid.nis`, flowchart A6 autentikasi, PPDB, import, dan NIS murid baru, A7 murid, NIS, PPDB, dashboard, notifikasi) dan disalin ke PROMPT FE. B2, B6.8, B6.11, B6.17, B6.19 (baru), dan B7 diperbarui. Kontrak rinci di `docs/kontrak-api-fitur-baru.md` bagian 5 (juga disalin ke FE).

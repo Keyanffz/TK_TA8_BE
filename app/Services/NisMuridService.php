@@ -239,19 +239,19 @@ class NisMuridService
         $murid = Murid::query()->withCount('waliMurid')->findMany(array_filter(array_column($baris, 'murid_id')))->keyBy('id');
         $pemilikNis = Murid::withTrashed()->whereIn('nis', $nis)->get(['id', 'nis', 'nama_lengkap'])->keyBy(fn (Murid $satu): string => Str::upper((string) $satu->nis));
         $username = User::withTrashed()->whereIn('username', $nis)->pluck('username')->map(fn (?string $satu): string => Str::upper((string) $satu))->flip();
-        $nomorPerNis = [];
+        $penandaPerNis = [];
 
         foreach ($baris as $satu) {
             if ($satu['nis'] !== null) {
-                $nomorPerNis[$satu['nis']][] = $satu['nomor'];
+                $penandaPerNis[$satu['nis']][$satu['nomor']] = $this->penandaBaris($satu, $satu['murid_id'] === null ? null : $murid->get($satu['murid_id']));
             }
         }
 
-        return array_map(function (array $satu) use ($murid, $pemilikNis, $username, $nomorPerNis, $bolehUbah): array {
+        return array_map(function (array $satu) use ($murid, $pemilikNis, $username, $penandaPerNis, $bolehUbah): array {
             $data = $satu['murid_id'] === null ? null : $murid->get($satu['murid_id']);
             $alasan = [
                 ...$this->alasanMurid($satu, $data, $bolehUbah),
-                ...$this->alasanNis($satu, $data, $pemilikNis->all(), $username->all(), $nomorPerNis),
+                ...$this->alasanNis($satu, $data, $pemilikNis->all(), $username->all(), $penandaPerNis),
             ];
             $valid = $alasan === [];
 
@@ -286,10 +286,10 @@ class NisMuridService
      * @param  BarisNis  $baris
      * @param  array<string, Murid>  $pemilikNis  murid per NIS, termasuk murid yang dihapus
      * @param  array<string, int>  $username  username akun yang sudah ada
-     * @param  array<string, list<int>>  $nomorPerNis
+     * @param  array<string, array<int, string>>  $penandaPerNis  penanda baris per NIS, dikunci nomor baris
      * @return list<string>
      */
-    private function alasanNis(array $baris, ?Murid $murid, array $pemilikNis, array $username, array $nomorPerNis): array
+    private function alasanNis(array $baris, ?Murid $murid, array $pemilikNis, array $username, array $penandaPerNis): array
     {
         $nis = $baris['nis'];
 
@@ -303,15 +303,32 @@ class NisMuridService
             return ['NIS hanya boleh berisi huruf, angka, titik, strip, dan garis miring.'];
         }
 
-        $barisLain = array_values(array_diff($nomorPerNis[$nis] ?? [], [$baris['nomor']]));
+        $barisLain = array_diff_key($penandaPerNis[$nis] ?? [], [$baris['nomor'] => true]);
         $pemilik = $pemilikNis[$nis] ?? null;
 
         return match (true) {
-            $barisLain !== [] => ["NIS {$nis} dobel dengan baris ".implode(', ', $barisLain).'.'],
+            $barisLain !== [] => ["NIS {$nis} dobel dengan ".implode(', ', $barisLain).'.'],
             $pemilik !== null && $pemilik->id === $murid?->id => ['NIS ini sama dengan NIS sekarang.'],
             $pemilik !== null => ["NIS {$nis} sudah dipakai {$pemilik->nama_lengkap}."],
             isset($username[$nis]) => ["NIS {$nis} sudah dipakai sebagai username akun wali murid lain."],
             default => [],
+        };
+    }
+
+    /**
+     * Cara menyebut baris lain di pesan NIS dobel: nama murid, ditambah nomor baris untuk file Excel. Tabel web tidak
+     * menampilkan nomor baris, jadi cukup nama.
+     *
+     * @param  BarisNis  $baris
+     */
+    private function penandaBaris(array $baris, ?Murid $murid): string
+    {
+        $nama = $murid->nama_lengkap ?? $baris['nama_lengkap'];
+
+        return match (true) {
+            $nama === null => "baris {$baris['nomor']}",
+            $baris['nama_lengkap'] === null => $nama,
+            default => "{$nama} (baris {$baris['nomor']})",
         };
     }
 
