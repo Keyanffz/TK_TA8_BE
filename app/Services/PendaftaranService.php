@@ -12,26 +12,34 @@ use App\Models\User;
 use App\Models\WaliMurid;
 use App\Notifications\PendaftaranBaruNotification;
 use App\Notifications\PendaftaranDiprosesNotification;
+use App\Support\FormulirMurid;
 use App\Support\NomorUrut;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
  * PPDB (A6, B6.11). Pendaftaran selalu untuk tahun ajaran `ppdb.tahun_ajaran_id`. Kuota dihitung dari
- * pendaftaran selain yang ditolak di tahun ajaran itu. Alur: diajukan → diverifikasi → diterima, dan
- * diajukan/diverifikasi → ditolak. Formulir tidak mengunggah berkas; berkas dibawa ke sekolah dan `diverifikasi`
- * berarti sudah dicek di sana. Menerima pendaftar membuat data murid dalam satu transaksi. Pendaftaran tanpa
- * login belum punya wali; akun walinya dibuat saat Kepala Sekolah mengisi NIS murid itu.
+ * pendaftaran selain yang ditolak dan mengundurkan diri di tahun ajaran itu. Alur: diajukan → diverifikasi →
+ * diterima, diajukan/diverifikasi → ditolak, dan diajukan/diverifikasi/diterima → mengundurkan diri. `diverifikasi`
+ * berarti data formulir sudah dicek sekolah; Kartu Keluarga dan akta kelahiran dicentang terpisah. Menerima
+ * pendaftar membuat data murid dalam satu transaksi. Pendaftaran tanpa login belum punya wali; akun walinya dibuat
+ * saat Kepala Sekolah mengisi NIS murid itu.
  */
 class PendaftaranService
 {
     private const DIGIT_KODE = 4;
 
+    /** Status yang tidak dihitung kuota dan tidak menahan NIK anak untuk mendaftar lagi. */
+    private const STATUS_SELESAI = [StatusPendaftaran::Ditolak, StatusPendaftaran::MengundurkanDiri];
+
     public function __construct(
         private readonly PengaturanService $pengaturan,
         private readonly MuridService $muridService,
         private readonly KelasService $kelasService,
+        private readonly OrangTuaService $orangTua,
     ) {}
 
     /**
@@ -83,13 +91,16 @@ class PendaftaranService
 
             $awalan = 'PPDB-'.$tahunAjaran->tanggal_mulai->year.'-';
 
-            return Pendaftaran::query()->create([
-                ...$data,
+            $pendaftaran = Pendaftaran::query()->create([
+                ...Arr::except($data, FormulirMurid::PERAN),
                 'kode' => NomorUrut::format($awalan, NomorUrut::berikutnya(Pendaftaran::query(), 'kode', $awalan, self::DIGIT_KODE), self::DIGIT_KODE),
                 'wali_murid_id' => $wali?->id,
                 'tahun_ajaran_id' => $tahunAjaran->id,
                 'status' => StatusPendaftaran::Diajukan,
             ]);
+            $this->orangTua->simpan($pendaftaran, Arr::only($data, FormulirMurid::PERAN));
+
+            return $pendaftaran;
         });
 
         Notification::send(User::query()->kepalaSekolahAktif()->get(), new PendaftaranBaruNotification($pendaftaran));
@@ -113,10 +124,10 @@ class PendaftaranService
     }
 
     /**
-     * Membuat murid tanpa NIS dan tanpa foto, menautkan wali pendaftar sebagai kontak utama dengan hubungan dari
-     * pendaftaran, dan menempatkan murid di kelas kalau dipilih (kelas harus di tahun ajaran tujuan, dengan cek
-     * kapasitas). Pendaftaran tanpa login belum punya wali: akunnya dibuat saat Kepala Sekolah mengisi NIS
-     * (`NisMuridService::isi()`), dengan hubungan dan nomor HP dari formulir.
+     * Membuat murid tanpa NIS dan tanpa foto dari isian formulir, orang tua, dan centang berkas pendaftaran, menautkan
+     * wali pendaftar sebagai kontak utama dengan hubungan dari pendaftaran, dan menempatkan murid di kelas kalau
+     * dipilih (kelas harus di tahun ajaran tujuan, dengan cek kapasitas). Pendaftaran tanpa login belum punya wali:
+     * akunnya dibuat saat Kepala Sekolah mengisi NIS (`NisMuridService::isi()`), dari kontak utama formulir.
      *
      * @throws BusinessRuleException
      */
@@ -131,15 +142,11 @@ class PendaftaranService
             $pendaftaran->loadMissing('tahunAjaran');
 
             $murid = $this->muridService->buat([
-                'nik' => $pendaftaran->nik,
-                'nama_lengkap' => $pendaftaran->nama_lengkap,
-                'nama_panggilan' => $pendaftaran->nama_panggilan,
-                'jenis_kelamin' => $pendaftaran->jenis_kelamin,
-                'tempat_lahir' => $pendaftaran->tempat_lahir,
+                ...$pendaftaran->only(['nik', 'nama_lengkap', 'nama_panggilan', 'jenis_kelamin', 'tempat_lahir', 'agama', 'alamat', 'anak_ke']),
+                ...$pendaftaran->only([...FormulirMurid::KOLOM_ANAK, ...FormulirMurid::KOLOM_BERKAS]),
                 'tanggal_lahir' => $pendaftaran->tanggal_lahir->toDateString(),
-                'agama' => $pendaftaran->agama,
-                'alamat' => $pendaftaran->alamat,
                 'tanggal_masuk' => $pendaftaran->tahunAjaran->tanggal_mulai->toDateString(),
+                ...$this->orangTua->isianDari($pendaftaran),
             ], null);
             if ($pendaftaran->wali_murid_id !== null) {
                 $murid->waliMurid()->attach($pendaftaran->wali_murid_id, ['hubungan' => $pendaftaran->hubungan, 'is_kontak_utama' => true]);
@@ -173,6 +180,92 @@ class PendaftaranService
     }
 
     /**
+     * Pendaftar yang tidak jadi masuk. Datanya tetap disimpan. Pendaftar yang sudah diterima hanya boleh mundur kalau
+     * muridnya belum punya tagihan, rapor, atau absensi; murid itu dihapus (NIS, NISN, NIK dikosongkan, akun wali
+     * otomatis yang belum dipakai dinonaktifkan) dan status mundurnya tidak bisa dibatalkan. Tanpa notifikasi.
+     *
+     * @throws BusinessRuleException
+     */
+    public function mengundurkanDiri(Pendaftaran $pendaftaran, ?string $alasan, User $kepalaSekolah): Pendaftaran
+    {
+        $pendaftaran = DB::transaction(function () use ($pendaftaran, $alasan, $kepalaSekolah): Pendaftaran {
+            $pendaftaran = $this->kunci($pendaftaran, [StatusPendaftaran::Diajukan, StatusPendaftaran::Diverifikasi, StatusPendaftaran::Diterima], 'mengundurkan diri');
+            $sebelum = $pendaftaran->status;
+
+            if ($sebelum === StatusPendaftaran::Diterima) {
+                $this->hapusMuridPendaftar($pendaftaran, $kepalaSekolah);
+            }
+
+            $pendaftaran->update([
+                'status' => StatusPendaftaran::MengundurkanDiri,
+                'status_sebelum_mundur' => $sebelum,
+                'catatan' => $alasan,
+                ...$this->jejakProses($kepalaSekolah),
+            ]);
+
+            return $pendaftaran;
+        });
+
+        activity('ppdb')->causedBy($kepalaSekolah)->performedOn($pendaftaran)->event('mengundurkan_diri')
+            ->withProperties(['dari' => $pendaftaran->status_sebelum_mundur?->value, 'alasan' => $alasan])
+            ->log("Mencatat {$pendaftaran->kode} mengundurkan diri");
+
+        return $pendaftaran;
+    }
+
+    /**
+     * Mengembalikan pendaftar yang mundur sebelum diterima ke status sebelumnya, selama kuota masih ada dan NIK anak
+     * belum dipakai pendaftaran lain atau murid.
+     *
+     * @throws BusinessRuleException
+     */
+    public function batalkanMundur(Pendaftaran $pendaftaran, User $kepalaSekolah): Pendaftaran
+    {
+        $pendaftaran = DB::transaction(function () use ($pendaftaran, $kepalaSekolah): Pendaftaran {
+            $pendaftaran = $this->kunci($pendaftaran, [StatusPendaftaran::MengundurkanDiri], 'dikembalikan');
+            $sebelum = $pendaftaran->status_sebelum_mundur;
+
+            if (! in_array($sebelum, [StatusPendaftaran::Diajukan, StatusPendaftaran::Diverifikasi], true)) {
+                throw new BusinessRuleException("{$pendaftaran->nama_lengkap} mengundurkan diri setelah diterima dan data muridnya sudah dihapus, jadi statusnya tidak bisa dikembalikan. Minta pendaftar mendaftar ulang.");
+            }
+
+            $this->pastikanNikBelumDipakai($pendaftaran->nik, $pendaftaran->id);
+            $tahunAjaran = TahunAjaran::query()->lockForUpdate()->findOrFail($pendaftaran->tahun_ajaran_id);
+
+            if ($this->terpakai($tahunAjaran) >= (int) $this->pengaturan->nilai('ppdb.kuota', 0)) {
+                throw new BusinessRuleException("Kuota PPDB tahun ajaran {$tahunAjaran->nama} sudah penuh, jadi pendaftaran {$pendaftaran->kode} tidak bisa dikembalikan.");
+            }
+
+            $pendaftaran->update(['status' => $sebelum, 'status_sebelum_mundur' => null, 'catatan' => null, ...$this->jejakProses($kepalaSekolah)]);
+
+            return $pendaftaran;
+        });
+
+        activity('ppdb')->causedBy($kepalaSekolah)->performedOn($pendaftaran)->event('mundur_dibatalkan')
+            ->withProperties(['ke' => $pendaftaran->status->value])
+            ->log("Membatalkan status mengundurkan diri {$pendaftaran->kode}");
+
+        return $pendaftaran;
+    }
+
+    /**
+     * @throws BusinessRuleException
+     */
+    private function hapusMuridPendaftar(Pendaftaran $pendaftaran, User $kepalaSekolah): void
+    {
+        $murid = Murid::query()->lockForUpdate()->find($pendaftaran->murid_id);
+
+        if ($murid === null) {
+            return;
+        }
+        if ($murid->tagihan()->exists() || $murid->rapor()->exists() || $murid->absensiMurid()->exists()) {
+            throw new BusinessRuleException("{$murid->nama_lengkap} sudah punya tagihan, rapor, atau absensi, jadi dianggap sudah mulai sekolah. Ubah status muridnya menjadi Keluar.");
+        }
+
+        $this->muridService->hapusData($murid, $kepalaSekolah);
+    }
+
+    /**
      * @throws BusinessRuleException
      */
     private function pastikanBisaMendaftar(string $nik): TahunAjaran
@@ -187,16 +280,29 @@ class PendaftaranService
             throw new BusinessRuleException("Kuota PPDB tahun ajaran {$tahunAjaran->nama} sudah penuh.");
         }
 
-        // Pendaftar yang pernah ditolak boleh mendaftar ulang; pendaftaran lain dengan NIK yang sama (sedang
-        // diproses atau sudah diterima) dan murid ber-NIK sama menandakan anak ini sudah tercatat.
+        $this->pastikanNikBelumDipakai($nik);
+
+        return $tahunAjaran;
+    }
+
+    /**
+     * Pendaftar yang pernah ditolak atau mundur boleh mendaftar ulang; pendaftaran lain dengan NIK yang sama (sedang
+     * diproses atau sudah diterima) dan murid ber-NIK sama menandakan anak ini sudah tercatat.
+     *
+     * @throws BusinessRuleException
+     */
+    private function pastikanNikBelumDipakai(string $nik, ?int $kecualiPendaftaranId = null): void
+    {
         if (Murid::query()->where('nik', $nik)->exists()) {
             throw new BusinessRuleException('Anak dengan NIK ini sudah terdaftar sebagai murid. Wali yang sudah punya akun bisa menambahkannya lewat menu Tambah Anak; kalau belum, minta kartu akun ke sekolah.');
         }
-        if (Pendaftaran::query()->where('nik', $nik)->where('status', '!=', StatusPendaftaran::Ditolak)->exists()) {
+
+        $pendaftaranLain = Pendaftaran::query()->where('nik', $nik)->whereNotIn('status', self::STATUS_SELESAI)
+            ->when($kecualiPendaftaranId !== null, fn (Builder $query) => $query->whereKeyNot($kecualiPendaftaranId));
+
+        if ($pendaftaranLain->exists()) {
             throw new BusinessRuleException('Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
         }
-
-        return $tahunAjaran;
     }
 
     /**
@@ -256,7 +362,7 @@ class PendaftaranService
 
     private function terpakai(TahunAjaran $tahunAjaran): int
     {
-        return Pendaftaran::query()->where('tahun_ajaran_id', $tahunAjaran->id)->where('status', '!=', StatusPendaftaran::Ditolak)->count();
+        return Pendaftaran::query()->where('tahun_ajaran_id', $tahunAjaran->id)->whereNotIn('status', self::STATUS_SELESAI)->count();
     }
 
     private function tanggal(string $kunci): ?Carbon

@@ -27,8 +27,8 @@ class PendaftaranDiprosesNotification extends NotifikasiDatabase
 
         [$this->judulNotifikasi, $this->pesanNotifikasi] = match ($pendaftaran->status) {
             StatusPendaftaran::Diverifikasi => [
-                'Berkas PPDB sudah diverifikasi',
-                "Berkas pendaftaran {$anak} sudah diterima dan dicek sekolah. Tunggu keputusan akhir dari sekolah.",
+                'Data PPDB sudah diverifikasi',
+                "Data pendaftaran {$anak} sudah dicek sekolah. Tunggu keputusan akhir dari sekolah.",
             ],
             StatusPendaftaran::Diterima => [
                 'Pendaftaran PPDB diterima',
@@ -41,6 +41,7 @@ class PendaftaranDiprosesNotification extends NotifikasiDatabase
                 "Pendaftaran {$anak} ditolak: ".rtrim((string) $pendaftaran->catatan, '. ').'.',
             ],
             StatusPendaftaran::Diajukan => throw new LogicException('Pendaftaran yang baru diajukan belum diproses.'),
+            StatusPendaftaran::MengundurkanDiri => throw new LogicException('Pendaftar yang mengundurkan diri tidak diberi notifikasi.'),
         };
     }
 

@@ -8,6 +8,7 @@ enum StatusPendaftaran: string
     case Diverifikasi = 'diverifikasi';
     case Diterima = 'diterima';
     case Ditolak = 'ditolak';
+    case MengundurkanDiri = 'mengundurkan_diri';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum StatusPendaftaran: string
             self::Diverifikasi => 'Diverifikasi',
             self::Diterima => 'Diterima',
             self::Ditolak => 'Ditolak',
+            self::MengundurkanDiri => 'Mengundurkan diri',
         };
     }
 }

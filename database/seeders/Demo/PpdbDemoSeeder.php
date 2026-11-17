@@ -13,7 +13,9 @@ use App\Models\Pengaturan;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
+use App\Services\OrangTuaService;
 use App\Services\WaliMuridService;
+use App\Support\FormulirMurid;
 use Illuminate\Database\Seeder;
 
 /**
@@ -52,7 +54,8 @@ class PpdbDemoSeeder extends Seeder
             $pendaftaran = Pendaftaran::factory()->for($tahunAjaranTujuan)->create([
                 'wali_murid_id' => $wali?->id,
                 'kode' => sprintf('PPDB-2027-%04d', $urutan + 1),
-                'hubungan' => $urutan % 3 === 0 ? Hubungan::Ayah : Hubungan::Ibu,
+                'hubungan' => $wali === null ? null : ($urutan % 3 === 0 ? Hubungan::Ayah : Hubungan::Ibu),
+                'kontak_utama' => $urutan % 3 === 0 ? Hubungan::Ayah : Hubungan::Ibu,
                 'tingkat_tujuan' => $urutan === 2 ? Tingkat::B : Tingkat::A,
                 'tanggal_lahir' => $urutan === 3 ? '2023-09-14' : fake()->dateTimeBetween('2022-07-01', '2023-06-30')->format('Y-m-d'),
                 'status' => $status[$urutan],
@@ -86,23 +89,26 @@ class PpdbDemoSeeder extends Seeder
         }
     }
 
+    /**
+     * Seperti pendaftar tanpa login yang diterima lalu NIS-nya diisi: data formulir dan orang tua disalin ke murid,
+     * akun wali dibuat untuk kontak utama.
+     */
     private function jadikanMurid(Pendaftaran $pendaftaran, User $kepalaSekolah): void
     {
+        $pendaftaran->update(['kk_diterima_at' => '2026-09-21 09:30:00', 'kk_diterima_oleh' => $kepalaSekolah->id, 'akta_diterima_at' => '2026-09-21 09:30:00', 'akta_diterima_oleh' => $kepalaSekolah->id]);
+        $orangTua = app(OrangTuaService::class);
         $murid = Murid::query()->create([
+            ...$pendaftaran->only(['nik', 'nama_lengkap', 'nama_panggilan', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'agama', 'alamat', 'anak_ke']),
+            ...$pendaftaran->only([...FormulirMurid::KOLOM_ANAK, ...FormulirMurid::KOLOM_BERKAS]),
             'nis' => 'TA20270001',
-            'nik' => $pendaftaran->nik,
-            'nama_lengkap' => $pendaftaran->nama_lengkap,
-            'nama_panggilan' => $pendaftaran->nama_panggilan,
-            'jenis_kelamin' => $pendaftaran->jenis_kelamin,
-            'tempat_lahir' => $pendaftaran->tempat_lahir,
-            'tanggal_lahir' => $pendaftaran->tanggal_lahir,
-            'agama' => $pendaftaran->agama,
-            'alamat' => $pendaftaran->alamat,
             'status' => StatusMurid::Aktif,
             'tanggal_masuk' => '2027-07-12',
         ]);
+        $orangTua->simpan($murid, $orangTua->isianDari($pendaftaran));
+        $murid->perbaruiKelengkapan();
 
-        $wali = app(WaliMuridService::class)->buatAkunOtomatis($murid, $pendaftaran->hubungan, $pendaftaran->no_hp, $kepalaSekolah);
+        $kontak = $murid->orangTua()->where('peran', $murid->kontak_utama)->firstOrFail();
+        $wali = app(WaliMuridService::class)->buatAkunOtomatis($murid, $kontak->peran, $kontak->no_hp, $kontak->nama, $kepalaSekolah);
         $pendaftaran->update(['murid_id' => $murid->id, 'wali_murid_id' => $wali->id]);
     }
 }
