@@ -141,7 +141,8 @@ class SekolahDemoSeeder extends Seeder
             $lahirAkhir = ($tahunMasuk - 3).'-06-30';
 
             for ($i = 0; $i < self::MURID_PER_KELAS; $i++) {
-                $baru = Murid::factory()->create([
+                // Satu dari lima murid seperti data lama: formulir belum lengkap, tampil di panel Perlu Tindakan.
+                $baru = ($i % 5 === 4 ? Murid::factory() : Murid::factory()->lengkap())->create([
                     'nis' => sprintf('TA%d%04d', $tahunMasuk, ++$nomorUrut[$tahunMasuk]),
                     'tanggal_lahir' => fake()->dateTimeBetween($lahirAwal, $lahirAkhir)->format('Y-m-d'),
                     'tanggal_masuk' => $tahunMasuk === 2026 ? '2026-07-13' : '2025-07-14',
@@ -173,7 +174,7 @@ class SekolahDemoSeeder extends Seeder
 
         $akun = [];
         foreach ([...$murid['A'], ...$murid['B']] as $satuMurid) {
-            $akun[$satuMurid->id] = $waliMuridService->buatAkunOtomatis($satuMurid, Hubungan::Wali, null, $kepalaSekolah);
+            $akun[$satuMurid->id] = $waliMuridService->buatAkunOtomatis($satuMurid, Hubungan::Wali, null, null, $kepalaSekolah);
         }
 
         $keluarga = $this->keluarga($murid);

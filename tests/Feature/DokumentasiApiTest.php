@@ -230,7 +230,7 @@ it('mewajibkan field relasi yang selalu dikirim dan membiarkan opsional hanya fi
         ->and($skema['WaliMuridDetailResource']['required'])->toContain('user', 'jumlah_anak', 'anak')
         ->and($skema['RaporResource']['required'])->toContain('murid', 'kelas', 'tahun_ajaran', 'pembuat')
         ->and($skema['RaporDetailResource']['required'])->toContain('detail')
-        ->and($opsional('MuridDetailResource'))->toBe([])
+        ->and($opsional('MuridDetailResource'))->toBe(['nik'])
         ->and($opsional('RaporResource'))->toBe([])
         ->and($opsional('PengumumanResource'))->toBe(['kelas', 'murid'])
         ->and($opsional('GuruResource'))->toBe([]);

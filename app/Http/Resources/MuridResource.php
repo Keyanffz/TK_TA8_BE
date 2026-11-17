@@ -10,7 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Murid hanya sampai ke pengguna yang lolos `Murid::visibleTo` (Kepala Sekolah, guru pengampu, wali anak
- * itu), sehingga `catatan_khusus` aman ditampilkan (B4). Wali yang tertaut ada di `MuridDetailResource`.
+ * itu), sehingga `catatan_khusus` aman ditampilkan (B4). NIK, isian formulir lengkap, dan wali yang tertaut ada di
+ * `MuridDetailResource`; NIK tidak pernah ada di bentuk daftar.
  *
  * @mixin Murid
  */
@@ -32,7 +33,6 @@ class MuridResource extends JsonResource
              */
             'nis' => $this->nis,
             'nisn' => $this->nisn,
-            'nik' => $this->nik,
             'nama_lengkap' => $this->nama_lengkap,
             'nama_panggilan' => $this->nama_panggilan,
             'jenis_kelamin' => $this->jenis_kelamin,
@@ -54,6 +54,8 @@ class MuridResource extends JsonResource
             'sekolah_tujuan' => $this->sekolah_tujuan,
             /** Keterangan perubahan status terakhir; null untuk murid aktif. */
             'keterangan_status' => $this->keterangan_status,
+            /** false kalau ada field wajib formulir data murid yang kosong ("Data belum lengkap"). */
+            'data_lengkap' => $this->data_lengkap,
             /** @var array{id: int, nama: string, tingkat: Tingkat}|null */
             'kelas' => $kelas === null ? null : ['id' => $kelas->id, 'nama' => $kelas->nama, 'tingkat' => $kelas->tingkat],
             'created_at' => $this->created_at,

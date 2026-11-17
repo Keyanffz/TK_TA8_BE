@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Murid;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BerkasFisikRequest;
 use App\Http\Requests\Murid\DaftarMuridRequest;
 use App\Http\Requests\Murid\SimpanMuridRequest;
 use App\Http\Requests\Murid\UbahTautanWaliRequest;
@@ -10,6 +11,7 @@ use App\Http\Resources\MuridDetailResource;
 use App\Http\Resources\MuridResource;
 use App\Models\Murid;
 use App\Models\User;
+use App\Services\BerkasFisikService;
 use App\Services\KartuAkunService;
 use App\Services\MuridService;
 use App\Support\ApiResponse;
@@ -25,7 +27,10 @@ use Spatie\QueryBuilder\QueryBuilder;
 
 class MuridController extends Controller
 {
-    public function __construct(private readonly MuridService $muridService) {}
+    public function __construct(
+        private readonly MuridService $muridService,
+        private readonly BerkasFisikService $berkasFisik,
+    ) {}
 
     /**
      * Daftar murid. Kepala Sekolah dan pemegang izin lihat data murid melihat semua murid, guru lain hanya murid di
@@ -33,8 +38,9 @@ class MuridController extends Controller
      *
      * Filter `filter[kelas_id]`, `filter[status]`, `filter[tingkat]` (tingkat kelas di tahun ajaran aktif),
      * `filter[tahun_lulus]` (daftar alumni bersama `filter[status]=lulus`), `filter[menunggu_nis]` (`true`: murid yang
-     * NIS-nya belum diisi Kepala Sekolah, `false`: yang sudah). `search` mencari nama lengkap, nama panggilan, NIS, dan
-     * NISN. Urutan `sort` = `nama` | `nis` | `created_at` | `tahun_lulus`.
+     * NIS-nya belum diisi Kepala Sekolah, `false`: yang sudah), `filter[data_lengkap]` (`false`: murid dengan field
+     * wajib formulir yang masih kosong). `search` mencari nama lengkap, nama panggilan, NIS, dan NISN. Urutan `sort` =
+     * `nama` | `nis` | `created_at` | `tahun_lulus`.
      */
     public function index(DaftarMuridRequest $request, #[CurrentUser] User $user): JsonResponse
     {
@@ -51,6 +57,8 @@ class MuridController extends Controller
                 AllowedFilter::callback('menunggu_nis', fn (Builder $query, mixed $menunggu) => filter_var($menunggu, FILTER_VALIDATE_BOOLEAN)
                     ? $query->whereNull('nis')
                     : $query->whereNotNull('nis')),
+                AllowedFilter::callback('data_lengkap', fn (Builder $query, mixed $lengkap) => $query
+                    ->where('data_lengkap', filter_var($lengkap, FILTER_VALIDATE_BOOLEAN))),
             )
             ->allowedSorts($urutNama, AllowedSort::field('nis'), AllowedSort::field('created_at'), AllowedSort::field('tahun_lulus'))
             ->defaultSort($urutNama)
@@ -150,5 +158,16 @@ class MuridController extends Controller
         $this->muridService->lepasWali($murid, $wali_murid_id, $kepalaSekolah);
 
         return ApiResponse::success(null, "Tautan wali dilepas dari {$murid->nama_lengkap}.");
+    }
+
+    /**
+     * Mencentang atau menghapus centang Kartu Keluarga dan akta kelahiran murid yang sudah diserahkan ke sekolah.
+     */
+    public function berkas(BerkasFisikRequest $request, int $id, #[CurrentUser] User $user): JsonResponse
+    {
+        $murid = Murid::query()->findOrFail($id);
+        $this->berkasFisik->centang($murid, $request->centang(), $user);
+
+        return ApiResponse::success(new MuridDetailResource($murid->muatDetail()), 'Centang berkas tersimpan.');
     }
 }
