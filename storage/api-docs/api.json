@@ -12017,7 +12017,7 @@
         "/murid/import/pratinjau": {
             "post": {
                 "operationId": "importMurid.pratinjau",
-                "summary": "Memeriksa setiap baris file tanpa menyimpan apa pun. `nomor` = nomor baris di spreadsheet (judul kolom di baris\n1). `data` berisi isi baris setelah dirapikan (tanggal menjadi YYYY-MM-DD, status kosong menjadi `aktif`).\nKolom wajib yang tidak ada, file kosong, file tidak terbaca, atau lebih dari 500 baris ditolak 422\n`VALIDATION_ERROR` di field `file`",
+                "summary": "Memeriksa setiap baris file tanpa menyimpan apa pun. `nomor` = nomor baris di spreadsheet (judul kolom di baris\n1). `data` berisi semua kolom template setelah dirapikan (tanggal menjadi YYYY-MM-DD, status kosong menjadi `aktif`,\nkolom pilihan menjadi kode).\nKolom wajib yang tidak ada, file kosong, file tidak terbaca, atau lebih dari 500 baris ditolak 422\n`VALIDATION_ERROR` di field `file`",
                 "tags": [
                     "ImportMurid"
                 ],
@@ -12132,13 +12132,133 @@
                                                                             "null"
                                                                         ]
                                                                     },
+                                                                    "desa_kelurahan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kecamatan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kabupaten_kota": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "provinsi": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
                                                                     "anak_ke": {
                                                                         "type": [
                                                                             "string",
                                                                             "null"
                                                                         ]
                                                                     },
+                                                                    "jumlah_saudara_kandung": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "jumlah_saudara_tiri": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "jumlah_saudara_angkat": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "status_yatim_piatu": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "asal_sekolah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "bahasa_sehari_hari": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "jarak_rumah_km": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "golongan_darah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "riwayat_penyakit": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "tinggi_badan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "berat_badan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "imunisasi": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "imunisasi_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ciri_khusus": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
                                                                     "catatan_khusus": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kontak_utama": {
                                                                         "type": [
                                                                             "string",
                                                                             "null"
@@ -12182,6 +12302,246 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "ayah_status": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_nama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_tempat_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_tanggal_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_agama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_pendidikan_terakhir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_pekerjaan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_pekerjaan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_penghasilan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_alamat_rumah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_alamat_kantor": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_no_hp": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_status": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_nama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_tempat_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_tanggal_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_agama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_pendidikan_terakhir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_pekerjaan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_pekerjaan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_penghasilan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_alamat_rumah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_alamat_kantor": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_no_hp": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_hubungan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_hubungan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_nama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_tempat_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_tanggal_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_agama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_pendidikan_terakhir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_pekerjaan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_pekerjaan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_penghasilan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_alamat_rumah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_alamat_kantor": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_no_hp": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
@@ -12194,15 +12554,75 @@
                                                                     "tanggal_lahir",
                                                                     "agama",
                                                                     "alamat",
+                                                                    "desa_kelurahan",
+                                                                    "kecamatan",
+                                                                    "kabupaten_kota",
+                                                                    "provinsi",
+                                                                    "kewarganegaraan",
                                                                     "anak_ke",
+                                                                    "jumlah_saudara_kandung",
+                                                                    "jumlah_saudara_tiri",
+                                                                    "jumlah_saudara_angkat",
+                                                                    "status_yatim_piatu",
+                                                                    "asal_sekolah",
+                                                                    "bahasa_sehari_hari",
+                                                                    "jarak_rumah_km",
+                                                                    "golongan_darah",
+                                                                    "riwayat_penyakit",
+                                                                    "tinggi_badan",
+                                                                    "berat_badan",
+                                                                    "imunisasi",
+                                                                    "imunisasi_lainnya",
+                                                                    "ciri_khusus",
                                                                     "catatan_khusus",
+                                                                    "kontak_utama",
                                                                     "tanggal_masuk",
                                                                     "status",
                                                                     "tanggal_status",
                                                                     "tahun_lulus",
                                                                     "sekolah_tujuan",
                                                                     "keterangan",
-                                                                    "kelas"
+                                                                    "kelas",
+                                                                    "ayah_status",
+                                                                    "ayah_nama",
+                                                                    "ayah_tempat_lahir",
+                                                                    "ayah_tanggal_lahir",
+                                                                    "ayah_agama",
+                                                                    "ayah_kewarganegaraan",
+                                                                    "ayah_pendidikan_terakhir",
+                                                                    "ayah_pekerjaan",
+                                                                    "ayah_pekerjaan_lainnya",
+                                                                    "ayah_penghasilan",
+                                                                    "ayah_alamat_rumah",
+                                                                    "ayah_alamat_kantor",
+                                                                    "ayah_no_hp",
+                                                                    "ibu_status",
+                                                                    "ibu_nama",
+                                                                    "ibu_tempat_lahir",
+                                                                    "ibu_tanggal_lahir",
+                                                                    "ibu_agama",
+                                                                    "ibu_kewarganegaraan",
+                                                                    "ibu_pendidikan_terakhir",
+                                                                    "ibu_pekerjaan",
+                                                                    "ibu_pekerjaan_lainnya",
+                                                                    "ibu_penghasilan",
+                                                                    "ibu_alamat_rumah",
+                                                                    "ibu_alamat_kantor",
+                                                                    "ibu_no_hp",
+                                                                    "wali_hubungan",
+                                                                    "wali_hubungan_lainnya",
+                                                                    "wali_nama",
+                                                                    "wali_tempat_lahir",
+                                                                    "wali_tanggal_lahir",
+                                                                    "wali_agama",
+                                                                    "wali_kewarganegaraan",
+                                                                    "wali_pendidikan_terakhir",
+                                                                    "wali_pekerjaan",
+                                                                    "wali_pekerjaan_lainnya",
+                                                                    "wali_penghasilan",
+                                                                    "wali_alamat_rumah",
+                                                                    "wali_alamat_kantor",
+                                                                    "wali_no_hp"
                                                                 ]
                                                             },
                                                             "valid": {
@@ -12497,13 +12917,133 @@
                                                                             "null"
                                                                         ]
                                                                     },
+                                                                    "desa_kelurahan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kecamatan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kabupaten_kota": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "provinsi": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
                                                                     "anak_ke": {
                                                                         "type": [
                                                                             "string",
                                                                             "null"
                                                                         ]
                                                                     },
+                                                                    "jumlah_saudara_kandung": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "jumlah_saudara_tiri": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "jumlah_saudara_angkat": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "status_yatim_piatu": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "asal_sekolah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "bahasa_sehari_hari": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "jarak_rumah_km": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "golongan_darah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "riwayat_penyakit": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "tinggi_badan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "berat_badan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "imunisasi": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "imunisasi_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ciri_khusus": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
                                                                     "catatan_khusus": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "kontak_utama": {
                                                                         "type": [
                                                                             "string",
                                                                             "null"
@@ -12547,6 +13087,246 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "ayah_status": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_nama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_tempat_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_tanggal_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_agama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_pendidikan_terakhir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_pekerjaan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_pekerjaan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_penghasilan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_alamat_rumah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_alamat_kantor": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ayah_no_hp": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_status": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_nama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_tempat_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_tanggal_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_agama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_pendidikan_terakhir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_pekerjaan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_pekerjaan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_penghasilan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_alamat_rumah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_alamat_kantor": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "ibu_no_hp": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_hubungan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_hubungan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_nama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_tempat_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_tanggal_lahir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_agama": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_kewarganegaraan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_pendidikan_terakhir": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_pekerjaan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_pekerjaan_lainnya": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_penghasilan": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_alamat_rumah": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_alamat_kantor": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wali_no_hp": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
@@ -12559,15 +13339,75 @@
                                                                     "tanggal_lahir",
                                                                     "agama",
                                                                     "alamat",
+                                                                    "desa_kelurahan",
+                                                                    "kecamatan",
+                                                                    "kabupaten_kota",
+                                                                    "provinsi",
+                                                                    "kewarganegaraan",
                                                                     "anak_ke",
+                                                                    "jumlah_saudara_kandung",
+                                                                    "jumlah_saudara_tiri",
+                                                                    "jumlah_saudara_angkat",
+                                                                    "status_yatim_piatu",
+                                                                    "asal_sekolah",
+                                                                    "bahasa_sehari_hari",
+                                                                    "jarak_rumah_km",
+                                                                    "golongan_darah",
+                                                                    "riwayat_penyakit",
+                                                                    "tinggi_badan",
+                                                                    "berat_badan",
+                                                                    "imunisasi",
+                                                                    "imunisasi_lainnya",
+                                                                    "ciri_khusus",
                                                                     "catatan_khusus",
+                                                                    "kontak_utama",
                                                                     "tanggal_masuk",
                                                                     "status",
                                                                     "tanggal_status",
                                                                     "tahun_lulus",
                                                                     "sekolah_tujuan",
                                                                     "keterangan",
-                                                                    "kelas"
+                                                                    "kelas",
+                                                                    "ayah_status",
+                                                                    "ayah_nama",
+                                                                    "ayah_tempat_lahir",
+                                                                    "ayah_tanggal_lahir",
+                                                                    "ayah_agama",
+                                                                    "ayah_kewarganegaraan",
+                                                                    "ayah_pendidikan_terakhir",
+                                                                    "ayah_pekerjaan",
+                                                                    "ayah_pekerjaan_lainnya",
+                                                                    "ayah_penghasilan",
+                                                                    "ayah_alamat_rumah",
+                                                                    "ayah_alamat_kantor",
+                                                                    "ayah_no_hp",
+                                                                    "ibu_status",
+                                                                    "ibu_nama",
+                                                                    "ibu_tempat_lahir",
+                                                                    "ibu_tanggal_lahir",
+                                                                    "ibu_agama",
+                                                                    "ibu_kewarganegaraan",
+                                                                    "ibu_pendidikan_terakhir",
+                                                                    "ibu_pekerjaan",
+                                                                    "ibu_pekerjaan_lainnya",
+                                                                    "ibu_penghasilan",
+                                                                    "ibu_alamat_rumah",
+                                                                    "ibu_alamat_kantor",
+                                                                    "ibu_no_hp",
+                                                                    "wali_hubungan",
+                                                                    "wali_hubungan_lainnya",
+                                                                    "wali_nama",
+                                                                    "wali_tempat_lahir",
+                                                                    "wali_tanggal_lahir",
+                                                                    "wali_agama",
+                                                                    "wali_kewarganegaraan",
+                                                                    "wali_pendidikan_terakhir",
+                                                                    "wali_pekerjaan",
+                                                                    "wali_pekerjaan_lainnya",
+                                                                    "wali_penghasilan",
+                                                                    "wali_alamat_rumah",
+                                                                    "wali_alamat_kantor",
+                                                                    "wali_no_hp"
                                                                 ]
                                                             },
                                                             "valid": {
