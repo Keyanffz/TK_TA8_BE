@@ -6,12 +6,15 @@ use App\Enums\JenisKelamin;
 use App\Enums\ModulIzin;
 use App\Enums\Role;
 use App\Enums\StatusMurid;
+use App\Support\FormulirMurid;
+use App\Support\KelengkapanFormulir;
 use Carbon\CarbonInterface;
 use Database\Factories\MuridFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -21,6 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'nis', 'nisn', 'nik', 'nama_lengkap', 'nama_panggilan', 'jenis_kelamin', 'tempat_lahir',
     'tanggal_lahir', 'agama', 'alamat', 'anak_ke', 'foto_path', 'catatan_khusus', 'status',
     'tanggal_masuk', 'tanggal_keluar', 'tahun_lulus', 'sekolah_tujuan', 'keterangan_status',
+    ...FormulirMurid::KOLOM_ANAK, ...FormulirMurid::KOLOM_BERKAS,
 ])]
 class Murid extends Model
 {
@@ -42,7 +46,20 @@ class Murid extends Model
             'tanggal_masuk' => 'date',
             'tanggal_keluar' => 'date',
             'tahun_lulus' => 'integer',
+            ...FormulirMurid::CAST_ANAK,
+            'data_lengkap' => 'boolean',
+            'kk_diterima_at' => 'datetime',
+            'akta_diterima_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Menghitung ulang `data_lengkap` dari isian murid dan orang tuanya. Dipanggil setiap data formulir disimpan.
+     */
+    public function perbaruiKelengkapan(): void
+    {
+        $this->load('orangTua');
+        $this->forceFill(['data_lengkap' => KelengkapanFormulir::untukMurid($this) === []])->save();
     }
 
     /**
@@ -92,7 +109,7 @@ class Murid extends Model
      */
     public function muatDetail(): static
     {
-        return $this->load(['kelasAktif', 'waliMurid.user', 'riwayatStatus.pengubah']);
+        return $this->load(['kelasAktif', 'waliMurid.user', 'riwayatStatus.pengubah', 'orangTua', 'kkDiterimaOleh', 'aktaDiterimaOleh']);
     }
 
     /**
@@ -198,5 +215,39 @@ class Murid extends Model
     public function pendaftaran(): HasOne
     {
         return $this->hasOne(Pendaftaran::class);
+    }
+
+    /**
+     * @return HasMany<AbsensiMurid, $this>
+     */
+    public function absensiMurid(): HasMany
+    {
+        return $this->hasMany(AbsensiMurid::class);
+    }
+
+    /**
+     * Ayah, ibu, dan wali dari formulir, satu baris per peran.
+     *
+     * @return HasMany<OrangTua, $this>
+     */
+    public function orangTua(): HasMany
+    {
+        return $this->hasMany(OrangTua::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function kkDiterimaOleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'kk_diterima_oleh');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function aktaDiterimaOleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'akta_diterima_oleh');
     }
 }

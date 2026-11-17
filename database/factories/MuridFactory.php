@@ -5,7 +5,7 @@ namespace Database\Factories;
 use App\Enums\JenisKelamin;
 use App\Enums\StatusMurid;
 use App\Models\Murid;
-use Database\Factories\Concerns\MembuatAlamatSemarang;
+use Database\Factories\Concerns\MembuatIsianFormulir;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class MuridFactory extends Factory
 {
-    use MembuatAlamatSemarang;
+    use MembuatIsianFormulir;
 
     /**
      * @return array<string, mixed>
@@ -27,7 +27,7 @@ class MuridFactory extends Factory
             'nis' => 'TA2026'.fake()->unique()->numerify('####'),
             'nisn' => null,
             // 3374: kode wilayah Kota Semarang di NIK.
-            'nik' => '3374'.fake()->numerify('############'),
+            'nik' => '3374'.fake()->unique()->numerify('############'),
             'nama_lengkap' => $namaDepan.' '.fake()->lastName(),
             'nama_panggilan' => $namaDepan,
             'jenis_kelamin' => $jenisKelamin,
@@ -42,5 +42,18 @@ class MuridFactory extends Factory
             'tanggal_masuk' => '2026-07-13',
             'tanggal_keluar' => null,
         ];
+    }
+
+    /**
+     * Formulir data murid terisi lengkap beserta ayah dan ibu. Tanpa state ini murid seperti data lama: kolom formulir
+     * kosong dan `data_lengkap = false`.
+     */
+    public function lengkap(): static
+    {
+        return $this->state(fn (): array => $this->isianFormulirAnak())
+            ->afterCreating(function (Murid $murid): void {
+                $this->buatAyahDanIbu($murid);
+                $murid->perbaruiKelengkapan();
+            });
     }
 }
