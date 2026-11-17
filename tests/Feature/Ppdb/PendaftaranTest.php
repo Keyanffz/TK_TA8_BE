@@ -7,6 +7,7 @@ use App\Models\Kelas;
 use App\Models\Murid;
 use App\Models\Pendaftaran;
 use App\Models\Pengaturan;
+use App\Models\Tagihan;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Models\WaliMurid;
@@ -56,12 +57,41 @@ function dataPendaftaran(array $timpa = []): array
         'tanggal_lahir' => '2023-02-14',
         'nik' => '3374015402230001',
         'agama' => 'Islam',
-        'alamat' => 'Jl. Majapahit No. 12, Pedurungan, Semarang',
-        'nama_ayah' => 'Rahmat Hidayat',
-        'pekerjaan_ayah' => 'Wiraswasta',
-        'nama_ibu' => 'Sari Wulandari',
-        'pekerjaan_ibu' => 'Guru',
-        'no_hp' => '081234567890',
+        'alamat' => 'Jl. Majapahit No. 12, RT 03/RW 05',
+        'desa_kelurahan' => 'Pedurungan Kidul',
+        'kecamatan' => 'Pedurungan',
+        'kabupaten_kota' => 'Kota Semarang',
+        'provinsi' => 'Jawa Tengah',
+        'kewarganegaraan' => 'wni',
+        'anak_ke' => 1,
+        'jumlah_saudara_kandung' => 0,
+        'status_yatim_piatu' => 'tidak',
+        'golongan_darah' => 'O',
+        'tinggi_badan' => 98.5,
+        'berat_badan' => 15,
+        'imunisasi' => ['bcg', 'polio'],
+        'kontak_utama' => 'ibu',
+        'ayah' => orangTuaPendaftaran(['nama' => 'Rahmat Hidayat', 'pekerjaan' => 'wiraswasta', 'no_hp' => '081234567891']),
+        'ibu' => orangTuaPendaftaran(['nama' => 'Sari Wulandari', 'pekerjaan' => 'lainnya', 'pekerjaan_lainnya' => 'Guru les', 'no_hp' => '081234567890']),
+        'pernyataan' => true,
+        ...$timpa,
+    ];
+}
+
+function orangTuaPendaftaran(array $timpa = []): array
+{
+    return [
+        'status' => 'kandung',
+        'nama' => 'Rahmat Hidayat',
+        'tempat_lahir' => 'Semarang',
+        'tanggal_lahir' => '1990-03-21',
+        'agama' => 'Islam',
+        'kewarganegaraan' => 'wni',
+        'pendidikan_terakhir' => 'd4_s1',
+        'pekerjaan' => 'wiraswasta',
+        'penghasilan' => '2jt_5jt',
+        'alamat_sama_dengan_anak' => true,
+        'no_hp' => '081234567891',
         ...$timpa,
     ];
 }
@@ -160,7 +190,8 @@ it('memvalidasi data pendaftaran', function (array $timpa, string $field) {
 })->with([
     'NIK 15 digit' => [['nik' => '337401540223000'], 'nik'],
     'hubungan tidak dikenal' => [['hubungan' => 'kakek'], 'hubungan'],
-    'nomor HP salah' => [['no_hp' => '6281234'], 'no_hp'],
+    'nomor HP salah' => [['ibu' => orangTuaPendaftaran(['no_hp' => '6281234'])], 'ibu.no_hp'],
+    'agama di luar daftar' => [['agama' => 'Kepercayaan lain'], 'agama'],
 ]);
 
 it('menjalankan alur verifikasi lalu terima: membuat murid tanpa foto, menautkan wali, dan menempatkan di kelas', function () {
@@ -171,7 +202,7 @@ it('menjalankan alur verifikasi lalu terima: membuat murid tanpa foto, menautkan
         ->assertOk()
         ->assertJsonPath('data.status', 'diverifikasi');
     Notification::assertSentTo($this->ibuSari->user, PendaftaranDiprosesNotification::class, fn ($notifikasi) => $notifikasi->toDatabase($this->ibuSari->user)['pesan']
-        === 'Berkas pendaftaran Nadia (PPDB-2027-0001) sudah diterima dan dicek sekolah. Tunggu keputusan akhir dari sekolah.');
+        === 'Data pendaftaran Nadia (PPDB-2027-0001) sudah dicek sekolah. Tunggu keputusan akhir dari sekolah.');
 
     $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima", ['kelas_id' => $kelas->id])
         ->assertOk()
@@ -297,7 +328,8 @@ it('menerima pendaftaran tanpa login dan membalas kode pendaftaran', function ()
 
     $pendaftaran = Pendaftaran::query()->sole();
     expect($pendaftaran->wali_murid_id)->toBeNull()
-        ->and($pendaftaran->hubungan->value)->toBe('ibu');
+        ->and($pendaftaran->hubungan)->toBeNull()
+        ->and($pendaftaran->kontak_utama->value)->toBe('ibu');
     Notification::assertSentTo($this->kepsek, PendaftaranBaruNotification::class);
 
     $this->actingAs($this->kepsek)->getJson("/api/v1/pendaftaran/{$pendaftaran->id}")
@@ -363,8 +395,8 @@ it('membatasi cek status pendaftaran 10 kali per menit per IP', function () {
     $this->getJson('/api/v1/public/pendaftaran/status?kode=PPDB-2027-0009&tanggal_lahir=2023-02-14')->assertTooManyRequests();
 });
 
-it('membuat akun wali pendaftar tanpa login saat Kepala Sekolah mengisi NIS, lalu baru memberi notifikasi', function () {
-    $pendaftaran = daftarPpdbPublik($this, ['hubungan' => 'ayah']);
+it('membuat akun wali untuk kontak utama pendaftar tanpa login saat Kepala Sekolah mengisi NIS, lalu baru memberi notifikasi', function () {
+    $pendaftaran = daftarPpdbPublik($this, ['kontak_utama' => 'ayah']);
 
     $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertOk();
     $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima")
@@ -379,8 +411,8 @@ it('membuat akun wali pendaftar tanpa login saat Kepala Sekolah mengisi NIS, lal
     $akun = User::query()->where('username', '2027001')->sole();
     $murid = Murid::query()->with('waliMurid')->findOrFail($muridId);
     expect($akun->wajib_ganti_password)->toBeTrue()
-        ->and($akun->name)->toBe('Wali Nadia')
-        ->and($akun->no_hp)->toBe('081234567890')
+        ->and($akun->name)->toBe('Rahmat Hidayat')
+        ->and($akun->no_hp)->toBe('081234567891')
         ->and($pendaftaran->fresh()?->wali_murid_id)->toBe($akun->waliMurid?->id)
         ->and($murid->waliMurid->sole()->pivot->hubungan->value)->toBe('ayah')
         ->and($murid->waliMurid->sole()->pivot->is_kontak_utama)->toBeTrue();
@@ -398,4 +430,136 @@ it('tidak mengirim notifikasi saat pendaftaran tanpa login ditolak', function ()
 
     Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
     expect(User::query()->where('role', 'wali_murid')->where('username', '!=', $this->ibuSari->user->username)->exists())->toBeFalse();
+});
+
+it('mewajibkan formulir PPDB online lengkap', function (array $timpa, string $field, string $pesan) {
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran($timpa))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([$field => $pesan]);
+})->with([
+    'kecamatan kosong' => [['kecamatan' => null], 'kecamatan', 'Kecamatan wajib diisi.'],
+    'pekerjaan ayah kosong' => [['ayah' => orangTuaPendaftaran(['pekerjaan' => null])], 'ayah.pekerjaan', 'Pekerjaan ayah wajib diisi.'],
+    'pekerjaan lainnya tanpa keterangan' => [['ibu' => orangTuaPendaftaran(['pekerjaan' => 'lainnya', 'no_hp' => '081234567890'])], 'ibu.pekerjaan_lainnya', 'Tulis pekerjaan ibu.'],
+    'tanpa nomor HP' => [['kontak_utama' => null, 'ayah' => orangTuaPendaftaran(['no_hp' => null]), 'ibu' => orangTuaPendaftaran(['no_hp' => null])], 'ayah.no_hp', 'Isi minimal satu nomor HP ayah, ibu, atau wali.'],
+    'kontak utama sudah meninggal' => [['status_yatim_piatu' => 'piatu', 'ibu' => ['nama' => 'Almarhumah Sari']], 'kontak_utama', 'Ibu sudah meninggal menurut status yatim/piatu. Pilih kontak utama lain.'],
+    'wali tanpa nomor HP' => [['wali' => ['hubungan' => 'nenek', 'nama' => 'Mbah Sumi']], 'wali.no_hp', 'Nomor HP wali wajib diisi.'],
+    'pernyataan tidak dicentang' => [['pernyataan' => false], 'pernyataan', 'Centang pernyataan bahwa data yang diisi benar sebelum mengirim pendaftaran.'],
+]);
+
+it('cukup meminta nama ayah yang sudah meninggal di PPDB online', function () {
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran(['status_yatim_piatu' => 'yatim', 'ayah' => ['nama' => 'Almarhum Rahmat']]))
+        ->assertCreated();
+});
+
+it('menyimpan isian formulir PPDB, tidak mengirim NIK di daftar, dan menampilkannya di detail', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+
+    $this->actingAs($this->kepsek)->getJson('/api/v1/pendaftaran')->assertOk()->assertJsonMissingPath('data.0.nik');
+    $this->actingAs($this->kepsek)->getJson("/api/v1/pendaftaran/{$pendaftaran->id}")
+        ->assertOk()
+        ->assertJsonPath('data.nik', '3374015402230001')
+        ->assertJsonPath('data.desa_kelurahan', 'Pedurungan Kidul')
+        ->assertJsonPath('data.imunisasi', ['bcg', 'polio'])
+        ->assertJsonPath('data.tinggi_badan', 98.5)
+        ->assertJsonPath('data.orang_tua.ibu.pekerjaan_lainnya', 'Guru les')
+        ->assertJsonPath('data.orang_tua.wali', null)
+        ->assertJsonPath('data.berkas', ['kartu_keluarga' => null, 'akta_kelahiran' => null]);
+});
+
+it('menyalin formulir, orang tua, dan centang berkas ke murid saat diterima walau berkas belum lengkap', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+
+    $this->actingAs($this->kepsek)->patchJson("/api/v1/pendaftaran/{$pendaftaran->id}/berkas", ['kartu_keluarga' => true])
+        ->assertOk()
+        ->assertJsonPath('data.berkas.kartu_keluarga.diterima_oleh.id', $this->kepsek->id)
+        ->assertJsonPath('data.berkas.akta_kelahiran', null);
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertOk();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima")->assertOk();
+
+    $muridId = $pendaftaran->fresh()?->murid_id;
+    $this->actingAs($this->kepsek)->getJson("/api/v1/murid/{$muridId}")
+        ->assertOk()
+        ->assertJsonPath('data.data_lengkap', true)
+        ->assertJsonPath('data.kecamatan', 'Pedurungan')
+        ->assertJsonPath('data.anak_ke', 1)
+        ->assertJsonPath('data.kontak_utama', 'ibu')
+        ->assertJsonPath('data.orang_tua.ayah.nama', 'Rahmat Hidayat')
+        ->assertJsonPath('data.berkas.kartu_keluarga.diterima_oleh.id', $this->kepsek->id)
+        ->assertJsonPath('data.berkas.akta_kelahiran', null);
+
+    $this->actingAs($this->kepsek)->patchJson("/api/v1/pendaftaran/{$pendaftaran->id}/berkas", ['akta_kelahiran' => true])
+        ->assertStatus(422)
+        ->assertJsonPath('code', 'BUSINESS_RULE');
+});
+
+it('mencatat pendaftar mundur, menyembunyikannya dari daftar, membebaskan kuota, lalu bisa dikembalikan', function () {
+    $pertama = daftarPpdbPublik($this);
+    daftarPpdbPublik($this, ['nik' => '3374015402230002', 'nama_lengkap' => 'Raka Pratama', 'nama_panggilan' => 'Raka']);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pertama->id}/mengundurkan-diri", ['alasan' => 'Pindah ke luar kota.'])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'mengundurkan_diri')
+        ->assertJsonPath('data.status_sebelum_mundur', 'diajukan')
+        ->assertJsonPath('data.catatan', 'Pindah ke luar kota.');
+    Notification::assertNotSentTo(User::query()->where('role', 'wali_murid')->get(), PendaftaranDiprosesNotification::class);
+
+    $this->actingAs($this->kepsek)->getJson('/api/v1/pendaftaran')->assertOk()->assertJsonPath('meta.total', 1);
+    $this->actingAs($this->kepsek)->getJson('/api/v1/pendaftaran?filter[status]=mengundurkan_diri')->assertOk()->assertJsonPath('data.*.id', [$pertama->id]);
+
+    $ketiga = daftarPpdbPublik($this, ['nik' => '3374015402230003', 'nama_lengkap' => 'Salsa Aulia', 'nama_panggilan' => 'Salsa']);
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pertama->id}/batalkan-mundur")
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Kuota PPDB tahun ajaran 2027/2028 sudah penuh, jadi pendaftaran PPDB-2027-0001 tidak bisa dikembalikan.');
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$ketiga->id}/tolak", ['alasan' => 'Usia belum cukup.'])->assertOk();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pertama->id}/batalkan-mundur")
+        ->assertOk()
+        ->assertJsonPath('data.status', 'diajukan')
+        ->assertJsonPath('data.catatan', null);
+    expect(Activity::query()->where('log_name', 'ppdb')->pluck('event')->all())->toBe(['mengundurkan_diri', 'ditolak', 'mundur_dibatalkan']);
+});
+
+it('membolehkan anak yang mundur mendaftar lagi dengan NIK yang sama', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/mengundurkan-diri")->assertOk();
+
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran())->assertCreated();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/batalkan-mundur")
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Anak dengan NIK ini sudah punya pendaftaran PPDB yang sedang diproses atau sudah diterima.');
+});
+
+it('menghapus murid pendaftar yang mundur setelah diterima dan tidak bisa dikembalikan', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertOk();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima")->assertOk();
+    $muridId = (int) $pendaftaran->fresh()?->murid_id;
+    $this->actingAs($this->kepsek)->patchJson("/api/v1/murid/{$muridId}/nis", ['nis' => '2027005'])->assertOk();
+    $akun = User::query()->where('username', '2027005')->sole();
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/mengundurkan-diri")
+        ->assertOk()
+        ->assertJsonPath('data.status', 'mengundurkan_diri')
+        ->assertJsonPath('data.murid', null);
+
+    $murid = Murid::withTrashed()->findOrFail($muridId);
+    expect($murid->trashed())->toBeTrue()
+        ->and($murid->nis)->toBeNull()
+        ->and($murid->nik)->toBeNull()
+        ->and($akun->fresh()?->status->value)->toBe('nonaktif');
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/batalkan-mundur")->assertStatus(422);
+    $this->postJson('/api/v1/public/pendaftaran', dataPendaftaran())->assertCreated();
+});
+
+it('menolak mundur setelah diterima kalau murid sudah punya tagihan', function () {
+    $pendaftaran = daftarPpdbPublik($this);
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/verifikasi")->assertOk();
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/terima")->assertOk();
+    Tagihan::factory()->create(['murid_id' => $pendaftaran->fresh()?->murid_id]);
+
+    $this->actingAs($this->kepsek)->postJson("/api/v1/pendaftaran/{$pendaftaran->id}/mengundurkan-diri")
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Nadia Putri Rahma sudah punya tagihan, rapor, atau absensi, jadi dianggap sudah mulai sekolah. Ubah status muridnya menjadi Keluar.');
+    expect($pendaftaran->fresh()?->status)->toBe(StatusPendaftaran::Diterima);
 });

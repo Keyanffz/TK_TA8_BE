@@ -64,8 +64,8 @@ class NisMuridService
 
     /**
      * Mengisi atau mengubah NIS satu murid dalam transaksi. Akun wali otomatis dibuat kalau murid aktif, belum punya
-     * NIS, dan belum tertaut ke wali mana pun; murid dari PPDB tanpa login memakai hubungan dan nomor HP formulirnya,
-     * lalu akun itu dicatat sebagai wali pendaftar dan menerima notifikasi pendaftaran diterima. Notifikasi dikirim
+     * NIS, dan belum tertaut ke wali mana pun, dari kontak utama formulir; murid dari PPDB tanpa login lalu dicatat
+     * dengan akun itu sebagai wali pendaftar, dan akun itu menerima notifikasi pendaftaran diterima. Notifikasi dikirim
      * setelah transaksi terluar selesai.
      *
      * @return bool akun wali dibuat
@@ -332,10 +332,15 @@ class NisMuridService
         };
     }
 
+    /**
+     * Hubungan, nama, dan nomor HP akun diambil dari kontak utama formulir; murid tanpa kontak utama (data lama)
+     * mendapat hubungan `wali` tanpa nomor HP.
+     */
     private function buatAkun(Murid $murid, User $pelaku, ?string $hashPasswordAwal): void
     {
+        $kontak = $murid->kontak_utama === null ? null : $murid->orangTua()->where('peran', $murid->kontak_utama)->first();
+        $wali = $this->waliMuridService->buatAkunOtomatis($murid, $murid->kontak_utama ?? Hubungan::Wali, $kontak?->no_hp, $kontak?->nama, $pelaku, $hashPasswordAwal);
         $pendaftaran = $murid->pendaftaran()->whereNull('wali_murid_id')->first();
-        $wali = $this->waliMuridService->buatAkunOtomatis($murid, $pendaftaran->hubungan ?? Hubungan::Wali, $pendaftaran?->no_hp, $pelaku, $hashPasswordAwal);
 
         if ($pendaftaran !== null) {
             $pendaftaran->update(['wali_murid_id' => $wali->id]);

@@ -21,15 +21,16 @@ class WaliMuridService
     /**
      * Akun wali untuk murid yang belum tertaut ke wali mana pun (murid baru, pendaftar PPDB tanpa login, atau murid
      * aktif hasil import): username NIS murid, password awal tanggal lahir anak (DDMMYYYY) yang wajib diganti saat
-     * login pertama, dan nama sementara sampai wali melengkapi profilnya. Wali ini menjadi kontak utama murid.
+     * login pertama, dan nama kontak utama dari formulir (atau "Wali <nama panggilan>" kalau kosong) sampai wali
+     * melengkapi profilnya. Wali ini menjadi kontak utama murid.
      * Import mengirim hash password awal yang sudah dibuat di luar transaksi (`$hashPasswordAwal`), karena hashing
      * ratusan password memakan waktu.
      */
-    public function buatAkunOtomatis(Murid $murid, Hubungan $hubungan, ?string $noHp, User $pelaku, ?string $hashPasswordAwal = null): WaliMurid
+    public function buatAkunOtomatis(Murid $murid, Hubungan $hubungan, ?string $noHp, ?string $nama, User $pelaku, ?string $hashPasswordAwal = null): WaliMurid
     {
-        return DB::transaction(function () use ($murid, $hubungan, $noHp, $pelaku, $hashPasswordAwal): WaliMurid {
+        return DB::transaction(function () use ($murid, $hubungan, $noHp, $nama, $pelaku, $hashPasswordAwal): WaliMurid {
             $user = User::query()->create([
-                'name' => 'Wali '.$murid->nama_panggilan,
+                'name' => $nama ?? 'Wali '.$murid->nama_panggilan,
                 'username' => $murid->nis,
                 'password' => $hashPasswordAwal ?? $murid->passwordAwalWali(),
                 'wajib_ganti_password' => true,

@@ -2,12 +2,17 @@
 
 namespace App\Services;
 
+use App\Enums\Imunisasi;
 use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\Murid\SimpanMuridRequest;
 use App\Models\Kelas;
 use App\Models\Murid;
+use App\Models\OrangTua;
 use App\Models\User;
+use App\Support\FormulirMurid;
+use App\Support\KelengkapanFormulir;
+use App\Support\KolomImportMurid;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -19,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\Import;
 use Maatwebsite\Excel\Excel as JenisFile;
@@ -31,7 +37,9 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as TanggalExcel;
  * bisa berubah sejak pratinjau) lalu menyimpan semua baris valid dalam satu transaksi. Murid disimpan tanpa NIS
  * seperti `POST /murid`; akun wali murid aktif dibuat saat Kepala Sekolah mengisi NIS. Murid aktif bisa langsung
  * ditempatkan di kelas tahun ajaran aktif; murid lulus, pindah, dan keluar tidak ikut generate tagihan. Duplikat
- * dideteksi lewat NISN, atau lewat nama lengkap + tanggal lahir untuk baris tanpa NISN.
+ * dideteksi lewat NISN, atau lewat nama lengkap + tanggal lahir untuk baris tanpa NISN; NIK juga tidak boleh dobel.
+ * Kolom formulir data murid (`KolomImportMurid`) opsional, sehingga data yang belum lengkap tetap bisa diimpor; murid
+ * itu tertandai belum lengkap. Kolom pilihan menerima label atau kode.
  *
  * @phpstan-type IsiBaris array<string, string|null>
  * @phpstan-type BarisPratinjau array{nomor: int, data: IsiBaris, valid: bool, alasan: list<string>}
@@ -39,31 +47,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as TanggalExcel;
  */
 class ImportMuridService
 {
-    /** Kolom template berurutan beserta [wajib, petunjuk], ditulis di sheet Petunjuk template. */
-    public const KOLOM = [
-        'nama_lengkap' => ['Ya', 'Nama lengkap murid.'],
-        'nama_panggilan' => ['Ya', 'Nama panggilan, ditulis di kartu akun wali.'],
-        'nisn' => ['Tidak', '10 digit. Baris dengan NISN yang sudah terdaftar dilewati dan dilaporkan.'],
-        'nik' => ['Tidak', '16 digit. Tulis sebagai teks (kolom template sudah berformat teks) supaya digit terakhir tidak berubah.'],
-        'jenis_kelamin' => ['Ya', 'L atau P.'],
-        'tempat_lahir' => ['Ya', 'Kota tempat lahir.'],
-        'tanggal_lahir' => ['Ya', 'YYYY-MM-DD, misalnya 2021-05-14 (DD/MM/YYYY juga diterima). Untuk murid aktif, ini juga password awal akun wali (DDMMYYYY) yang dibuat setelah Kepala Sekolah mengisi NIS.'],
-        'agama' => ['Ya', 'Misalnya Islam.'],
-        'alamat' => ['Ya', 'Alamat rumah.'],
-        'anak_ke' => ['Tidak', 'Angka 1 sampai 20.'],
-        'catatan_khusus' => ['Tidak', 'Misalnya alergi makanan atau kebutuhan khusus.'],
-        'tanggal_masuk' => ['Ya', 'YYYY-MM-DD.'],
-        'status' => ['Tidak', 'aktif, lulus, pindah, atau keluar; kosong berarti aktif. Murid lulus, pindah, dan keluar tidak dibuatkan akun wali dan tidak ditagih.'],
-        'tanggal_status' => ['Tidak', 'Tanggal lulus, pindah, atau keluar (YYYY-MM-DD); kosong untuk murid aktif. Kosong untuk murid lulus berarti akhir tahun ajaran di tahun lulus.'],
-        'tahun_lulus' => ['Untuk status lulus', 'Tahun lulus, misalnya 2019.'],
-        'sekolah_tujuan' => ['Tidak', 'Hanya untuk status pindah.'],
-        'keterangan' => ['Tidak', 'Keterangan status, hanya untuk murid lulus, pindah, atau keluar.'],
-        'kelas' => ['Tidak', 'Hanya untuk murid aktif: nama kelas di tahun ajaran aktif, misalnya TK A1. Murid aktif tanpa kelas belum ikut tagihan SPP sampai ditempatkan.'],
-    ];
-
     public const MAKSIMAL_BARIS = 500;
-
-    private const KOLOM_TANGGAL = ['tanggal_lahir', 'tanggal_masuk', 'tanggal_status'];
 
     private const KOLOM_DATA_DIRI = [
         'nisn', 'nik', 'nama_lengkap', 'nama_panggilan', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'agama', 'alamat',
@@ -71,8 +55,9 @@ class ImportMuridService
     ];
 
     private const PESAN = [
-        'jenis_kelamin.enum' => 'Jenis kelamin diisi L atau P.',
-        'status.enum' => 'Status diisi aktif, lulus, pindah, atau keluar.',
+        Enum::class => ':Attribute tidak ada di daftar pilihan. Lihat sheet Petunjuk.',
+        'jenis_kelamin.'.Enum::class => 'Jenis kelamin diisi L atau P.',
+        'status.'.Enum::class => 'Status diisi aktif, lulus, pindah, atau keluar.',
         'tanggal_lahir.date_format' => 'Tanggal lahir harus berformat YYYY-MM-DD, misalnya 2021-05-14.',
         'tanggal_lahir.before' => 'Tanggal lahir harus sebelum hari ini.',
         'tanggal_masuk.date_format' => 'Tanggal masuk harus berformat YYYY-MM-DD, misalnya 2025-07-14.',
@@ -130,7 +115,7 @@ class ImportMuridService
                 DB::transaction(fn () => $this->simpanBaris($valid));
             }
         } catch (UniqueConstraintViolationException) {
-            throw new BusinessRuleException('Ada NISN yang baru saja dipakai data lain saat import berjalan, jadi tidak ada murid yang disimpan. Unggah ulang file untuk memeriksa datanya lagi.');
+            throw new BusinessRuleException('Ada NISN atau NIK yang baru saja dipakai data lain saat import berjalan, jadi tidak ada murid yang disimpan. Unggah ulang file untuk memeriksa datanya lagi.');
         }
 
         if ($valid !== []) {
@@ -161,8 +146,7 @@ class ImportMuridService
         }
 
         $judul = array_map(fn (mixed $isi): string => Str::slug(trim(is_scalar($isi) ? (string) $isi : ''), '_'), array_shift($sel) ?? []);
-        $wajib = array_keys(array_filter(self::KOLOM, fn (array $kolom): bool => $kolom[0] === 'Ya'));
-        $kurang = array_diff($wajib, $judul);
+        $kurang = array_diff(KolomImportMurid::WAJIB, $judul);
 
         if ($kurang !== []) {
             throw ValidationException::withMessages(['file' => 'Kolom wajib tidak ada di file: '.implode(', ', $kurang).'. Pakai template dari tombol Unduh Template.']);
@@ -171,14 +155,18 @@ class ImportMuridService
         $baris = [];
         foreach ($sel as $indeks => $isiBaris) {
             $data = [];
-            foreach (array_keys(self::KOLOM) as $kolom) {
+            foreach (array_keys(KolomImportMurid::petunjuk()) as $kolom) {
                 $posisi = array_search($kolom, $judul, true);
-                $data[$kolom] = $posisi === false ? null : $this->teks($isiBaris[$posisi] ?? null, in_array($kolom, self::KOLOM_TANGGAL, true));
+                $data[$kolom] = $posisi === false ? null : $this->teks($isiBaris[$posisi] ?? null, in_array($kolom, KolomImportMurid::tanggal(), true));
             }
 
             if (array_filter($data, fn (?string $nilai): bool => $nilai !== null) !== []) {
-                $data['status'] = Str::lower($data['status'] ?? StatusMurid::Aktif->value);
-                $data['jenis_kelamin'] = $data['jenis_kelamin'] === null ? null : Str::upper($data['jenis_kelamin']);
+                $data['status'] ??= StatusMurid::Aktif->value;
+
+                foreach (KolomImportMurid::pilihan() as $kolom => $enum) {
+                    $data[$kolom] = $data[$kolom] === null ? null : KolomImportMurid::kode($enum, $data[$kolom]);
+                }
+
                 // Baris pertama data adalah baris kedua di spreadsheet (baris pertama berisi judul kolom).
                 $baris[] = ['nomor' => (int) $indeks + 2, 'data' => $data];
             }
@@ -242,6 +230,8 @@ class ImportMuridService
             ->keyBy(fn (Kelas $satu): string => Str::lower($satu->nama));
         $sisaTempat = $kelas->map(fn (Kelas $satu): int => $satu->kapasitas - (int) $satu->getAttribute('murid_aktif_count'))->all();
         $nisnTerdaftar = Murid::withTrashed()->whereIn('nisn', array_filter(array_column($isi, 'nisn')))->pluck('nama_lengkap', 'nisn');
+        $nikTerdaftar = Murid::query()->whereIn('nik', array_filter(array_column($isi, 'nik')))->pluck('nama_lengkap', 'nik')->all();
+        $nikSebelumnya = [];
         $namaTerdaftar = Murid::query()->whereIn('nama_lengkap', array_filter(array_column($isi, 'nama_lengkap')))->get(['nama_lengkap', 'tanggal_lahir'])
             ->mapWithKeys(fn (Murid $murid): array => [$this->kunciNama($murid->nama_lengkap, $murid->tanggal_lahir->toDateString()) => true]);
         $barisSebelumnya = [];
@@ -251,7 +241,12 @@ class ImportMuridService
             $alasan = $this->alasanIsian($data);
             $kunci = $data['nisn'] !== null ? 'nisn:'.$data['nisn'] : 'nama:'.$this->kunciNama($data['nama_lengkap'], $data['tanggal_lahir']);
             $alasan = [...$alasan, ...$this->alasanGanda($data, $barisSebelumnya[$kunci] ?? null, $nisnTerdaftar->all(), $namaTerdaftar->all())];
+            $alasan = [...$alasan, ...$this->alasanNik($data['nik'], $nikTerdaftar, $nikSebelumnya[$data['nik'] ?? ''] ?? null)];
             $barisSebelumnya[$kunci] ??= $nomor;
+
+            if ($data['nik'] !== null) {
+                $nikSebelumnya[$data['nik']] ??= $nomor;
+            }
 
             $tanggalKeluar = $alasan === [] ? $this->tanggalKeluar($data, $alasan) : null;
             $kelasTujuan = $alasan === [] && $data['kelas'] !== null ? $this->kelasTujuan($data['kelas'], $kelas, $sisaTempat, $alasan) : null;
@@ -274,9 +269,12 @@ class ImportMuridService
     {
         $lulus = StatusMurid::Lulus->value;
         $aktif = StatusMurid::Aktif->value;
+        $isian = [...$data, ...$this->isianFormulir($data)];
 
-        return array_values(Validator::make($data, [
+        $alasan = Validator::make($isian, [
             ...SimpanMuridRequest::aturanDataDiri(),
+            ...FormulirMurid::aturanAnak(),
+            ...FormulirMurid::aturanOrangTua(),
             'nisn' => ['nullable', 'digits:10'],
             'status' => ['required', Rule::enum(StatusMurid::class)],
             'tanggal_status' => ['bail', 'nullable', 'prohibited_if:status,'.$aktif, 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:tanggal_masuk'],
@@ -287,7 +285,56 @@ class ImportMuridService
             'sekolah_tujuan' => ['nullable', 'prohibited_unless:status,'.StatusMurid::Pindah->value, 'string', 'max:150'],
             'keterangan' => ['nullable', 'prohibited_if:status,'.$aktif, 'string', 'max:500'],
             'kelas' => ['nullable', 'prohibited_unless:status,'.$aktif, 'string'],
-        ], self::PESAN)->errors()->all());
+        ], self::PESAN, FormulirMurid::atribut())->errors()->all();
+
+        return array_values([...$alasan, ...KelengkapanFormulir::masalahKontakUtama($isian, Arr::only($isian, FormulirMurid::PERAN))]);
+    }
+
+    /**
+     * Kolom baris yang datar (`ayah_nama`) menjadi isian formulir seperti request `POST /murid` (`ayah.nama`).
+     * Imunisasi ditulis dipisah koma; alamat rumah "sama" berarti sama dengan alamat anak.
+     *
+     * @param  IsiBaris  $data
+     * @return array<string, mixed>
+     */
+    private function isianFormulir(array $data): array
+    {
+        $isian = Arr::only($data, [...self::KOLOM_DATA_DIRI, ...FormulirMurid::KOLOM_ANAK]);
+        $isian['imunisasi'] = $data['imunisasi'] === null ? null : array_map(
+            fn (string $satu): string => KolomImportMurid::kode(Imunisasi::class, $satu),
+            array_values(array_filter(array_map(trim(...), explode(',', $data['imunisasi'])), fn (string $satu): bool => $satu !== '')),
+        );
+
+        foreach (FormulirMurid::PERAN as $peran) {
+            $orang = [];
+
+            foreach (OrangTua::ISIAN as $kolom) {
+                if (array_key_exists("{$peran}_{$kolom}", $data)) {
+                    $orang[$kolom] = $data["{$peran}_{$kolom}"];
+                }
+            }
+            if (Str::lower((string) ($orang['alamat_rumah'] ?? '')) === 'sama') {
+                $orang = [...$orang, 'alamat_rumah' => null, 'alamat_sama_dengan_anak' => true];
+            }
+
+            $isian[$peran] = array_filter($orang, fn (mixed $nilai): bool => $nilai !== null) === [] ? null : $orang;
+        }
+
+        return $isian;
+    }
+
+    /**
+     * @param  array<string, string>  $nikTerdaftar  nama murid per NIK
+     * @return list<string>
+     */
+    private function alasanNik(?string $nik, array $nikTerdaftar, ?int $barisSebelumnya): array
+    {
+        return match (true) {
+            $nik === null => [],
+            isset($nikTerdaftar[$nik]) => ["NIK {$nik} sudah dipakai {$nikTerdaftar[$nik]}."],
+            $barisSebelumnya !== null => ["NIK {$nik} sama dengan baris {$barisSebelumnya}."],
+            default => [],
+        };
     }
 
     /**
@@ -403,7 +450,7 @@ class ImportMuridService
         $status = StatusMurid::from((string) $data['status']);
 
         return [
-            ...Arr::only($data, self::KOLOM_DATA_DIRI),
+            ...$this->isianFormulir($data),
             'status' => $status,
             'tanggal_keluar' => $status === StatusMurid::Aktif ? null : $baris['tanggal_keluar'],
             'tahun_lulus' => $status === StatusMurid::Lulus ? (int) $data['tahun_lulus'] : null,

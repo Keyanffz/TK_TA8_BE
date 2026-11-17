@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api\V1\Wali;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Wali\LengkapiDataAnakRequest;
 use App\Http\Requests\Wali\TambahAnakRequest;
 use App\Http\Resources\AnakWaliResource;
+use App\Http\Resources\MuridDetailResource;
 use App\Models\User;
+use App\Services\MuridService;
 use App\Services\WaliMuridService;
 use App\Support\ApiResponse;
 use Illuminate\Container\Attributes\CurrentUser;
@@ -38,5 +41,17 @@ class AnakController extends Controller
         $anak = $wali->murid()->with('kelasAktif')->findOrFail($murid->id);
 
         return ApiResponse::success(new AnakWaliResource($anak), "{$anak->nama_panggilan} berhasil ditambahkan ke akun Anda.");
+    }
+
+    /**
+     * Wali melengkapi isian formulir data anaknya yang masih kosong, termasuk NIK. Isian yang sudah terisi tidak bisa
+     * diubah: nilai lain untuk isian itu dibalas 422 `VALIDATION_ERROR` di field tersebut, dan perubahan dilakukan
+     * lewat sekolah. Anak yang tidak tertaut ke akun ini dibalas 404.
+     */
+    public function lengkapi(LengkapiDataAnakRequest $request, int $id, #[CurrentUser] User $user, MuridService $service): JsonResponse
+    {
+        $murid = $service->lengkapi($user->profilWaliMurid()->murid()->findOrFail($id), $request->validated(), $user);
+
+        return ApiResponse::success(new MuridDetailResource($murid->muatDetail()), "Data {$murid->nama_panggilan} tersimpan.");
     }
 }

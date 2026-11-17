@@ -47,6 +47,8 @@ class AnakWaliResource extends JsonResource
             'hubungan' => $pivot->hubungan,
             /** @var bool */
             'is_kontak_utama' => $pivot->is_kontak_utama,
+            /** false kalau ada field wajib formulir data anak yang kosong; wali bisa melengkapinya lewat `PATCH /wali/anak/{id}`. */
+            'data_lengkap' => $this->data_lengkap,
         ];
     }
 }

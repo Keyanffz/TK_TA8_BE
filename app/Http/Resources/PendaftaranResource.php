@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Bentuk pendaftaran di daftar. Butuh relasi `tahunAjaran` dan `murid`; data wali pendaftar dan dokumen ada di
- * `PendaftaranDetailResource`.
+ * Bentuk pendaftaran di daftar. Butuh relasi `tahunAjaran` dan `murid`; NIK anak, isian formulir lengkap, centang
+ * berkas, dan wali pendaftar ada di `PendaftaranDetailResource`.
  *
  * @mixin Pendaftaran
  */
@@ -25,21 +25,16 @@ class PendaftaranResource extends JsonResource
             'status' => $this->status,
             'tahun_ajaran' => ['id' => $this->tahunAjaran->id, 'nama' => $this->tahunAjaran->nama],
             'tingkat_tujuan' => $this->tingkat_tujuan,
+            /** Hubungan akun wali pendaftar dengan anak; null untuk pendaftaran tanpa login. */
             'hubungan' => $this->hubungan,
             'nama_lengkap' => $this->nama_lengkap,
             'nama_panggilan' => $this->nama_panggilan,
             'jenis_kelamin' => $this->jenis_kelamin,
             'tempat_lahir' => $this->tempat_lahir,
             'tanggal_lahir' => $this->tanggal_lahir->toDateString(),
-            'nik' => $this->nik,
             'agama' => $this->agama,
             'alamat' => $this->alamat,
-            'nama_ayah' => $this->nama_ayah,
-            'pekerjaan_ayah' => $this->pekerjaan_ayah,
-            'nama_ibu' => $this->nama_ibu,
-            'pekerjaan_ibu' => $this->pekerjaan_ibu,
-            'no_hp' => $this->no_hp,
-            /** Alasan penolakan. */
+            /** Alasan penolakan atau alasan mengundurkan diri. */
             'catatan' => $this->catatan,
             /**
              * Murid yang dibuat saat pendaftaran diterima.

@@ -9,7 +9,7 @@ use App\Enums\Tingkat;
 use App\Models\Pendaftaran;
 use App\Models\TahunAjaran;
 use App\Models\WaliMurid;
-use Database\Factories\Concerns\MembuatAlamatSemarang;
+use Database\Factories\Concerns\MembuatIsianFormulir;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class PendaftaranFactory extends Factory
 {
-    use MembuatAlamatSemarang;
+    use MembuatIsianFormulir;
 
     /**
      * @return array<string, mixed>
@@ -26,7 +26,6 @@ class PendaftaranFactory extends Factory
     {
         $jenisKelamin = fake()->randomElement(JenisKelamin::cases());
         $namaDepan = $jenisKelamin === JenisKelamin::L ? fake()->firstNameMale() : fake()->firstNameFemale();
-        $namaKeluarga = fake()->lastName();
 
         return [
             'kode' => 'PPDB-2027-'.fake()->unique()->numerify('####'),
@@ -34,7 +33,7 @@ class PendaftaranFactory extends Factory
             'hubungan' => Hubungan::Ibu,
             'tahun_ajaran_id' => TahunAjaran::factory(),
             'tingkat_tujuan' => Tingkat::A,
-            'nama_lengkap' => $namaDepan.' '.$namaKeluarga,
+            'nama_lengkap' => $namaDepan.' '.fake()->lastName(),
             'nama_panggilan' => $namaDepan,
             'jenis_kelamin' => $jenisKelamin,
             'tempat_lahir' => 'Semarang',
@@ -42,12 +41,7 @@ class PendaftaranFactory extends Factory
             // 3374: kode wilayah Kota Semarang di NIK.
             'nik' => '3374'.fake()->numerify('############'),
             'agama' => 'Islam',
-            'alamat' => $this->alamatSemarang(),
-            'nama_ayah' => fake()->firstNameMale().' '.$namaKeluarga,
-            'pekerjaan_ayah' => fake()->randomElement(['Karyawan swasta', 'Wiraswasta', 'PNS', 'Pedagang']),
-            'nama_ibu' => fake()->firstNameFemale(),
-            'pekerjaan_ibu' => fake()->randomElement(['Ibu rumah tangga', 'Guru', 'Perawat', 'Karyawan swasta']),
-            'no_hp' => fake()->numerify('081#########'),
+            ...$this->isianFormulirAnak(),
             'status' => StatusPendaftaran::Diajukan,
             'catatan' => null,
             'diproses_oleh' => null,
@@ -56,11 +50,16 @@ class PendaftaranFactory extends Factory
         ];
     }
 
+    public function configure(): static
+    {
+        return $this->afterCreating(fn (Pendaftaran $pendaftaran) => $this->buatAyahDanIbu($pendaftaran));
+    }
+
     /**
-     * Pendaftaran yang dikirim tanpa login, belum punya wali.
+     * Pendaftaran yang dikirim tanpa login, belum punya wali dan tanpa `hubungan`.
      */
     public function publik(): static
     {
-        return $this->state(fn (): array => ['wali_murid_id' => null]);
+        return $this->state(fn (): array => ['wali_murid_id' => null, 'hubungan' => null]);
     }
 }

@@ -18,7 +18,7 @@ beforeEach(function () {
     $this->wali = WaliMurid::factory()->create();
     $this->wali->murid()->attach(Murid::factory()->create(), ['hubungan' => Hubungan::Ibu, 'is_kontak_utama' => true]);
     $this->adik = Murid::factory()->create(['nis' => 'TA20260031', 'nama_panggilan' => 'Kirana', 'tanggal_lahir' => '2022-03-09']);
-    $this->akunAdik = app(WaliMuridService::class)->buatAkunOtomatis($this->adik, Hubungan::Wali, null, $this->kepsek);
+    $this->akunAdik = app(WaliMuridService::class)->buatAkunOtomatis($this->adik, Hubungan::Wali, null, null, $this->kepsek);
 });
 
 function tambahAnak(object $test, WaliMurid $wali, array $timpa = []): object

@@ -11,7 +11,7 @@ use App\Services\WaliMuridService;
 beforeEach(function () {
     $this->kepsek = buatKepalaSekolah();
     $this->murid = Murid::factory()->create(['nis' => 'TA20260031', 'nama_lengkap' => 'Kirana Ayu Lestari', 'tanggal_lahir' => '2022-03-09']);
-    $this->akun = app(WaliMuridService::class)->buatAkunOtomatis($this->murid, Hubungan::Wali, null, $this->kepsek);
+    $this->akun = app(WaliMuridService::class)->buatAkunOtomatis($this->murid, Hubungan::Wali, null, null, $this->kepsek);
     config(['app.frontend_url' => 'https://tkta8.test']);
 });
 

@@ -7,9 +7,15 @@ use App\Enums\StatusMurid;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Murid;
 use App\Models\MuridWali;
+use App\Models\OrangTua;
 use App\Models\User;
+use App\Support\FormulirMurid;
+use App\Support\IsianKosong;
+use App\Support\KelengkapanFormulir;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class MuridService
 {
@@ -18,12 +24,13 @@ class MuridService
     public function __construct(
         private readonly MediaService $media,
         private readonly WaliMuridService $waliMuridService,
+        private readonly OrangTuaService $orangTua,
     ) {}
 
     /**
      * Murid baru belum punya NIS dan akun wali; keduanya dibuat saat Kepala Sekolah mengisi NIS
      * (`NisMuridService::isi()`). Dipakai juga oleh import murid dan penerimaan PPDB. Status bawaan aktif; import
-     * murid mengirim status lain untuk data alumni.
+     * murid mengirim status lain untuk data alumni. `ayah`, `ibu`, dan `wali` disimpan ke tabel orang tua.
      *
      * @param  array<string, mixed>  $data
      */
@@ -31,12 +38,18 @@ class MuridService
     {
         $fotoPath = $foto === null ? null : $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
 
-        return Murid::query()->create([
-            'status' => StatusMurid::Aktif,
-            ...$data,
-            'nis' => null,
-            'foto_path' => $fotoPath,
-        ]);
+        return DB::transaction(function () use ($data, $fotoPath): Murid {
+            $murid = Murid::query()->create([
+                'status' => StatusMurid::Aktif,
+                ...Arr::except($data, FormulirMurid::PERAN),
+                'nis' => null,
+                'foto_path' => $fotoPath,
+            ]);
+            $this->orangTua->simpan($murid, Arr::only($data, FormulirMurid::PERAN));
+            $murid->perbaruiKelengkapan();
+
+            return $murid;
+        });
     }
 
     /**
@@ -50,7 +63,7 @@ class MuridService
         $fotoLama = $murid->foto_path;
 
         DB::transaction(function () use ($murid, $data, $foto, $pengubah): void {
-            $murid->fill($data);
+            $murid->fill(Arr::except($data, FormulirMurid::PERAN));
 
             if ($foto !== null) {
                 $murid->foto_path = $this->media->simpanGambar($foto, MediaService::DISK_PRIVAT, self::FOLDER_FOTO);
@@ -58,6 +71,8 @@ class MuridService
 
             $tanggalLahirBerubah = $murid->isDirty('tanggal_lahir');
             $murid->save();
+            $this->orangTua->simpan($murid, Arr::only($data, FormulirMurid::PERAN));
+            $murid->perbaruiKelengkapan();
 
             if ($tanggalLahirBerubah) {
                 $this->waliMuridService->sesuaikanPasswordAwal($murid, $pengubah);
@@ -73,8 +88,7 @@ class MuridService
 
     /**
      * Hapus hanya untuk data yang salah input. Murid yang sudah punya tagihan, rapor, atau berasal dari
-     * PPDB disimpan sebagai riwayat; statusnya diubah menjadi pindah/keluar. Akun wali otomatis murid ini yang
-     * belum pernah dipakai ikut dinonaktifkan dan username-nya dikosongkan.
+     * PPDB disimpan sebagai riwayat; statusnya diubah menjadi pindah/keluar.
      *
      * @throws BusinessRuleException
      */
@@ -84,13 +98,70 @@ class MuridService
             throw new BusinessRuleException("{$murid->nama_lengkap} sudah punya tagihan, rapor, atau data PPDB sehingga tidak bisa dihapus. Ubah statusnya menjadi pindah atau keluar.");
         }
 
+        $this->hapusData($murid, $penghapus);
+    }
+
+    /**
+     * Tanpa pemeriksaan riwayat; dipakai juga saat pendaftar PPDB yang sudah diterima mengundurkan diri. Akun wali
+     * otomatis murid ini yang belum pernah dipakai ikut dinonaktifkan dan username-nya dikosongkan.
+     */
+    public function hapusData(Murid $murid, User $penghapus): void
+    {
         DB::transaction(function () use ($murid, $penghapus): void {
             $this->waliMuridService->lepasAkunOtomatisBelumDipakai($murid, $penghapus)?->user->update(['username' => null]);
             $murid->kelasMurid()->delete();
-            // NIS, NISN, dan username berindeks unik, sedangkan baris ini hanya di-soft-delete; tanpa dikosongkan,
-            // nomor yang salah input tidak bisa dipakai murid lain.
-            $murid->update(['nis' => null, 'nisn' => null]);
+            // NIS, NISN, NIK, dan username berindeks unik, sedangkan baris ini hanya di-soft-delete; tanpa dikosongkan,
+            // nomor yang salah input tidak bisa dipakai murid lain atau mendaftar PPDB lagi.
+            $murid->update(['nis' => null, 'nisn' => null, 'nik' => null]);
             $murid->delete();
+        });
+    }
+
+    /**
+     * Wali melengkapi isian formulir yang masih kosong. Isian yang sudah terisi hanya boleh dikirim dengan nilai yang
+     * sama; nilai lain ditolak karena perubahan data yang sudah ada dilakukan lewat sekolah.
+     *
+     * @param  array<string, mixed>  $data  hasil validasi `LengkapiDataAnakRequest`
+     *
+     * @throws ValidationException
+     */
+    public function lengkapi(Murid $murid, array $data, User $pengisi): Murid
+    {
+        return DB::transaction(function () use ($murid, $data, $pengisi): Murid {
+            $murid = Murid::query()->with('orangTua')->lockForUpdate()->findOrFail($murid->id);
+            $lengkapi = new IsianKosong(FormulirMurid::atribut());
+            $anak = $lengkapi->gabung(
+                array_map(FormulirMurid::polos(...), $murid->only(array_keys(Arr::except($data, FormulirMurid::PERAN)))),
+                Arr::except($data, FormulirMurid::PERAN),
+            );
+            $orangTua = $murid->orangTua->mapWithKeys(fn (OrangTua $orang): array => [$orang->peran->value => $orang->isian()])->all();
+            $orangTuaBaru = [];
+
+            foreach (FormulirMurid::PERAN as $peran) {
+                if (is_array($data[$peran] ?? null)) {
+                    $orangTuaBaru[$peran] = $lengkapi->gabungOrangTua($peran, $orangTua[$peran] ?? array_fill_keys(OrangTua::ISIAN, null), $data[$peran]);
+                }
+            }
+
+            $lengkapi->pastikanTanpaBentrok();
+            $kontak = KelengkapanFormulir::masalahKontakUtama(
+                [...array_map(FormulirMurid::polos(...), $murid->only(['kontak_utama', 'status_yatim_piatu'])), ...$anak],
+                [...$orangTua, ...$orangTuaBaru],
+            );
+
+            if ($kontak !== []) {
+                throw ValidationException::withMessages($kontak);
+            }
+
+            $murid->fill($anak)->save();
+            $this->orangTua->simpan($murid, $orangTuaBaru);
+            $murid->perbaruiKelengkapan();
+
+            activity('murid')->causedBy($pengisi)->performedOn($murid)->event('dilengkapi_wali')
+                ->withProperties(['field' => $lengkapi->diisi()])
+                ->log("Wali melengkapi data {$murid->nama_lengkap}");
+
+            return $murid;
         });
     }
 

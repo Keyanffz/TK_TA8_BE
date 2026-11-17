@@ -128,6 +128,9 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::post('/pendaftaran/{id}/verifikasi', [PendaftaranController::class, 'verifikasi']);
         Route::post('/pendaftaran/{id}/terima', [PendaftaranController::class, 'terima']);
         Route::post('/pendaftaran/{id}/tolak', [PendaftaranController::class, 'tolak']);
+        Route::post('/pendaftaran/{id}/mengundurkan-diri', [PendaftaranController::class, 'mengundurkanDiri']);
+        Route::post('/pendaftaran/{id}/batalkan-mundur', [PendaftaranController::class, 'batalkanMundur']);
+        Route::patch('/pendaftaran/{id}/berkas', [PendaftaranController::class, 'berkas']);
 
         Route::get('/log-aktivitas', LogAktivitasController::class);
 
@@ -191,6 +194,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/murid/{id}', [MuridController::class, 'update']);
         Route::delete('/murid/{id}', [MuridController::class, 'destroy']);
         Route::get('/murid/{id}/kartu-akun', [MuridController::class, 'kartuAkun']);
+        Route::patch('/murid/{id}/berkas', [MuridController::class, 'berkas']);
 
         Route::patch('/murid/{id}/status', [StatusMuridController::class, 'ubah']);
         Route::post('/murid/status-massal', [StatusMuridController::class, 'massal']);
@@ -284,6 +288,7 @@ Route::middleware(['auth:sanctum', 'akun.aktif', 'password.diganti', 'throttle:a
         Route::put('/profil', ProfilWaliController::class);
         Route::post('/tambah-anak', [AnakController::class, 'tambah'])->middleware('throttle:tambah-anak');
         Route::get('/anak', [AnakController::class, 'index']);
+        Route::patch('/anak/{id}', [AnakController::class, 'lengkapi']);
     });
 });
 
